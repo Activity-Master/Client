@@ -3,7 +3,7 @@ package com.guicedee.activitymaster.fsdm.client.services.systems;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
 import com.guicedee.client.IGuiceContext;
-import com.guicedee.guicedinjection.interfaces.IDefaultService;
+import com.guicedee.client.services.IDefaultService;
 import io.smallrye.mutiny.Uni;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.reactive.mutiny.Mutiny;

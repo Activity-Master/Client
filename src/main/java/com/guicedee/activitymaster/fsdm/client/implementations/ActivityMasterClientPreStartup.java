@@ -1,6 +1,6 @@
 package com.guicedee.activitymaster.fsdm.client.implementations;
 
-import com.guicedee.guicedinjection.interfaces.IGuicePreStartup;
+import com.guicedee.client.services.lifecycle.IGuicePreStartup;
 
 import java.util.List;
 

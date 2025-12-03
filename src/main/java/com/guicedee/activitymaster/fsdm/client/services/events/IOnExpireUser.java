@@ -1,7 +1,7 @@
 package com.guicedee.activitymaster.fsdm.client.services.events;
 
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.party.IInvolvedParty;
-import com.guicedee.guicedinjection.interfaces.IDefaultService;
+import com.guicedee.client.services.IDefaultService;
 
 import java.io.Serializable;
 

@@ -1,6 +1,6 @@
 package com.guicedee.activitymaster.fsdm.client.services.events;
 
-import com.guicedee.guicedinjection.interfaces.IDefaultService;
+import com.guicedee.client.services.IDefaultService;
 
 /**
  * Event signals for systems updating

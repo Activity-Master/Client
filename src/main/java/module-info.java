@@ -2,6 +2,7 @@ import com.guicedee.activitymaster.fsdm.client.services.ConsoleLogActivityMaster
 import com.guicedee.activitymaster.fsdm.client.services.events.IOnCreateUser;
 import com.guicedee.activitymaster.fsdm.client.services.events.IOnExpireUser;
 import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterProgressMonitor;
+import com.guicedee.client.services.config.IGuiceScanModuleInclusions;
 
 module com.guicedee.activitymaster.fsdm.client {
   exports com.guicedee.activitymaster.fsdm.client;
@@ -75,7 +76,7 @@ module com.guicedee.activitymaster.fsdm.client {
 
   provides IActivityMasterProgressMonitor with ConsoleLogActivityMasterProgressMaster;
 
-  provides com.guicedee.guicedinjection.interfaces.IGuiceScanModuleInclusions with com.guicedee.activitymaster.fsdm.client.implementations.ActivityMasterClientModuleInclusion;
+  provides IGuiceScanModuleInclusions with com.guicedee.activitymaster.fsdm.client.implementations.ActivityMasterClientModuleInclusion;
 
   opens com.guicedee.activitymaster.fsdm.client.services.administration to com.google.guice;
   opens com.guicedee.activitymaster.fsdm.client.services.deserializers to com.google.guice, com.fasterxml.jackson.databind;

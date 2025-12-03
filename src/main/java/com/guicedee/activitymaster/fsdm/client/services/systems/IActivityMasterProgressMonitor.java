@@ -1,6 +1,6 @@
 package com.guicedee.activitymaster.fsdm.client.services.systems;
 
-import com.guicedee.guicedinjection.interfaces.IDefaultService;
+import com.guicedee.client.services.IDefaultService;
 
 @SuppressWarnings("UnusedReturnValue")
 public interface IActivityMasterProgressMonitor extends IDefaultService<IActivityMasterProgressMonitor>
