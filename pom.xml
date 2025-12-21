@@ -10,6 +10,33 @@
     <artifactId>activity-master-client</artifactId>
     <packaging>jar</packaging>
     <name>Activity Master Client</name>
+    <description>Client library for the Activity Master FSDM — GuicedEE-based client APIs and helpers.</description>
+    <url>https://github.com/Activity-Master/Client</url>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <organization>
+        <name>Activity Master</name>
+        <url>https://github.com/Activity-Master</url>
+    </organization>
+    <scm>
+        <url>https://github.com/Activity-Master/Client</url>
+        <connection>scm:git:https://github.com/Activity-Master/Client.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/Activity-Master/Client.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/Activity-Master/Client/issues</url>
+    </issueManagement>
+    <ciManagement>
+        <system>GitHub Actions</system>
+        <url>https://github.com/Activity-Master/Client/actions</url>
+    </ciManagement>
 
     <dependencies>
 
