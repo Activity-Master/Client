@@ -17,8 +17,5 @@ public interface IResourceData<J extends IResourceData<J, Q,S>,
 		        IContainsEnterprise<J>,
 						IWarehouseBaseTable<J, Q, UUID>
 {
-	
-	byte[] getResourceItemData();
 
-  J setResourceItemData(byte[] data);
 }

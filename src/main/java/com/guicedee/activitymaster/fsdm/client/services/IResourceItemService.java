@@ -62,9 +62,16 @@ public interface IResourceItemService<J extends IResourceItemService<J>>
 									LocalDateTime effectiveFromDate, byte[] data,
 									ISystems<?, ?> system, UUID... identityToken);
 		
+		/**
+			* Direct method for updating only the data (not any metadata or last updated)
+			*
+			* @param session
+			* @param data
+			* @param resourceItemId
+			* @return
+			*/
+
 		Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId);
-		
-		Uni<Void> findResourceItemDataForUpdate(Mutiny.Session session, IResourceItem<?,?> resourceItem, byte[] data, ISystems<?, ?> system, UUID... identityToken);
 
   Uni<Void> addResourceItemTypeRelationship(Mutiny.Session session, IResourceItem<?,?> resourceItem, String typeName, String value, ISystems<?, ?> system, UUID... identityToken);
 
@@ -85,9 +92,6 @@ public interface IResourceItemService<J extends IResourceItemService<J>>
 	Uni<IResourceItem<?,?>> findByOriginalSourceUniqueID(Mutiny.Session session, UUID originalSourceUniqueID,
 														 ISystems<?,?> systems,
 														 UUID... identityToken);
-
-	Uni<byte[]> getDataForResourceItemValue(Mutiny.Session session, IRelationshipValue<IResourceItem<?,?>, IResourceData<?,?,?>, ?> data);
-
 
 	Uni<IResourceItemType<?,?>> findResourceItemType(Mutiny.Session session, String type, ISystems<?,?> system, UUID... identityToken);
 

@@ -105,6 +105,55 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                             .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
                });
   }
+		
+		  default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName,int maxResults, ISystems<?, ?> system, UUID... identityToken)
+  {
+    IClassificationService<?> classificationService = get(IClassificationService.class);
+    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+
+    return classificationService.find(session, classificationName, system, identityToken)
+               .chain(classification -> {
+                 IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
+                     = relationshipTable.builder(session)
+                           .findLink((J) this, classification, null)
+                           .inActiveRange()
+                           .inDateRange()
+                           .latestFirst()
+																									.setMaxResults(maxResults)
+                           .withEnterprise(system)
+                           .canRead(system, identityToken)
+                     ;
+
+                 //noinspection unchecked
+                 return queryBuilderRelationshipClassification.getAll()
+                            .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
+               });
+  }
+		
+				
+		  default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName,boolean distinct, ISystems<?, ?> system, UUID... identityToken)
+  {
+    IClassificationService<?> classificationService = get(IClassificationService.class);
+    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+
+    return classificationService.find(session, classificationName, system, identityToken)
+               .chain(classification -> {
+                 IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
+                     = relationshipTable.builder(session)
+                           .findLink((J) this, classification, null)
+                           .inActiveRange()
+                           .inDateRange()
+                           .latestFirst()
+                           .withEnterprise(system)
+                           .canRead(system, identityToken)
+                     ;
+
+                 //noinspection unchecked
+                 return queryBuilderRelationshipClassification.getAll()
+                            .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
+               });
+  }
+
 
   // Convenience overload: Enum-based classification name
   default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, Enum<?> classificationName, ISystems<?, ?> system, UUID... identityToken)

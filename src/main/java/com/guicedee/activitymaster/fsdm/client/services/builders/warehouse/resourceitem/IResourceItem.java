@@ -21,7 +21,6 @@ public interface IResourceItem<J extends IResourceItem<J, Q>,
 		        IManageClassifications<J>,
 		        IManageResourceItemTypes<J>
 {
-	Uni<IResourceItem<?, ?>> updateDataTypeValue(Mutiny.Session session, String newValue);
 
 	Uni<String> getFilename(Mutiny.Session session);
 
