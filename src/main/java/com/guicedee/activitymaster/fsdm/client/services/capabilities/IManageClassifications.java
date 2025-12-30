@@ -14,6 +14,7 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.syste
 import com.guicedee.activitymaster.fsdm.client.services.classifications.EnterpriseClassificationDataConcepts;
 import com.guicedee.activitymaster.fsdm.client.services.exceptions.ClassificationException;
 import io.smallrye.mutiny.Uni;
+import org.apache.logging.log4j.LogManager;
 import org.hibernate.reactive.mutiny.Mutiny;
 
 import java.io.Serializable;
@@ -230,6 +231,10 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
     IClassificationService<?> classificationService = get(IClassificationService.class);
 
     return classificationService.find(session, classificationName, concept, system, identityToken)
+												.onFailure(NoResultException.class)
+												.invoke(err -> {
+														LogManager.getLogger(IManageClassifications.class).error("Classification not found: " + classificationName + " in concept " + concept, err);
+												})
                .map(classification -> {
                  tableForClassification.setEnterpriseID(system.getEnterpriseID());
                  tableForClassification.setActiveFlagID(system.getActiveFlagID());
