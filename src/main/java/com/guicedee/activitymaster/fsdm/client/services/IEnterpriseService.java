@@ -74,6 +74,22 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
     {
         return getEnterprise(session, name.toString());
     }
+
+    /**
+     * Resolves an Enterprise ID (UUID) by its unique name using a lightweight native SQL lookup
+     * with a small in-memory cache to reduce database load.
+     */
+    default Uni<UUID> resolveEnterpriseIdByName(Mutiny.Session session, String enterpriseName)
+    {
+        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
+                .getEnterpriseId(session, enterpriseName, (sess, name) -> {
+                    String sql = "select enterpriseid from dbo.enterprise where enterprisename = :name";
+                    return sess.createNativeQuery(sql)
+                               .setParameter("name", name)
+                               .getSingleResult()
+                               .map(result -> (UUID) result);
+                });
+    }
 				
     Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.Session session, String enterpriseName,
                                               @NotNull String adminUserName, @NotNull String adminPassword);

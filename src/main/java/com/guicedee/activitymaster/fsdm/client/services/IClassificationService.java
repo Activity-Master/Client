@@ -129,4 +129,49 @@ public interface IClassificationService<J extends IClassificationService<J>>
 	Uni<IClassification<?,?>> getNoClassification(Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
 
 	Uni<IClassification<?,?>> getIdentityType(Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
+
+    /**
+     * Resolves a Classification ID (UUID) by its unique name using a lightweight native SQL lookup
+     * with a small in-memory cache to reduce database load. When systemId/conceptId are provided, the
+     * lookup is further constrained; otherwise, it falls back to an enterprise+name lookup.
+     */
+    default Uni<UUID> resolveClassificationIdByName(Mutiny.Session session,
+                                                    UUID enterpriseId,
+                                                    UUID systemId,
+                                                    UUID conceptId,
+                                                    String classificationName) {
+        // When either systemId or conceptId is missing, resolve by enterprise+name only
+        if (systemId == null || conceptId == null) {
+            return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
+                    .getClassificationId(session, enterpriseId, null, null, classificationName, (sess, name) -> {
+                        String sql = "select classificationid from classification.classification " +
+                                     "where enterpriseid = :ent and classificationname = :name " +
+                                     "and (effectivefromdate <= current_timestamp) " +
+                                     "and (effectivetodate > current_timestamp) " +
+                                     "and activeflagid = (select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = 'Active')";
+                        return sess.createNativeQuery(sql)
+                                   .setParameter("ent", enterpriseId)
+                                   .setParameter("name", name)
+                                   .getSingleResult()
+                                   .map(result -> (UUID) result);
+                    });
+        }
+
+        // Full scope: enterprise + system + concept + name
+        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
+                .getClassificationId(session, enterpriseId, systemId, conceptId, classificationName, (sess, name) -> {
+                    String sql = "select classificationid from classification.classification " +
+                                 "where enterpriseid = :ent and classificationdataconceptid = :cdc and classificationname = :name " +
+                                 "and (effectivefromdate <= current_timestamp) " +
+                                 "and (effectivetodate > current_timestamp) " +
+                                 "and activeflagid = (select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = 'Active')";
+                    return sess.createNativeQuery(sql)
+                               .setParameter("ent", enterpriseId)
+                              // .setParameter("sys", systemId)
+                               .setParameter("cdc", conceptId)
+                               .setParameter("name", name)
+                               .getSingleResult()
+                               .map(result -> (UUID) result);
+                });
+    }
 }

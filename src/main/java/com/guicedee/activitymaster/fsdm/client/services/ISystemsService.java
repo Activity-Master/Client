@@ -89,4 +89,23 @@ public interface ISystemsService<J extends ISystemsService<J>> {
      * Gets the security identity token for a system.
      */
     Uni<UUID> getSecurityIdentityToken(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
+
+    /**
+     * Resolves a Systems ID (UUID) by its unique name within an enterprise using a lightweight native SQL lookup
+     * with a small in-memory cache to reduce database load.
+     */
+    default Uni<UUID> resolveSystemIdByName(Mutiny.Session session, UUID enterpriseId, String systemName) {
+        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
+                .getSystemId(session, enterpriseId, systemName, (sess, name) -> {
+                    String sql = "select systemid from dbo.systems where enterpriseid = :ent and systemname = :name " +
+                                 "and (effectivefromdate <= current_timestamp) " +
+                                 "and (effectivetodate > current_timestamp) " +
+                                 "and activeflagid = (select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = 'Active')";
+                    return sess.createNativeQuery(sql)
+                               .setParameter("ent", enterpriseId)
+                               .setParameter("name", name)
+                               .getSingleResult()
+                               .map(result -> (UUID) result);
+                });
+    }
 }

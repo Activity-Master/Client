@@ -99,6 +99,31 @@ public interface IResourceItemService<J extends IResourceItemService<J>>
 
 	Uni<List<IResourceItem<?,?>>> findByResourceItemType(Mutiny.Session session, String type, String value, ISystems<?,?> systems, UUID... identityToken);
 
-  Uni<IResourceItem<?, ?>> createAndFind(Mutiny.Session session, String identityResourceType, String resourceItemDataValue,
-                                         ISystems<?, ?> system, UUID... identityToken);
+ 	Uni<IResourceItem<?, ?>> createAndFind(Mutiny.Session session, String identityResourceType, String resourceItemDataValue,
+	                                        ISystems<?, ?> system, UUID... identityToken);
+
+    /**
+     * Resolve ResourceItemType ID (UUID) by enterprise and name, using cache and ActiveFlag visible range with SCD window.
+     * Contract: never returns null; lets NoResultException propagate on misses.
+     */
+    default Uni<java.util.UUID> resolveResourceItemTypeIdByName(Mutiny.Session session, java.util.UUID enterpriseId, String resourceItemTypeName) {
+        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
+                .getResourceItemTypeId(session, enterpriseId, resourceItemTypeName, (sess, name) -> {
+                    var afService = com.guicedee.client.IGuiceContext.get(com.guicedee.activitymaster.fsdm.client.services.IActiveFlagService.class);
+                    return afService.getVisibleRangeAndUpIds(sess, enterpriseId)
+                            .flatMap(visibleIds -> {
+                                String sql = "select resourceitemtypeid from resource.resourceitemtype " +
+                                        "where enterpriseid = :ent and resourceitemtypename = :name " +
+                                        "and (effectivefromdate <= current_timestamp) " +
+                                        "and (effectivetodate > current_timestamp) " +
+                                        "and activeflagid in (:visibleIds)";
+                                return sess.createNativeQuery(sql)
+                                        .setParameter("ent", enterpriseId)
+                                        .setParameter("name", name)
+                                        .setParameter("visibleIds", visibleIds)
+                                        .getSingleResult()
+                                        .map(result -> (java.util.UUID) result);
+                            });
+                });
+    }
 }

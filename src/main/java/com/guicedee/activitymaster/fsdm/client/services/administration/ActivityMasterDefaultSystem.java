@@ -108,7 +108,9 @@ public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaul
     {
         log.debug("🔍 Getting system '{}' for enterprise name '{}'", getSystemName(), enterpriseName);
         
-        return enterpriseService.getEnterprise(session, enterpriseName)
+        return enterpriseService
+                .resolveEnterpriseIdByName(session, enterpriseName)
+                .chain(id -> enterpriseService.getEnterprise(session, id))
                 .onItem().invoke(enterprise -> 
                     log.debug("✅ Found enterprise '{}' with ID: {}", enterprise.getName(), enterprise.getId()))
                 .onFailure().invoke(error -> 
@@ -131,7 +133,9 @@ public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaul
     {
         log.debug("🔑 Getting system token for '{}' with enterprise name '{}'", getSystemName(), enterpriseName);
         
-        return enterpriseService.getEnterprise(session, enterpriseName)
+        return enterpriseService
+                .resolveEnterpriseIdByName(session, enterpriseName)
+                .chain(id -> enterpriseService.getEnterprise(session, id))
                 .onItem().invoke(enterprise -> 
                     log.debug("✅ Found enterprise '{}' with ID: {}", enterprise.getName(), enterprise.getId()))
                 .onFailure().invoke(error -> 
