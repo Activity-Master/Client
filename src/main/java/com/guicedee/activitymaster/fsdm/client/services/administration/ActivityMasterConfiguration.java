@@ -9,6 +9,7 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.secur
 import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterProgressMonitor;
 import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterSystem;
 import com.guicedee.client.IGuiceContext;
+import com.guicedee.client.scopes.CallScopeProperties;
 import io.smallrye.mutiny.Uni;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.reactive.mutiny.Mutiny;
@@ -27,9 +28,6 @@ public class ActivityMasterConfiguration
 {
 	private static final ActivityMasterConfiguration configuration = new ActivityMasterConfiguration();
 
-
-	private final ThreadLocal<Boolean> securities = ThreadLocal.withInitial(() -> true);
-
 	public static String applicationEnterpriseName;
 
 	private Set<IActivityMasterSystem<?>> allSystems;
@@ -44,12 +42,25 @@ public class ActivityMasterConfiguration
 
 	public boolean isSecurityEnabled()
 	{
-		return securities.get();
+		CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
+		if (csp != null)
+		{
+			Boolean s = (Boolean) csp.getProperties().get("fsdm.securities");
+			if (s != null)
+			{
+				return s;
+			}
+		}
+		return true;
 	}
 
 	public void setSecurityEnabled(boolean securityEnabled)
 	{
-		securities.set(securityEnabled);
+		CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
+		if (csp != null)
+		{
+			csp.getProperties().put("fsdm.securities", securityEnabled);
+		}
 	}
 
 	public String getApplicationEnterpriseName()

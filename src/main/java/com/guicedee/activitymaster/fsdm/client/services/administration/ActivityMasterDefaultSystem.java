@@ -78,7 +78,7 @@ public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaul
                 return systemsService.findSystem(session, enterprise, getSystemName());
             }
         }
-        return null;
+        return Uni.createFrom().nullItem();
     }
 
     public Uni<UUID> getSystemToken(Mutiny.Session session, IEnterprise<?, ?> enterprise)
@@ -97,7 +97,7 @@ public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaul
                 });
             }
         }
-        return null;
+        return Uni.createFrom().nullItem();
     }
 
     public abstract String getSystemName();
