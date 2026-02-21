@@ -146,15 +146,17 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 			final String finalClassificationNameCopy = finalClassificationName;
 
 			return classificationService.find(session, finalClassificationNameCopy, system, identityToken)
-				.map(classification -> {
-					tableForClassification.setEnterpriseID(system.getEnterpriseID());
+				.chain(classification -> session.fetch(system.getEnterpriseID())
+					.chain(enterprise -> session.fetch(system.getActiveFlagID())
+						.map(activeFlag -> {
+					tableForClassification.setEnterpriseID(enterprise);
 					tableForClassification.setValue(Strings.nullToEmpty(value));
 					tableForClassification.setSystemID(system);
 					tableForClassification.setOriginalSourceSystemID(system.getId());
 					tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
 					tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
 					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
-					tableForClassification.setActiveFlagID(system.getActiveFlagID());
+					tableForClassification.setActiveFlagID(activeFlag);
 					tableForClassification.setClassificationID(classification);
 
 					configureRulesAddable(tableForClassification, (J) this,
@@ -162,7 +164,7 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 							classification, value, system);
 
 					return tableForClassification;
-				})
+				})))
 				.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
 				.chain(table -> {
 					// Start the createDefaultSecurity operation but don't wait for it to complete
@@ -217,7 +219,9 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 							ISystems<?, ?> originalSystem = existingTable.getSystemID();
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+							return session.fetch(system.getEnterpriseID())
+							.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+								.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
 								.chain(archivedFlag -> {
 									existingTable.setActiveFlagID(archivedFlag);
 									existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
@@ -235,11 +239,11 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
 									newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
-									return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
+									return flagService.getActiveFlag(session, originalEnterprise, identityToken)
 										.map(activeFlag -> {
 											newTableForClassification.setActiveFlagID(activeFlag);
 											newTableForClassification.setValue(storeValue == null ? "" : storeValue);
-											newTableForClassification.setEnterpriseID(system.getEnterpriseID());
+											newTableForClassification.setEnterpriseID(systemEnterprise);
 											configureRulesAddable(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(),
 													classification, storeValue, system);
 											return newTableForClassification;
@@ -249,13 +253,11 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 									return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
 								})
 								.chain(newTable -> {
-									// Start the createDefaultSecurity operation but don't wait for it to complete
 									newTable.createDefaultSecurity(session, originalSystem, identityToken);
-									// Return the table immediately without waiting for createDefaultSecurity to complete
 									return Uni.createFrom().item((IRelationshipValue<J, IRules<?, ?>, ?>) newTable);
-								});
-						});
-				});
+								})));
+					});
+			});
 	}
 
 	@SuppressWarnings("unchecked")

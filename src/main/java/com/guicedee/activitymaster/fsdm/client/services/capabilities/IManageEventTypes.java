@@ -157,26 +157,28 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 					.chain(eventItemType -> {
 						// Then get the classification
 						return classificationService.find(session, finalClassificationNameCopy, system, identityToken)
-								.map(classification -> {
-									// Set up the table
-									tableForClassification.setEnterpriseID(system.getEnterpriseID());
-									tableForClassification.setValue(value);
-									tableForClassification.setSystemID(system);
-									tableForClassification.setClassificationID(classification);
-									tableForClassification.setOriginalSourceSystemID(system.getId());
-									tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-									tableForClassification.setActiveFlagID(system.getActiveFlagID());
-									configureEventTypeLinkValue(tableForClassification, (J) this, eventItemType, classification, value, system.getEnterpriseID());
-									
-									return tableForClassification;
-								})
-								.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
-								.chain(table -> {
-									// Chain the security setup operation
-									return table.createDefaultSecurity(session, system, identityToken)
-										.onFailure().recoverWithNull()  // Continue even if security setup fails
-										.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IEventType<?, ?>, ?>) table));
-								});
+								.chain(classification -> session.fetch(system.getEnterpriseID())
+									.chain(enterprise -> session.fetch(system.getActiveFlagID())
+										.map(activeFlag -> {
+								// Set up the table
+								tableForClassification.setEnterpriseID(enterprise);
+								tableForClassification.setValue(value);
+								tableForClassification.setSystemID(system);
+								tableForClassification.setClassificationID(classification);
+								tableForClassification.setOriginalSourceSystemID(system.getId());
+								tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+								tableForClassification.setActiveFlagID(activeFlag);
+								configureEventTypeLinkValue(tableForClassification, (J) this, eventItemType, classification, value, enterprise);
+
+								return tableForClassification;
+							})))
+							.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
+							.chain(table -> {
+								// Chain the security setup operation
+								return table.createDefaultSecurity(session, system, identityToken)
+									.onFailure().recoverWithNull()  // Continue even if security setup fails
+									.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IEventType<?, ?>, ?>) table));
+							});
 					});
 	}
 	
@@ -264,27 +266,29 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 									return query.get()
 											.onFailure(NoResultException.class)
 											.recoverWithUni(() -> {
-													tableForClassification.setEnterpriseID(system.getEnterpriseID());
+												return session.fetch(system.getEnterpriseID())
+													.chain(enterprise -> session.fetch(system.getActiveFlagID())
+														.chain(activeFlag -> {
+													tableForClassification.setEnterpriseID(enterprise);
 													tableForClassification.setValue(value);
 													tableForClassification.setSystemID(system);
 													tableForClassification.setOriginalSourceSystemID(system.getId());
 													tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-													tableForClassification.setActiveFlagID(system.getActiveFlagID());
-													configureEventTypeLinkValue(tableForClassification, (J) this, eventItemType, classification, value, system.getEnterpriseID());
-													
+													tableForClassification.setActiveFlagID(activeFlag);
+													configureEventTypeLinkValue(tableForClassification, (J) this, eventItemType, classification, value, enterprise);
+
 													return (Uni) Uni.createFrom().item(tableForClassification)
 															.chain(table -> {
 																return session.persist(table).replaceWith(Uni.createFrom().item(table));
 															})
 															.chain(table -> {
-																// Chain the security setup operation
 																return table.createDefaultSecurity(session, system, identityToken)
-																	.onFailure().recoverWithNull()  // Continue even if security setup fails
+																	.onFailure().recoverWithNull()
 																	.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IEventType<?, ?>, ?>) table));
 															});
+													}));
 											})
 											.chain(result -> {
-												
 												// Cast the result to the correct type
 												IRelationshipValue<J, IEventType<?, ?>, ?> existingRelation = (IRelationshipValue<J, IEventType<?, ?>, ?>) result;
 												
@@ -298,7 +302,9 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 												ISystems<?, ?> originalSystem = existingTable.getSystemID();
 												IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 												
-												return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+												return session.fetch(system.getEnterpriseID())
+													.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+														.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
 														.chain(archivedFlag -> {
 															existingTable.setActiveFlagID(archivedFlag);
 															existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
@@ -316,12 +322,12 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 															newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
 															newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 															
-															return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
+															return flagService.getActiveFlag(session, originalEnterprise, identityToken)
 																	.map(activeFlag -> {
 																		newTableForClassification.setActiveFlagID(activeFlag);
 																		newTableForClassification.setValue(value);
-																		newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-																		configureEventTypeLinkValue(newTableForClassification, (J) this, eventItemType, classification, value, system.getEnterpriseID());
+																		newTableForClassification.setEnterpriseID(systemEnterprise);
+																		configureEventTypeLinkValue(newTableForClassification, (J) this, eventItemType, classification, value, systemEnterprise);
 																		return newTableForClassification;
 																	});
 														})
@@ -329,11 +335,10 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 															return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
 														})
 														.chain(newTable -> {
-															// Chain the security setup operation
 															return newTable.createDefaultSecurity(session, originalSystem, identityToken)
-																.onFailure().recoverWithNull()  // Continue even if security setup fails
+																.onFailure().recoverWithNull()
 																.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IEventType<?, ?>, ?>) newTable));
-														});
+														})));
 											});
 								});
 					});
@@ -393,7 +398,9 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 												ISystems<?, ?> originalSystem = existingTable.getSystemID();
 												IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 												
-												return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+												return session.fetch(system.getEnterpriseID())
+													.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+														.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
 														.chain(archivedFlag -> {
 															existingTable.setActiveFlagID(archivedFlag);
 															existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
@@ -411,12 +418,12 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 															newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
 															newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 															
-															return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
+															return flagService.getActiveFlag(session, originalEnterprise, identityToken)
 																	.map(activeFlag -> {
 																		newTableForClassification.setActiveFlagID(activeFlag);
 																		newTableForClassification.setValue(value);
-																		newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-																		configureEventTypeLinkValue(newTableForClassification, (J) this, eventItemType, classification, value, system.getEnterpriseID());
+																		newTableForClassification.setEnterpriseID(systemEnterprise);
+																		configureEventTypeLinkValue(newTableForClassification, (J) this, eventItemType, classification, value, systemEnterprise);
 																		return newTableForClassification;
 																	});
 														})
@@ -424,11 +431,10 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 															return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
 														})
 														.chain(newTable -> {
-															// Chain the security setup operation
 															return newTable.createDefaultSecurity(session, originalSystem, identityToken)
-																.onFailure().recoverWithNull()  // Continue even if security setup fails
+																.onFailure().recoverWithNull()
 																.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IEventType<?, ?>, ?>) newTable));
-														});
+														})));
 											});
 								});
 					});
@@ -536,12 +542,13 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 									final IWarehouseRelationshipTable<?, ?, J, IEventType<?, ?>, java.util.UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IEventType<?, ?>, java.util.UUID, ?>) result;
 									IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 									
-									return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+									return session.fetch(system.getEnterpriseID())
+										.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 											.chain(archivedFlag -> {
 												existingTable.setActiveFlagID(archivedFlag);
 												existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
 												return session.merge(existingTable);
-											});
+											}));
 								});
 					});
 	}
@@ -595,13 +602,15 @@ public interface IManageEventTypes<J extends IWarehouseBaseTable<J, ?,? extends 
 									final IWarehouseRelationshipTable<?, ?, J, IEventType<?, ?>, java.util.UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IEventType<?, ?>, java.util.UUID, ?>) result;
 									IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 									
-									return flagService.getDeletedFlag(session, system.getEnterpriseID(), identityToken)
+									return session.fetch(system.getEnterpriseID())
+										.chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
 											.chain(deletedFlag -> {
 												existingTable.setActiveFlagID(deletedFlag);
 												existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
 												return session.merge(existingTable);
-											});
+											}));
 								});
 					});
 	}
 }
+

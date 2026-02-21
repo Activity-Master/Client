@@ -235,23 +235,27 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
 												.invoke(err -> {
 														LogManager.getLogger(IManageClassifications.class).error("Classification not found: " + classificationName + " in concept " + concept, err);
 												})
-               .map(classification -> {
-                 tableForClassification.setEnterpriseID(system.getEnterpriseID());
-                 tableForClassification.setActiveFlagID(system.getActiveFlagID());
-                 tableForClassification.setSystemID(system);
-                 tableForClassification.setOriginalSourceSystemID(system.getId());
-                 tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+               .chain(classification -> {
+                 return session.fetch(system.getEnterpriseID())
+                     .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                         .map(activeFlag -> {
+                           tableForClassification.setEnterpriseID(enterprise);
+                           tableForClassification.setActiveFlagID(activeFlag);
+                           tableForClassification.setSystemID(system);
+                           tableForClassification.setOriginalSourceSystemID(system.getId());
+                           tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
 
-                 tableForClassification.setClassificationID(classification);
-                 if (!Strings.isNullOrEmpty(value) && value.length() > 254)
-                 {
-                   throw new ClassificationException("Message value too long - " + value);
-                 }
-                 tableForClassification.setValue(value);
+                           tableForClassification.setClassificationID(classification);
+                           if (!Strings.isNullOrEmpty(value) && value.length() > 254)
+                           {
+                             throw new ClassificationException("Message value too long - " + value);
+                           }
+                           tableForClassification.setValue(value);
 
-                 configureForClassification(session, tableForClassification, classification, system);
+                           configureForClassification(session, tableForClassification, classification, system);
 
-                 return tableForClassification;
+                           return tableForClassification;
+                         }));
                })
                .chain(table -> session.persist(table)
                                    .replaceWith(Uni.createFrom()
@@ -324,22 +328,25 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
 
     return classificationService.find(session, classificationName, system, identityToken)
                .chain(classification -> {
-                 return (Uni) tableForClassification.builder(session)
-                                  .findLink((J) this, classification, null)
-                                  .inActiveRange()
-                                  .inDateRange()
-                                  .withEnterprise(system.getEnterpriseID())
-                                  .canRead(system, identityToken)
-                                  .get()
-                                  .onFailure(NoResultException.class)
-                                  .recoverWithUni(() -> {
-                                    return (Uni) addClassification(session, classificationName, value, system, identityToken);
-                                  })
-                                  .onItem()
-                                  .call(a -> {
-                                    return Uni.createFrom()
-                                               .item((IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) a);
-                                  });
+                 return session.fetch(system.getEnterpriseID())
+                     .chain(enterprise -> {
+                       return (Uni) tableForClassification.builder(session)
+                                        .findLink((J) this, classification, null)
+                                        .inActiveRange()
+                                        .inDateRange()
+                                        .withEnterprise(enterprise)
+                                        .canRead(system, identityToken)
+                                        .get()
+                                        .onFailure(NoResultException.class)
+                                        .recoverWithUni(() -> {
+                                          return (Uni) addClassification(session, classificationName, value, system, identityToken);
+                                        })
+                                        .onItem()
+                                        .call(a -> {
+                                          return Uni.createFrom()
+                                                     .item((IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) a);
+                                        });
+                     });
                });
   }
 
@@ -380,37 +387,39 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                 final ISystems<?, ?> originalSystem = finalTableForClassification.getSystemID();
                                 IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
-                                           .chain(archivedFlag -> {
-                                             finalTableForClassification.setActiveFlagID(archivedFlag);
-                                             finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                             return session.merge(finalTableForClassification);
-                                           })
-                                           .chain(updatedTable -> {
-                                             IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> newTableForClassification =
-                                                 (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+                                return session.fetch(system.getEnterpriseID())
+                                           .chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+                                               .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
+                                                  .chain(archivedFlag -> {
+                                                    finalTableForClassification.setActiveFlagID(archivedFlag);
+                                                    finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                    return session.merge(finalTableForClassification);
+                                                  })
+                                                  .chain(updatedTable -> {
+                                                    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> newTableForClassification =
+                                                        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
 
-                                             newTableForClassification.setId(null);
-                                             newTableForClassification.setClassificationID(finalTableForClassification.getClassificationID());
-                                             newTableForClassification.setSystemID(system);
-                                             newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
-                                             newTableForClassification.setOriginalSourceSystemUniqueID(finalTableForClassification.getId());
-                                             newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                             newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                             newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                             newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+                                                    newTableForClassification.setId(null);
+                                                    newTableForClassification.setClassificationID(finalTableForClassification.getClassificationID());
+                                                    newTableForClassification.setSystemID(system);
+                                                    newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
+                                                    newTableForClassification.setOriginalSourceSystemUniqueID(finalTableForClassification.getId());
+                                                    newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                    newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                    newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                    newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
-                                             return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
-                                                        .map(activeFlag -> {
-                                                          newTableForClassification.setActiveFlagID(activeFlag);
-                                                          newTableForClassification.setValue(value);
-                                                          newTableForClassification.setEnterpriseID(system.getEnterpriseID());
+                                                    return flagService.getActiveFlag(session, originalEnterprise, identityToken)
+                                                               .map(activeFlag -> {
+                                                                 newTableForClassification.setActiveFlagID(activeFlag);
+                                                                 newTableForClassification.setValue(value);
+                                                                 newTableForClassification.setEnterpriseID(systemEnterprise);
 
-                                                          configureForClassification(session, newTableForClassification, finalClassification, system);
+                                                                 configureForClassification(session, newTableForClassification, finalClassification, system);
 
-                                                          return newTableForClassification;
-                                                        });
-                                           })
+                                                                 return newTableForClassification;
+                                                               });
+                                                  })))
                                            .chain(newTable -> session.persist(newTable)
                                                                   .replaceWith(Uni.createFrom()
                                                                                    .item(newTable)))
@@ -454,12 +463,13 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                         .equals(existingTable.getValue()))
                                 {
                                   IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-                                  return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+                                  return session.fetch(system.getEnterpriseID())
+                                             .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                              .chain(archivedFlag -> {
                                                finalTableForClassification.setActiveFlagID(archivedFlag);
                                                finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
                                                return session.merge(finalTableForClassification);
-                                             });
+                                             }));
                                 }
 
                                 // Value does not match; no-op (return the current link)
@@ -501,12 +511,13 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                         .equals(existingTable.getValue()))
                                 {
                                   IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-                                  return flagService.getDeletedFlag(session, system.getEnterpriseID(), identityToken)
+                                  return session.fetch(system.getEnterpriseID())
+                                             .chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
                                              .chain(deletedFlag -> {
                                                finalTableForClassification.setActiveFlagID(deletedFlag);
                                                finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
                                                return session.merge(finalTableForClassification);
-                                             });
+                                             }));
                                 }
 
                                 // Value does not match; no-op (return the current link)

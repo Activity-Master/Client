@@ -149,23 +149,25 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
         IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 
         return classificationService.find(session, classificationName, system, identityToken)
-                       .map(classification -> {
-                           tableForClassification.setEnterpriseID(system.getEnterpriseID());
-                           tableForClassification.setValue(Strings.nullToEmpty(value));
-                           tableForClassification.setSystemID(system);
-                           tableForClassification.setOriginalSourceSystemID(system.getId());
-                           tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
-                           tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
-                           tableForClassification.setActiveFlagID(system.getActiveFlagID());
-                           tableForClassification.setClassificationID(classification);
+                       .chain(classification -> session.fetch(system.getEnterpriseID())
+                           .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                               .map(activeFlag -> {
+                                   tableForClassification.setEnterpriseID(enterprise);
+                                   tableForClassification.setValue(Strings.nullToEmpty(value));
+                                   tableForClassification.setSystemID(system);
+                                   tableForClassification.setOriginalSourceSystemID(system.getId());
+                                   tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+                                   tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+                                   tableForClassification.setActiveFlagID(activeFlag);
+                                   tableForClassification.setClassificationID(classification);
 
-                           //noinspection unchecked
-                           configureArrangementAddable(tableForClassification, (J) this,
-                                   arrangement,
-                                   classification, value, system);
+                                   //noinspection unchecked
+                                   configureArrangementAddable(tableForClassification, (J) this,
+                                           arrangement,
+                                           classification, value, system);
 
-                           return tableForClassification;
-                       })
+                                   return tableForClassification;
+                               })))
                        .chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
                        .chain(table -> {
                            // Start the createDefaultSecurity operation but don't wait for it to complete
@@ -221,42 +223,43 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
                                               final IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?>) result;
                                               IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                              return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
-                                                             .chain(archivedFlag -> {
-                                                                 existingTable.setActiveFlagID(archivedFlag);
-                                                                 existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 return session.merge(existingTable);
-                                                             })
-                                                             .chain(() -> {
-                                                                 IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> newTableForClassification = get(getArrangementRelationshipClass());
-                                                                 newTableForClassification.setId(null);
-                                                                 newTableForClassification.setClassificationID(existingTable.getClassificationID());
-                                                                 newTableForClassification.setSystemID(system);
-                                                                 newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
-                                                                 newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
-                                                                 newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+                                              return session.fetch(system.getEnterpriseID())
+                                                             .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
+                                                              .chain(archivedFlag -> {
+                                                                  existingTable.setActiveFlagID(archivedFlag);
+                                                                  existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  return session.merge(existingTable);
+                                                              })
+                                                              .chain(() -> {
+                                                                  IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> newTableForClassification = get(getArrangementRelationshipClass());
+                                                                  newTableForClassification.setId(null);
+                                                                  newTableForClassification.setClassificationID(existingTable.getClassificationID());
+                                                                  newTableForClassification.setSystemID(system);
+                                                                  newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+                                                                  newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
+                                                                  newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
 
-                                                                 return flagService.getActiveFlag(session, system.getEnterpriseID(), identityToken)
-                                                                                .map(activeFlag -> {
-                                                                                    newTableForClassification.setActiveFlagID(activeFlag);
-                                                                                    newTableForClassification.setValue(storeValue == null ? "" : storeValue);
-                                                                                    newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-                                                                                    configureArrangementAddable(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(),
-                                                                                            classification, storeValue, system);
-                                                                                    return newTableForClassification;
-                                                                                });
-                                                             })
-                                                             .chain(newTable -> {
-                                                                 return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
-                                                             })
-                                                             .chain(newTable -> {
-                                                                 newTable.createDefaultSecurity(session, system, identityToken);
-                                                                 return Uni.createFrom()
-                                                                                .item((IRelationshipValue<J, IArrangement<?, ?>, ?>) existingTable);
-                                                             });
+                                                                  return flagService.getActiveFlag(session, enterprise, identityToken)
+                                                                                 .map(activeFlag -> {
+                                                                                     newTableForClassification.setActiveFlagID(activeFlag);
+                                                                                     newTableForClassification.setValue(storeValue == null ? "" : storeValue);
+                                                                                     newTableForClassification.setEnterpriseID(enterprise);
+                                                                                     configureArrangementAddable(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(),
+                                                                                             classification, storeValue, system);
+                                                                                     return newTableForClassification;
+                                                                                 });
+                                                              })
+                                                              .chain(newTable -> {
+                                                                  return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
+                                                              })
+                                                              .chain(newTable -> {
+                                                                  newTable.createDefaultSecurity(session, system, identityToken);
+                                                                  return Uni.createFrom()
+                                                                                 .item((IRelationshipValue<J, IArrangement<?, ?>, ?>) existingTable);
+                                                              }));
                                           });
                        });
     }

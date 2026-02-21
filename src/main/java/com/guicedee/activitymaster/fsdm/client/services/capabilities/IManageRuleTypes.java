@@ -143,31 +143,33 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 			// Sequential chain instead of parallel operations
 			return rulesItemService.findRulesTypes(session, rulesType, system, identityToken)
 				.chain(ruleType -> classificationService.find(session, finalClassificationNameCopy, system, identityToken)
-					.map(classification -> {
-						tableForClassification.setEnterpriseID(system.getEnterpriseID());
-						tableForClassification.setValue(value);
-						tableForClassification.setSystemID(system);
-						tableForClassification.setClassificationID(classification);
-						tableForClassification.setOriginalSourceSystemID(system.getId());
-						tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-						tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
-						tableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
-						tableForClassification.setActiveFlagID(system.getActiveFlagID());
-						configureRuleTypeLinkValue(tableForClassification, (J) this, ruleType, classification, value, system.getEnterpriseID());
+					.chain(classification -> session.fetch(system.getEnterpriseID())
+						.chain(enterprise -> session.fetch(system.getActiveFlagID())
+							.map(activeFlag -> {
+					tableForClassification.setEnterpriseID(enterprise);
+					tableForClassification.setValue(value);
+					tableForClassification.setSystemID(system);
+					tableForClassification.setClassificationID(classification);
+					tableForClassification.setOriginalSourceSystemID(system.getId());
+					tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+					tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+					tableForClassification.setActiveFlagID(activeFlag);
+					configureRuleTypeLinkValue(tableForClassification, (J) this, ruleType, classification, value, enterprise);
 
-						return tableForClassification;
+					return tableForClassification;
+				})))
+			)
+			.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
+			.chain(table ->
+				// Chain the createDefaultSecurity operation properly
+				table.createDefaultSecurity(session, system, identityToken)
+					.onFailure().invoke(error -> {
+						// Log error but continue
+						System.err.println("Error in createDefaultSecurity: " + error.getMessage());
 					})
-				)
-				.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
-				.chain(table -> 
-					// Chain the createDefaultSecurity operation properly
-					table.createDefaultSecurity(session, system, identityToken)
-						.onFailure().invoke(error -> {
-							// Log error but continue
-							System.err.println("Error in createDefaultSecurity: " + error.getMessage());
-						})
-						.map(v -> (IRelationshipValue<J, IRulesType<?, ?>, ?>) table)
-				);
+					.map(v -> (IRelationshipValue<J, IRulesType<?, ?>, ?>) table)
+			);
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -234,44 +236,49 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 							.canRead(system, identityToken)
 							.get()
 							.onFailure(NoResultException.class)
-							.recoverWithUni(() -> {
-								tableForClassification.setEnterpriseID(system.getEnterpriseID());
+						.recoverWithUni(() -> {
+							return session.fetch(system.getEnterpriseID())
+								.chain(enterprise -> session.fetch(system.getActiveFlagID())
+									.chain(activeFlag -> {
+								tableForClassification.setEnterpriseID(enterprise);
 								tableForClassification.setValue(value);
 								tableForClassification.setSystemID(system);
 								tableForClassification.setOriginalSourceSystemID(system.getId());
 								tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-								tableForClassification.setActiveFlagID(system.getActiveFlagID());
-								configureRuleTypeLinkValue(tableForClassification, (J) this, ruleType, classification, value, system.getEnterpriseID());
+								tableForClassification.setActiveFlagID(activeFlag);
+								configureRuleTypeLinkValue(tableForClassification, (J) this, ruleType, classification, value, enterprise);
 
 								return (Uni) Uni.createFrom().item(tableForClassification)
 									.chain(table -> {
 										return session.persist(table).replaceWith(Uni.createFrom().item(table));
 									})
 									.chain(table -> {
-										// Chain the createDefaultSecurity operation properly
 										return table.createDefaultSecurity(session, system, identityToken)
 											.onFailure().invoke(error -> {
 												// Log error but continue
 												System.err.println("Error in createDefaultSecurity: " + error.getMessage());
 											})
-											.map(v -> (IRelationshipValue<J, IRulesType<?, ?>, ?>) table);
-									});
-							})
-							.chain(result -> {
-								// Cast the result to the correct type
-								IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?> existingTable = 
-									(IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?>) result;
+									.map(v -> (IRelationshipValue<J, IRulesType<?, ?>, ?>) table);
+								});
+							}));
+						})
+						.chain(result -> {
+							// Cast the result to the correct type
+							IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?> existingTable =
+								(IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?>) result;
 
-								// If the value is the same, return the existing relation
-								if (Strings.nullToEmpty(value).equals(existingTable.getValue())) {
-									return Uni.createFrom().item((IRelationshipValue<J, IRulesType<?, ?>, ?>) existingTable);
-								}
+							// If the value is the same, return the existing relation
+							if (Strings.nullToEmpty(value).equals(existingTable.getValue())) {
+								return Uni.createFrom().item((IRelationshipValue<J, IRulesType<?, ?>, ?>) existingTable);
+							}
 
-								// Otherwise, update the relation
-								ISystems<?, ?> originalSystem = existingTable.getSystemID();
-								IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+							// Otherwise, update the relation
+							ISystems<?, ?> originalSystem = existingTable.getSystemID();
+							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-								return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+							return session.fetch(system.getEnterpriseID())
+								.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+									.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
 									.chain(archivedFlag -> {
 										existingTable.setActiveFlagID(archivedFlag);
 										existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
@@ -288,36 +295,36 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 										newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
 										newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
-										return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
-											.map(activeFlag -> {
-												newTableForClassification.setActiveFlagID(activeFlag);
-												newTableForClassification.setValue(value);
-												newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-												configureRuleTypeLinkValue(newTableForClassification, (J) this, ruleType, classification, value, system.getEnterpriseID());
-												return newTableForClassification;
-											});
-									})
-									.chain(newTable -> {
-										return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
-									})
-									.chain(newTable -> {
-										// Chain the createDefaultSecurity operation properly
-										return newTable.createDefaultSecurity(session, originalSystem, identityToken)
-											.onFailure().invoke(error -> {
-												// Log error but continue
-												System.err.println("Error in createDefaultSecurity: " + error.getMessage());
-											})
-											.map(v -> (IRelationshipValue<J, IRulesType<?, ?>, ?>) newTable);
-									});
-							});
-					})
-				);
+									return flagService.getActiveFlag(session, originalEnterprise, identityToken)
+										.map(activeFlag -> {
+											newTableForClassification.setActiveFlagID(activeFlag);
+											newTableForClassification.setValue(value);
+											newTableForClassification.setEnterpriseID(systemEnterprise);
+											configureRuleTypeLinkValue(newTableForClassification, (J) this, ruleType, classification, value, systemEnterprise);
+											return newTableForClassification;
+										});
+								})
+								.chain(newTable -> {
+									return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
+								})
+								.chain(newTable -> {
+									// Chain the createDefaultSecurity operation properly
+									return newTable.createDefaultSecurity(session, originalSystem, identityToken)
+										.onFailure().invoke(error -> {
+											// Log error but continue
+											System.err.println("Error in createDefaultSecurity: " + error.getMessage());
+										})
+										.map(v -> (IRelationshipValue<J, IRulesType<?, ?>, ?>) newTable);
+								})));
+						});
+				})
+			);
 	}
 
 	@SuppressWarnings("unchecked")
 	default Uni<IRelationshipValue<J, IRulesType<?, ?>, ?>> updateRuleTypes(Mutiny.Session session, String rulesTypeName, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken)
 	{
-			IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?> tableForClassification = get(getRuleTypeRelationshipClass());
+		IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?> tableForClassification = get(getRuleTypeRelationshipClass());
 			IRulesService<?> rulesItemService = get(IRulesService.class);
 			IClassificationService<?> classificationService = get(IClassificationService.class);
 
@@ -361,7 +368,9 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 								ISystems<?, ?> originalSystem = existingTable.getSystemID();
 								IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-								return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+								return session.fetch(system.getEnterpriseID())
+								.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+									.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
 										.chain(archivedFlag -> {
 											existingTable.setActiveFlagID(archivedFlag);
 											existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
@@ -378,12 +387,12 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 											newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
 											newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
-											return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
+											return flagService.getActiveFlag(session, originalEnterprise, identityToken)
 													.map(activeFlag -> {
 														newTableForClassification.setActiveFlagID(activeFlag);
 														newTableForClassification.setValue(value);
-														newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-														configureRuleTypeLinkValue(newTableForClassification, (J) this, ruleType, classification, value, system.getEnterpriseID());
+														newTableForClassification.setEnterpriseID(systemEnterprise);
+														configureRuleTypeLinkValue(newTableForClassification, (J) this, ruleType, classification, value, systemEnterprise);
 														return newTableForClassification;
 													});
 										})
@@ -398,7 +407,7 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 													System.err.println("Error in createDefaultSecurity: " + error.getMessage());
 												})
 												.map(v -> (IRelationshipValue<J, IRulesType<?, ?>, ?>) newTable);
-										});
+										})));
 							});
 					})
 				);
@@ -489,14 +498,15 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 								return Uni.createFrom().item((IRelationshipValue<J, IRulesType<?, ?>, ?>) existingTable);
 							}
 
-							// Otherwise, archive the relation
-							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+						// Otherwise, archive the relation
+						IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+						return session.fetch(system.getEnterpriseID())
+								.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 									.chain(archivedFlag -> {
 										existingTable.setActiveFlagID(archivedFlag);
 										existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
 										return session.merge(existingTable);
-									});
+									}));
 						});
 				});
 	}
@@ -540,14 +550,15 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
 								return Uni.createFrom().item((IRelationshipValue<J, IRulesType<?, ?>, ?>) existingTable);
 							}
 
-							// Otherwise, remove the relation
-							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-							return flagService.getDeletedFlag(session, system.getEnterpriseID(), identityToken)
+						// Otherwise, remove the relation
+						IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+						return session.fetch(system.getEnterpriseID())
+								.chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
 									.chain(deletedFlag -> {
 										existingTable.setActiveFlagID(deletedFlag);
 										existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
 										return session.merge(existingTable);
-									});
+									}));
 						});
 				});
 	}

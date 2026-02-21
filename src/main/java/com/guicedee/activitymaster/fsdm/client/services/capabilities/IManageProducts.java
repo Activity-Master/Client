@@ -226,22 +226,24 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 			IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 			
 			return classificationService.find(session, classificationName, system, identityToken)
-				.map(classification -> {
-					tableForClassification.setEnterpriseID(system.getEnterpriseID());
-					tableForClassification.setValue(Strings.nullToEmpty(value));
-					tableForClassification.setSystemID(system);
-					tableForClassification.setOriginalSourceSystemID(system.getId());
-					tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
-					tableForClassification.setActiveFlagID(system.getActiveFlagID());
-					tableForClassification.setClassificationID(classification);
-					
-					configureProductAddable(session, tableForClassification, (J) this,
-							product,
-							classification, value, system);
-					
-					return tableForClassification;
-				})
+				.chain(classification -> session.fetch(system.getEnterpriseID())
+					.chain(enterprise -> session.fetch(system.getActiveFlagID())
+						.map(activeFlag -> {
+						tableForClassification.setEnterpriseID(enterprise);
+						tableForClassification.setValue(Strings.nullToEmpty(value));
+						tableForClassification.setSystemID(system);
+						tableForClassification.setOriginalSourceSystemID(system.getId());
+						tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+						tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+						tableForClassification.setActiveFlagID(activeFlag);
+						tableForClassification.setClassificationID(classification);
+
+						configureProductAddable(session, tableForClassification, (J) this,
+								product,
+								classification, value, system);
+
+						return tableForClassification;
+					})))
 				.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
 				.chain(table -> {
 					// Chain the security setup operation
@@ -294,7 +296,8 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 							// Otherwise, update the relation
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 							
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+							return session.fetch(system.getEnterpriseID())
+								.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 								.chain(archivedFlag -> {
 									existingTable.setActiveFlagID(archivedFlag);
 									existingTable.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
@@ -312,11 +315,11 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 									newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
 									
-									return flagService.getActiveFlag(session, system.getEnterpriseID(), identityToken)
+									return flagService.getActiveFlag(session, enterprise, identityToken)
 										.map(activeFlag -> {
 											newTableForClassification.setActiveFlagID(activeFlag);
 											newTableForClassification.setValue(storeValue == null ? "" : storeValue);
-											newTableForClassification.setEnterpriseID(system.getEnterpriseID());
+											newTableForClassification.setEnterpriseID(enterprise);
 											configureProductAddable(session, newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(),
 													classification, storeValue, system);
 											return newTableForClassification;
@@ -330,7 +333,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 									return newTable.createDefaultSecurity(session, system, identityToken)
 										.onFailure().recoverWithNull()  // Continue even if security setup fails
 										.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProduct<?, ?>, ?>) newTable));
-								});
+								}));
 						});
 				});
 	}

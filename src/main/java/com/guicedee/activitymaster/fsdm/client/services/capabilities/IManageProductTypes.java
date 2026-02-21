@@ -144,16 +144,19 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
 					IProductType<?, ?> productItemType = (IProductType<?, ?>) arr[0];
 					IClassification<?, ?> classification = (IClassification<?, ?>) arr[1];
 					
+					return session.fetch(system.getEnterpriseID())
+						.chain(enterprise -> session.fetch(system.getActiveFlagID())
+							.chain(activeFlag -> {
 					// Set up the table
-					tableForClassification.setEnterpriseID(system.getEnterpriseID());
+					tableForClassification.setEnterpriseID(enterprise);
 					tableForClassification.setValue(value);
 					tableForClassification.setSystemID(system);
 					tableForClassification.setClassificationID(classification);
 					tableForClassification.setOriginalSourceSystemID(system.getId());
 					tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-					tableForClassification.setActiveFlagID(system.getActiveFlagID());
-					configureProductTypeLinkValue(tableForClassification, (J) this, productItemType, classification, value, system.getEnterpriseID());
-					
+					tableForClassification.setActiveFlagID(activeFlag);
+					configureProductTypeLinkValue(tableForClassification, (J) this, productItemType, classification, value, enterprise);
+
 					return Uni.createFrom().item(tableForClassification)
 						.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
 						.chain(table -> {
@@ -162,6 +165,7 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
 								.onFailure().recoverWithNull()  // Continue even if security setup fails
 								.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) table));
 						});
+					}));
 				});
 	}
 
@@ -240,27 +244,31 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
 						.canRead(system, identityToken)
 						.get()
 						.onFailure(NoResultException.class)
-						.recoverWithUni(() -> {
-							tableForClassification.setEnterpriseID(system.getEnterpriseID());
-							tableForClassification.setValue(value);
-							tableForClassification.setSystemID(system);
-							tableForClassification.setOriginalSourceSystemID(system.getId());
-							tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-							tableForClassification.setActiveFlagID(system.getActiveFlagID());
-							tableForClassification.setClassificationID(classification);
-							configureProductTypeLinkValue(tableForClassification, (J) this, productItemType, classification, value, system.getEnterpriseID());
+					.recoverWithUni(() -> {
+						return session.fetch(system.getEnterpriseID())
+							.chain(enterprise -> session.fetch(system.getActiveFlagID())
+								.chain(activeFlag -> {
+						tableForClassification.setEnterpriseID(enterprise);
+						tableForClassification.setValue(value);
+						tableForClassification.setSystemID(system);
+						tableForClassification.setOriginalSourceSystemID(system.getId());
+						tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+						tableForClassification.setActiveFlagID(activeFlag);
+						tableForClassification.setClassificationID(classification);
+						configureProductTypeLinkValue(tableForClassification, (J) this, productItemType, classification, value, enterprise);
 
-							return (Uni) Uni.createFrom().item(tableForClassification)
-								.chain(table -> {
-									return session.merge(table);
-								})
-								.chain(table -> {
-									// Chain the security setup operation
-									return table.createDefaultSecurity(session, system, identityToken)
-										.onFailure().recoverWithNull()  // Continue even if security setup fails
-										.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) table));
-								});
-						})
+						return (Uni) Uni.createFrom().item(tableForClassification)
+							.chain(table -> {
+								return session.merge(table);
+							})
+							.chain(table -> {
+								// Chain the security setup operation
+								return table.createDefaultSecurity(session, system, identityToken)
+									.onFailure().recoverWithNull()  // Continue even if security setup fails
+									.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) table));
+							});
+						}));
+					})
 						.chain(result -> {
 
 							// Cast the result to the correct type
@@ -276,42 +284,44 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
 							ISystems<?, ?> originalSystem = existingTable.getSystemID();
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
-								.chain(archivedFlag -> {
-									existingTable.setActiveFlagID(archivedFlag);
-									existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-									return session.merge(existingTable);
-								})
-								.chain(() -> {
-									IWarehouseRelationshipTable<?, ?, J, IProductType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getProductTypeRelationshipClass());
-									newTableForClassification.setId(null);
-									newTableForClassification.setClassificationID(existingTable.getClassificationID());
-									newTableForClassification.setSystemID(system);
-									newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
-									newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
-									newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-									newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
-									newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+							return session.fetch(system.getEnterpriseID())
+								.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+									.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
+									.chain(archivedFlag -> {
+										existingTable.setActiveFlagID(archivedFlag);
+										existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
+										return session.merge(existingTable);
+									})
+									.chain(() -> {
+										IWarehouseRelationshipTable<?, ?, J, IProductType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getProductTypeRelationshipClass());
+										newTableForClassification.setId(null);
+										newTableForClassification.setClassificationID(existingTable.getClassificationID());
+										newTableForClassification.setSystemID(system);
+										newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
+										newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
+										newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+										newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+										newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+										newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
-									return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
-										.map(activeFlag -> {
-											newTableForClassification.setActiveFlagID(activeFlag);
-											newTableForClassification.setValue(value);
-											newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-											configureProductTypeLinkValue(newTableForClassification, (J) this, productItemType, classification, value, system.getEnterpriseID());
-											return newTableForClassification;
-										});
-								})
-								.chain(newTable -> {
-									return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
-								})
-								.chain(newTable -> {
-									// Chain the security setup operation
-									return newTable.createDefaultSecurity(session, originalSystem, identityToken)
-										.onFailure().recoverWithNull()  // Continue even if security setup fails
-										.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) newTable));
-								});
+										return flagService.getActiveFlag(session, originalEnterprise, identityToken)
+											.map(activeFlag -> {
+												newTableForClassification.setActiveFlagID(activeFlag);
+												newTableForClassification.setValue(value);
+												newTableForClassification.setEnterpriseID(systemEnterprise);
+												configureProductTypeLinkValue(newTableForClassification, (J) this, productItemType, classification, value, systemEnterprise);
+												return newTableForClassification;
+											});
+									})
+									.chain(newTable -> {
+										return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
+									})
+									.chain(newTable -> {
+										// Chain the security setup operation
+										return newTable.createDefaultSecurity(session, originalSystem, identityToken)
+											.onFailure().recoverWithNull()  // Continue even if security setup fails
+											.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) newTable));
+									})));
 						});
 				});
 	}
@@ -367,42 +377,44 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
 							ISystems<?, ?> originalSystem = existingTable.getSystemID();
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
-								.chain(archivedFlag -> {
-									existingTable.setActiveFlagID(archivedFlag);
-									existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-									return session.merge(existingTable);
-								})
-								.chain(() -> {
-									IWarehouseRelationshipTable<?, ?, J, IProductType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getProductTypeRelationshipClass());
-									newTableForClassification.setId(null);
-									newTableForClassification.setClassificationID(existingTable.getClassificationID());
-									newTableForClassification.setSystemID(system);
-									newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
-									newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
-									newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-									newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
-									newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+							return session.fetch(system.getEnterpriseID())
+								.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+									.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
+									.chain(archivedFlag -> {
+										existingTable.setActiveFlagID(archivedFlag);
+										existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
+										return session.merge(existingTable);
+									})
+									.chain(() -> {
+										IWarehouseRelationshipTable<?, ?, J, IProductType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getProductTypeRelationshipClass());
+										newTableForClassification.setId(null);
+										newTableForClassification.setClassificationID(existingTable.getClassificationID());
+										newTableForClassification.setSystemID(system);
+										newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
+										newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
+										newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+										newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+										newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+										newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
-									return flagService.getActiveFlag(session, originalSystem.getEnterpriseID(), identityToken)
-										.map(activeFlag -> {
-											newTableForClassification.setActiveFlagID(activeFlag);
-											newTableForClassification.setValue(value);
-											newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-											configureProductTypeLinkValue(newTableForClassification, (J) this, productItemType, classification, value, system.getEnterpriseID());
-											return newTableForClassification;
-										});
-								})
-								.chain(newTable -> {
-									return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
-								})
-								.chain(newTable -> {
-									// Chain the security setup operation
-									return newTable.createDefaultSecurity(session, originalSystem, identityToken)
-										.onFailure().recoverWithNull()  // Continue even if security setup fails
-										.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) newTable));
-								});
+										return flagService.getActiveFlag(session, originalEnterprise, identityToken)
+											.map(activeFlag -> {
+												newTableForClassification.setActiveFlagID(activeFlag);
+												newTableForClassification.setValue(value);
+												newTableForClassification.setEnterpriseID(systemEnterprise);
+												configureProductTypeLinkValue(newTableForClassification, (J) this, productItemType, classification, value, systemEnterprise);
+												return newTableForClassification;
+											});
+									})
+									.chain(newTable -> {
+										return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
+									})
+									.chain(newTable -> {
+										// Chain the security setup operation
+										return newTable.createDefaultSecurity(session, originalSystem, identityToken)
+											.onFailure().recoverWithNull()  // Continue even if security setup fails
+											.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) newTable));
+									})));
 						});
 				});
 	}
@@ -492,15 +504,16 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
 								return Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) existingTable);
 							}
 
-							// Otherwise, archive the relation
-							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+						// Otherwise, archive the relation
+						IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+						return session.fetch(system.getEnterpriseID())
+							.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 								.chain(archivedFlag -> {
 									existingTable.setActiveFlagID(archivedFlag);
 									existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
 									return session.merge(existingTable);
-								});
+								}));
 						});
 				});
 	}
@@ -544,16 +557,22 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
 								return Uni.createFrom().item((IRelationshipValue<J, IProductType<?, ?>, ?>) existingTable);
 							}
 
-							// Otherwise, remove the relation
-							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+						// Otherwise, remove the relation
+						IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return flagService.getDeletedFlag(session, system.getEnterpriseID(), identityToken)
+						return session.fetch(system.getEnterpriseID())
+							.chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
 								.chain(deletedFlag -> {
 									existingTable.setActiveFlagID(deletedFlag);
 									existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
 									return session.merge(existingTable);
-								});
+								}));
 						});
 				});
 	}
 }
+
+
+
+
+

@@ -129,19 +129,21 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
         IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?> tableForClassification = com.guicedee.client.IGuiceContext.get(getAddressRelationshipClass());
         IClassificationService<?> addressService = get(IClassificationService.class);
         return addressService.find(session, addressClassification, system, identityToken)
-                       .map(classification -> {
-                           tableForClassification.setEnterpriseID(system.getEnterpriseID());
-                           tableForClassification.setValue(value);
-                           tableForClassification.setSystemID(system);
-                           tableForClassification.setOriginalSourceSystemID(system.getId());
-                           tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-                           tableForClassification.setClassificationID(classification);
-                           tableForClassification.setActiveFlagID(system.getActiveFlagID());
-                           //noinspection unchecked
-                           configureAddressLinkValue(tableForClassification, (J) this, secondary, classification, tableForClassification.getValue(), system);
+                       .chain(classification -> session.fetch(system.getEnterpriseID())
+                           .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                               .map(activeFlag -> {
+                                   tableForClassification.setEnterpriseID(enterprise);
+                                   tableForClassification.setValue(value);
+                                   tableForClassification.setSystemID(system);
+                                   tableForClassification.setOriginalSourceSystemID(system.getId());
+                                   tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+                                   tableForClassification.setClassificationID(classification);
+                                   tableForClassification.setActiveFlagID(activeFlag);
+                                   //noinspection unchecked
+                                   configureAddressLinkValue(tableForClassification, (J) this, secondary, classification, tableForClassification.getValue(), system);
 
-                           return tableForClassification;
-                       })
+                                   return tableForClassification;
+                               })))
                        .chain(table -> session.persist(table)
                                                .replaceWith(Uni.createFrom()
                                                                     .item(table))
@@ -200,42 +202,43 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                               final IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?>) result;
                                               IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                              return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
-                                                             .chain(archivedFlag -> {
-                                                                 existingTable.setActiveFlagID(archivedFlag);
-                                                                 existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 return session.merge(existingTable);
-                                                             })
-                                                             .chain(() -> {
-                                                                 IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?> newTableForClassification = get(getAddressRelationshipClass());
-                                                                 newTableForClassification.setId(null);
-                                                                 newTableForClassification.setClassificationID(existingTable.getClassificationID());
-                                                                 newTableForClassification.setSystemID(system);
-                                                                 newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
-                                                                 newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
-                                                                 newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                                 newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+                                              return session.fetch(system.getEnterpriseID())
+                                                             .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
+                                                              .chain(archivedFlag -> {
+                                                                  existingTable.setActiveFlagID(archivedFlag);
+                                                                  existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  return session.merge(existingTable);
+                                                              })
+                                                              .chain(() -> {
+                                                                  IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?> newTableForClassification = get(getAddressRelationshipClass());
+                                                                  newTableForClassification.setId(null);
+                                                                  newTableForClassification.setClassificationID(existingTable.getClassificationID());
+                                                                  newTableForClassification.setSystemID(system);
+                                                                  newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+                                                                  newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
+                                                                  newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+                                                                  newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
-                                                                 return flagService.getActiveFlag(session, system.getEnterpriseID(), identityToken)
-                                                                                .map(activeFlag -> {
-                                                                                    newTableForClassification.setActiveFlagID(activeFlag);
-                                                                                    newTableForClassification.setValue(storeValue == null ? "" : storeValue);
-                                                                                    newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-                                                                                    configureAddressLinkValue(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(),
-                                                                                            classification, storeValue, system);
-                                                                                    return newTableForClassification;
-                                                                                });
-                                                             })
-                                                             .chain(newTable -> {
-                                                                 return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
-                                                             })
-                                                             .chain(newTable -> {
-                                                                 newTable.createDefaultSecurity(session, system, identityToken);
-                                                                 return Uni.createFrom()
-                                                                                .item((IRelationshipValue<J, IAddress<?, ?>, ?>) existingTable);
-                                                             });
+                                                                  return flagService.getActiveFlag(session, enterprise, identityToken)
+                                                                                 .map(activeFlag -> {
+                                                                                     newTableForClassification.setActiveFlagID(activeFlag);
+                                                                                     newTableForClassification.setValue(storeValue == null ? "" : storeValue);
+                                                                                     newTableForClassification.setEnterpriseID(enterprise);
+                                                                                     configureAddressLinkValue(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(),
+                                                                                             classification, storeValue, system);
+                                                                                     return newTableForClassification;
+                                                                                 });
+                                                              })
+                                                              .chain(newTable -> {
+                                                                  return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
+                                                              })
+                                                              .chain(newTable -> {
+                                                                  newTable.createDefaultSecurity(session, system, identityToken);
+                                                                  return Uni.createFrom()
+                                                                                 .item((IRelationshipValue<J, IAddress<?, ?>, ?>) existingTable);
+                                                              }));
                                           });
                        });
 

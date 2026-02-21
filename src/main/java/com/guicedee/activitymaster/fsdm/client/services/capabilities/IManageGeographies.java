@@ -1,3 +1,4 @@
+
 package com.guicedee.activitymaster.fsdm.client.services.capabilities;
 
 import com.google.common.base.Strings;
@@ -126,22 +127,24 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 			IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 
 			return classificationService.find(session, classificationName, system, identityToken)
-				.map(classification -> {
-					tableForClassification.setEnterpriseID(system.getEnterpriseID());
-					tableForClassification.setValue(Strings.nullToEmpty(value));
-					tableForClassification.setSystemID(system);
-					tableForClassification.setOriginalSourceSystemID(system.getId());
-					tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
-					tableForClassification.setActiveFlagID(system.getActiveFlagID());
-					tableForClassification.setClassificationID(classification);
+				.chain(classification -> session.fetch(system.getEnterpriseID())
+					.chain(enterprise -> session.fetch(system.getActiveFlagID())
+						.map(activeFlag -> {
+						tableForClassification.setEnterpriseID(enterprise);
+						tableForClassification.setValue(Strings.nullToEmpty(value));
+						tableForClassification.setSystemID(system);
+						tableForClassification.setOriginalSourceSystemID(system.getId());
+						tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+						tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+						tableForClassification.setActiveFlagID(activeFlag);
+						tableForClassification.setClassificationID(classification);
 
-					configureGeographyAddable(tableForClassification, (J) this,
-							geography,
-							classification, value, system);
+						configureGeographyAddable(tableForClassification, (J) this,
+								geography,
+								classification, value, system);
 
-					return tableForClassification;
-				})
+						return tableForClassification;
+					})))
 				.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
 				.chain(table -> {
 					// Start the createDefaultSecurity operation but don't wait for it to complete
@@ -182,7 +185,8 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 							}
 
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
+							return session.fetch(system.getEnterpriseID())
+								.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 								.chain(archivedFlag -> {
 									existingTable.setActiveFlagID(archivedFlag);
 									existingTable.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
@@ -200,11 +204,11 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 									newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
 
-									return flagService.getActiveFlag(session, system.getEnterpriseID(), identityToken)
+									return flagService.getActiveFlag(session, enterprise, identityToken)
 										.map(activeFlag -> {
 											newTableForClassification.setActiveFlagID(activeFlag);
 											newTableForClassification.setValue(storeValue == null ? "" : storeValue);
-											newTableForClassification.setEnterpriseID(system.getEnterpriseID());
+											newTableForClassification.setEnterpriseID(enterprise);
 											configureGeographyAddable(newTableForClassification, (J) updatedTable.getPrimary(), updatedTable.getSecondary(),
 													classification, storeValue, system);
 											return newTableForClassification;
@@ -216,7 +220,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 											// Return the original table immediately without waiting for createDefaultSecurity to complete
 											return Uni.createFrom().item(updatedTable);
 										});
-								});
+							}));
 						});
 				});
 	}

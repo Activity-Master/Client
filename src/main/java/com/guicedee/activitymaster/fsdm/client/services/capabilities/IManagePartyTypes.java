@@ -184,14 +184,16 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 			IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 
 			return classificationService.find(session, classificationName, system, identityToken)
-				.map(classification -> {
-					tableForClassification.setEnterpriseID(system.getEnterpriseID());
+				.chain(classification -> session.fetch(system.getEnterpriseID())
+				.chain(enterprise -> session.fetch(system.getActiveFlagID())
+					.map(activeFlag -> {
+					tableForClassification.setEnterpriseID(enterprise);
 					tableForClassification.setValue(Strings.nullToEmpty(value));
 					tableForClassification.setSystemID(system);
 					tableForClassification.setOriginalSourceSystemID(system.getId());
 					tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
-					tableForClassification.setActiveFlagID(system.getActiveFlagID());
+					tableForClassification.setActiveFlagID(activeFlag);
 					tableForClassification.setClassificationID(classification);
 
 					configureInvolvedPartyTypeAddable(tableForClassification, (J) this,
@@ -199,7 +201,7 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 							classification, value, system);
 
 					return tableForClassification;
-				})
+				})))
 				.chain(table -> session.merge(table))
 				.chain(table -> {
 					// Start the createDefaultSecurity operation but don't wait for it to complete
@@ -267,45 +269,46 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 							// Otherwise, update the relation
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return flagService.getArchivedFlag(session, system.getEnterpriseID(), identityToken)
-								.chain(archivedFlag -> {
-									existingTable.setActiveFlagID(archivedFlag);
-									existingTable.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									return session.merge(existingTable);
-								})
-								.chain(() -> {
-									IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getInvolvedPartyTypeRelationshipClass());
-									newTableForClassification.setId(null);
-									newTableForClassification.setClassificationID(existingTable.getClassificationID());
-									newTableForClassification.setSystemID(system);
-									newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
-									newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
-									newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+							return session.fetch(system.getEnterpriseID())
+							.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
+							.chain(archivedFlag -> {
+								existingTable.setActiveFlagID(archivedFlag);
+								existingTable.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+								return session.merge(existingTable);
+							})
+							.chain(() -> {
+								IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getInvolvedPartyTypeRelationshipClass());
+								newTableForClassification.setId(null);
+								newTableForClassification.setClassificationID(existingTable.getClassificationID());
+								newTableForClassification.setSystemID(system);
+								newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+								newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
+								newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+								newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+								newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+								newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
 
-									return flagService.getActiveFlag(session, system.getEnterpriseID(), identityToken)
-										.map(activeFlag -> {
-											newTableForClassification.setActiveFlagID(activeFlag);
-											newTableForClassification.setValue(storeValue == null ? "" : storeValue);
-											newTableForClassification.setEnterpriseID(system.getEnterpriseID());
-											configureInvolvedPartyTypeAddable(newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(),
-													classification, storeValue, system);
-											return newTableForClassification;
-										});
-								})
-								.chain(newTable -> {
-									return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
-								})
-								.chain(newTable -> {
-									// Start the createDefaultSecurity operation but don't wait for it to complete
-									newTable.createDefaultSecurity(session, system, identityToken);
-									// Return the table immediately without waiting for createDefaultSecurity to complete
-									return Uni.createFrom().item((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) newTable);
-								});
-						});
-				});
+								return flagService.getActiveFlag(session, enterprise, identityToken)
+									.map(activeFlag -> {
+										newTableForClassification.setActiveFlagID(activeFlag);
+										newTableForClassification.setValue(storeValue == null ? "" : storeValue);
+										newTableForClassification.setEnterpriseID(enterprise);
+										configureInvolvedPartyTypeAddable(newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(),
+												classification, storeValue, system);
+										return newTableForClassification;
+									});
+							})
+							.chain(newTable -> {
+								return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
+							})
+							.chain(newTable -> {
+								// Start the createDefaultSecurity operation but don't wait for it to complete
+								newTable.createDefaultSecurity(session, system, identityToken);
+								// Return the table immediately without waiting for createDefaultSecurity to complete
+								return Uni.createFrom().item((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) newTable);
+							}));
+					});
+			});
 	}
 
 	/**
