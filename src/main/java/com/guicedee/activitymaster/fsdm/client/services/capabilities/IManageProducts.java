@@ -225,14 +225,19 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 			IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> tableForClassification = get(getProductRelationshipClass());
 			IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 			
-			return classificationService.find(session, classificationName, system, identityToken)
-				.chain(classification -> session.fetch(system.getEnterpriseID())
-					.chain(enterprise -> session.fetch(system.getActiveFlagID())
-						.map(activeFlag -> {
+		return classificationService.find(session, classificationName, system, identityToken)
+			.chain(classification -> session.fetch(system)
+				.chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+					.chain(enterprise -> {
 						tableForClassification.setEnterpriseID(enterprise);
+						IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+						return activeFlagSvc.getActiveFlag(session, enterprise);
+					})
+						.map(activeFlag -> {
+
 						tableForClassification.setValue(Strings.nullToEmpty(value));
-						tableForClassification.setSystemID(system);
-						tableForClassification.setOriginalSourceSystemID(system.getId());
+						tableForClassification.setSystemID(fetchedSystem);
+						tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
 						tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 						tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
 						tableForClassification.setActiveFlagID(activeFlag);
@@ -296,7 +301,8 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 							// Otherwise, update the relation
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 							
-							return session.fetch(system.getEnterpriseID())
+						return session.fetch(system)
+							.chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
 								.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 								.chain(archivedFlag -> {
 									existingTable.setActiveFlagID(archivedFlag);
@@ -333,7 +339,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 									return newTable.createDefaultSecurity(session, system, identityToken)
 										.onFailure().recoverWithNull()  // Continue even if security setup fails
 										.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProduct<?, ?>, ?>) newTable));
-								}));
+								})));
 						});
 				});
 	}

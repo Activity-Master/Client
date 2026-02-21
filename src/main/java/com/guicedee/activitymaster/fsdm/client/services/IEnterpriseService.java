@@ -30,6 +30,8 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
 
     Uni<List<IEnterprise<?, ?>>> findEnterprisesWithClassification(Mutiny.Session session, IClassification<?, ?> classification);
 
+    Uni<IEnterprise<?, ?>> getEnterprise(Mutiny.StatelessSession session, String name);
+
     Uni<IEnterprise<?, ?>> getEnterprise(Mutiny.Session session, UUID uuid);
 
     default Uni<Void> performPostStartup(Mutiny.Session session, IEnterprise<?, ?> enterprise)

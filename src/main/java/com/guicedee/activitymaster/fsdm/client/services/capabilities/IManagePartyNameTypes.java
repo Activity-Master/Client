@@ -190,10 +190,13 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
         IClassificationService<?> classificationService = get(IClassificationService.class);
 
         return classificationService.find(session, classificationName, system, identityToken)
-                       .chain(classification -> session.fetch(system.getEnterpriseID())
-                           .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                       .chain(classification -> session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                           .chain(enterprise -> {
+                               tableForClassification.setEnterpriseID(enterprise);
+                               IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+                               return activeFlagSvc.getActiveFlag(session, enterprise);
+                           })
                                .map(activeFlag -> {
-                                   tableForClassification.setEnterpriseID(enterprise);
                                    tableForClassification.setValue(Strings.nullToEmpty(value));
                                    tableForClassification.setSystemID(system);
                                    tableForClassification.setOriginalSourceSystemID(system.getId());
@@ -291,7 +294,7 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                               // Otherwise, update the relation
                                               IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                              return session.fetch(system.getEnterpriseID())
+                                              return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                              .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                                               .chain(archivedFlag -> {
                                                                   existingTable.setActiveFlagID(archivedFlag);
@@ -327,7 +330,7 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                                                   newTable.createDefaultSecurity(session, system, identityToken);
                                                                   return Uni.createFrom()
                                                                                  .item((IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) newTable);
-                                                              }));
+                                                              })));
                                           });
                        });
     }

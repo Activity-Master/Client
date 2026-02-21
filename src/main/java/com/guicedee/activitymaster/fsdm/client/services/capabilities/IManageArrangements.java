@@ -149,8 +149,10 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
         IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 
         return classificationService.find(session, classificationName, system, identityToken)
-                       .chain(classification -> session.fetch(system.getEnterpriseID())
-                           .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                       .chain(classification -> session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                           .chain(enterprise -> {
+                               IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+                               return activeFlagSvc.getActiveFlag(session, enterprise)
                                .map(activeFlag -> {
                                    tableForClassification.setEnterpriseID(enterprise);
                                    tableForClassification.setValue(Strings.nullToEmpty(value));
@@ -167,7 +169,8 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
                                            classification, value, system);
 
                                    return tableForClassification;
-                               })))
+                               });
+                           })))
                        .chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
                        .chain(table -> {
                            // Start the createDefaultSecurity operation but don't wait for it to complete
@@ -223,7 +226,7 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
                                               final IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?>) result;
                                               IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                              return session.fetch(system.getEnterpriseID())
+                                              return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                              .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                                               .chain(archivedFlag -> {
                                                                   existingTable.setActiveFlagID(archivedFlag);
@@ -259,7 +262,7 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
                                                                   newTable.createDefaultSecurity(session, system, identityToken);
                                                                   return Uni.createFrom()
                                                                                  .item((IRelationshipValue<J, IArrangement<?, ?>, ?>) existingTable);
-                                                              }));
+                                                              })));
                                           });
                        });
     }

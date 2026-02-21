@@ -173,10 +173,12 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
         IWarehouseRelationshipTable<?, ?, J, IArrangementType<?, ?>, java.util.UUID, ?> tableForClassification = get(getArrangementTypeRelationshipClass());
         IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 
+        IActiveFlagService<?> activeFlagService = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+
         return classificationService
                 .find(session, classificationName, system, identityToken)
-                .chain(classification -> session.fetch(system.getEnterpriseID())
-                        .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                .chain(classification -> session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                        .chain(enterprise -> activeFlagService.getActiveFlag(session, enterprise, identityToken)
                                 .map(activeFlag -> {
                                     tableForClassification.setEnterpriseID(enterprise);
                                     tableForClassification.setValue(Strings.nullToEmpty(value));
@@ -205,7 +207,7 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                     return Uni
                             .createFrom()
                             .item((IRelationshipValue<J, IArrangementType<?, ?>, ?>) table);
-                });
+                }));
     }
 
     /**
@@ -257,7 +259,7 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                                 final IWarehouseRelationshipTable<?, ?, J, IArrangementType<?, ?>, java.util.UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IArrangementType<?, ?>, java.util.UUID, ?>) result;
                                 IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                return session.fetch(system.getEnterpriseID())
+                                return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                         .chain(enterprise -> flagService
                                                 .getArchivedFlag(session, enterprise, identityToken)
                                                 .chain(archivedFlag -> {
@@ -300,7 +302,7 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                                                     return Uni
                                                             .createFrom()
                                                             .item((IRelationshipValue<J, IArrangementType<?, ?>, ?>) existingTable);
-                                                }));
+                                                })));
                             });
                 });
     }

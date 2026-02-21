@@ -30,337 +30,306 @@ import static com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBu
 import static com.guicedee.client.IGuiceContext.get;
 
 @SuppressWarnings({"DuplicatedCode", "rawtypes", "unchecked"})
-public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? extends Serializable>>
-{
-  private String getClassificationsRelationshipTable()
-  {
-    String className = getClass().getCanonicalName() + "XClassification";
-    return className;
-  }
-
-  private Class<? extends IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>,
-                                                         UUID, ?>> getClassificationsRelationshipClass()
-  {
-    String joinTableName = getClassificationsRelationshipTable();
-    try
-    {
-      //noinspection unchecked
-      return (Class<? extends IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?>>) Class.forName(joinTableName);
+public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? extends Serializable>> {
+    private String getClassificationsRelationshipTable() {
+        String className = getClass().getCanonicalName() + "XClassification";
+        return className;
     }
-    catch (ClassNotFoundException e)
-    {
-      throw new RuntimeException("Cannot find classification linked class - " + joinTableName, e);
+
+    private Class<? extends IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>,
+            UUID, ?>> getClassificationsRelationshipClass() {
+        String joinTableName = getClassificationsRelationshipTable();
+        try {
+            //noinspection unchecked
+            return (Class<? extends IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?>>) Class.forName(joinTableName);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Cannot find classification linked class - " + joinTableName, e);
+        }
     }
-  }
 
-  default Uni<Boolean> hasClassifications(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return hasClassifications(session, classificationName.toString(), value, system, identityToken);
-  }
+    default Uni<Boolean> hasClassifications(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return hasClassifications(session, classificationName.toString(), value, system, identityToken);
+    }
 
-  default Uni<Boolean> hasClassifications(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return numberOfClassifications(session, classificationName, value, system, identityToken)
-               .map(count -> count > 0);
-  }
+    default Uni<Boolean> hasClassifications(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return numberOfClassifications(session, classificationName, value, system, identityToken)
+                .map(count -> count > 0);
+    }
 
-  default Uni<Long> numberOfClassifications(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+    default Uni<Long> numberOfClassifications(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> relationshipTable.builder(session)
-                                            .findLink((J) this, classification, value)
-                                            .inActiveRange()
-                                            .inDateRange()
-                                            .canRead(system, identityToken)
-                                            .getCount());
-  }
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> relationshipTable.builder(session)
+                        .findLink((J) this, classification, value)
+                        .inActiveRange()
+                        .inDateRange()
+                        .canRead(system, identityToken)
+                        .getCount());
+    }
 
-  // Convenience overload: Enum-based classification name
-  default Uni<Long> numberOfClassifications(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return numberOfClassifications(session, classificationName.toString(), value, system, identityToken);
-  }
+    // Convenience overload: Enum-based classification name
+    default Uni<Long> numberOfClassifications(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return numberOfClassifications(session, classificationName.toString(), value, system, identityToken);
+    }
 
-  default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IClassificationService<?> classificationService = get(IClassificationService.class);
-    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+    default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName, ISystems<?, ?> system, UUID... identityToken) {
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
-                     = relationshipTable.builder(session)
-                           .findLink((J) this, classification, null)
-                           .inActiveRange()
-                           .inDateRange()
-                           .latestFirst()
-                           .withEnterprise(system)
-                           .canRead(system, identityToken)
-                     ;
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
+                            = relationshipTable.builder(session)
+                            .findLink((J) this, classification, null)
+                            .inActiveRange()
+                            .inDateRange()
+                            .latestFirst()
+                            .withEnterprise(system)
+                            .canRead(system, identityToken);
 
-                 //noinspection unchecked
-                 return queryBuilderRelationshipClassification.getAll()
+                    //noinspection unchecked
+                    return queryBuilderRelationshipClassification.getAll()
                             .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
-               });
-  }
-		
-		  default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName,int maxResults, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IClassificationService<?> classificationService = get(IClassificationService.class);
-    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+                });
+    }
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
-                     = relationshipTable.builder(session)
-                           .findLink((J) this, classification, null)
-                           .inActiveRange()
-                           .inDateRange()
-                           .latestFirst()
-																									.setMaxResults(maxResults)
-                           .withEnterprise(system)
-                           .canRead(system, identityToken)
-                     ;
+    default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName, int maxResults, ISystems<?, ?> system, UUID... identityToken) {
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
 
-                 //noinspection unchecked
-                 return queryBuilderRelationshipClassification.getAll()
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
+                            = relationshipTable.builder(session)
+                            .findLink((J) this, classification, null)
+                            .inActiveRange()
+                            .inDateRange()
+                            .latestFirst()
+                            .setMaxResults(maxResults)
+                            .withEnterprise(system)
+                            .canRead(system, identityToken);
+
+                    //noinspection unchecked
+                    return queryBuilderRelationshipClassification.getAll()
                             .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
-               });
-  }
-		
-				
-		  default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName,boolean distinct, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IClassificationService<?> classificationService = get(IClassificationService.class);
-    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+                });
+    }
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
-                     = relationshipTable.builder(session)
-                           .findLink((J) this, classification, null)
-                           .inActiveRange()
-                           .inDateRange()
-                           .latestFirst()
-                           .withEnterprise(system)
-                           .canRead(system, identityToken)
-                     ;
 
-                 //noinspection unchecked
-                 return queryBuilderRelationshipClassification.getAll()
+    default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName, boolean distinct, ISystems<?, ?> system, UUID... identityToken) {
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
+                            = relationshipTable.builder(session)
+                            .findLink((J) this, classification, null)
+                            .inActiveRange()
+                            .inDateRange()
+                            .latestFirst()
+                            .withEnterprise(system)
+                            .canRead(system, identityToken);
+
+                    //noinspection unchecked
+                    return queryBuilderRelationshipClassification.getAll()
                             .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
-               });
-  }
+                });
+    }
 
 
-  // Convenience overload: Enum-based classification name
-  default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, Enum<?> classificationName, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return findClassifications(session, classificationName.toString(), system, identityToken);
-  }
+    // Convenience overload: Enum-based classification name
+    default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, Enum<?> classificationName, ISystems<?, ?> system, UUID... identityToken) {
+        return findClassifications(session, classificationName.toString(), system, identityToken);
+    }
 
-  default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
-    IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
-        = relationshipTable.builder(session)
-              .findLink((J) this, null, null)
-              .inActiveRange()
-              .inDateRange()
-              .latestFirst()
-              .withEnterprise(system)
-              .canRead(system, identityToken)
-        ;
+    default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+        IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
+                = relationshipTable.builder(session)
+                .findLink((J) this, null, null)
+                .inActiveRange()
+                .inDateRange()
+                .latestFirst()
+                .withEnterprise(system)
+                .canRead(system, identityToken);
 
-    //noinspection unchecked
-    return queryBuilderRelationshipClassification.getAll()
-               .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
-  }
+        //noinspection unchecked
+        return queryBuilderRelationshipClassification.getAll()
+                .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
+    }
 
-  default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> findClassification(Mutiny.Session session, Enum<?> classificationName, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return findClassification(session, classificationName.toString(), system, identityToken);
-  }
+    default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> findClassification(Mutiny.Session session, Enum<?> classificationName, ISystems<?, ?> system, UUID... identityToken) {
+        return findClassification(session, classificationName.toString(), system, identityToken);
+    }
 
-  default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> findClassification(Mutiny.Session session, String classificationName, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return findClassification(session, classificationName, false, system, identityToken);
-  }
+    default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> findClassification(Mutiny.Session session, String classificationName, ISystems<?, ?> system, UUID... identityToken) {
+        return findClassification(session, classificationName, false, system, identityToken);
+    }
 
-  default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> findClassification(Mutiny.Session session, String classificationName, boolean latest, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+    default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> findClassification(Mutiny.Session session, String classificationName, boolean latest, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 final IClassification<?, ?> finalClassification = classification;
-                 IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
-                     = relationshipTable.builder(session)
-                           .findLink((J) this, finalClassification, null)
-                           .inActiveRange()
-                           .inDateRange()
-                           .latestFirst()
-                           .withEnterprise(system)
-                           .canRead(system, identityToken)
-                     ;
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    final IClassification<?, ?> finalClassification = classification;
+                    IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilderRelationshipClassification
+                            = relationshipTable.builder(session)
+                            .findLink((J) this, finalClassification, null)
+                            .inActiveRange()
+                            .inDateRange()
+                            .latestFirst()
+                            .withEnterprise(system)
+                            .canRead(system, identityToken);
 
-                 if (latest)
-                 {
-                   queryBuilderRelationshipClassification.setMaxResults(1)
-                       .orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"), OrderByType.DESC);
-                 }
+                    if (latest) {
+                        queryBuilderRelationshipClassification.setMaxResults(1)
+                                .orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"), OrderByType.DESC);
+                    }
 
-                 return (Uni<IRelationshipValue<J, IClassification<?, ?>, ?>>) (Uni<?>) queryBuilderRelationshipClassification.get();
-               });
-  }
+                    return (Uni<IRelationshipValue<J, IClassification<?, ?>, ?>>) (Uni<?>) queryBuilderRelationshipClassification.get();
+                });
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return addClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, value, system, identityToken);
-  }
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, value, system, identityToken);
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addClassification(Mutiny.Session session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addClassification(Mutiny.Session session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
 
-    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
-        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return classificationService.find(session, classificationName, concept, system, identityToken)
-												.onFailure(NoResultException.class)
-												.invoke(err -> {
-														LogManager.getLogger(IManageClassifications.class).error("Classification not found: " + classificationName + " in concept " + concept, err);
-												})
-               .chain(classification -> {
-                 return session.fetch(system.getEnterpriseID())
-                     .chain(enterprise -> session.fetch(system.getActiveFlagID())
-                         .map(activeFlag -> {
-                           tableForClassification.setEnterpriseID(enterprise);
-                           tableForClassification.setActiveFlagID(activeFlag);
-                           tableForClassification.setSystemID(system);
-                           tableForClassification.setOriginalSourceSystemID(system.getId());
-                           tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+        return classificationService.find(session, classificationName, concept, system, identityToken)
+                .onFailure(NoResultException.class)
+                .invoke(err -> {
+                    LogManager.getLogger(IManageClassifications.class).error("Classification not found: " + classificationName + " in concept " + concept, err);
+                })
+                .chain(classification -> {
+                    return session.fetch(system)
+                            .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                    .chain(enterprise -> {
+                                        tableForClassification.setEnterpriseID(enterprise);
+                                        IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+                                        return activeFlagSvc.getActiveFlag(session, enterprise);
+                                    })
+                                            .map(activeFlag -> {
+                                                tableForClassification.setActiveFlagID(activeFlag);
+                                                tableForClassification.setSystemID(fetchedSystem);
+                                                tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
+                                                tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+                                                tableForClassification.setClassificationID(classification);
+                                                if (!Strings.isNullOrEmpty(value) && value.length() > 254) {
+                                                    throw new ClassificationException("Message value too long - " + value);
+                                                }
+                                                tableForClassification.setValue(value);
 
-                           tableForClassification.setClassificationID(classification);
-                           if (!Strings.isNullOrEmpty(value) && value.length() > 254)
-                           {
-                             throw new ClassificationException("Message value too long - " + value);
-                           }
-                           tableForClassification.setValue(value);
+                                                configureForClassification(session, tableForClassification, classification, fetchedSystem);
 
-                           configureForClassification(session, tableForClassification, classification, system);
-
-                           return tableForClassification;
-                         }));
-               })
-               .chain(table -> session.persist(table)
-                                   .replaceWith(Uni.createFrom()
-                                                    .item(table)))
-               .chain(table -> {
-                 // Execute the createDefaultSecurity operation and wait for it to complete
-                 return table.createDefaultSecurity(session, system, identityToken)
+                                                return tableForClassification;
+                                            }));
+                })
+                .chain(table -> session.persist(table)
+                        .replaceWith(Uni.createFrom()
+                                .item(table)))
+                .chain(table -> {
+                    // Execute the createDefaultSecurity operation and wait for it to complete
+                    return table.createDefaultSecurity(session, system, identityToken)
                             .map(v -> table); // Return the table after security operation completes
-               });
-  }
+                });
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return addOrUpdateClassification(session, classificationName.toString(), null, value, system, identityToken);
-  }
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName.toString(), null, value, system, identityToken);
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return addOrUpdateClassification(session, classificationName.toString(), searchValue, value, system, identityToken);
-  }
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName.toString(), searchValue, value, system, identityToken);
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return addOrUpdateClassification(session, classificationName, null, value, system, identityToken);
-  }
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName, null, value, system, identityToken);
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
-        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return (Uni) classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilder =
-                     tableForClassification.builder(session)
-                         .findLink((J) this, classification, searchValue)
-                         .inActiveRange()
-                         .inDateRange()
-                         .latestFirst()
-                         .canRead(system, identityToken)
-                     ;
+        return (Uni) classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilder =
+                            tableForClassification.builder(session)
+                                    .findLink((J) this, classification, searchValue)
+                                    .inActiveRange()
+                                    .inDateRange()
+                                    .latestFirst()
+                                    .canRead(system, identityToken);
 
-                 return (Uni<?>)
+                    return (Uni<?>)
                             queryBuilder.get()
-                                .onFailure(NoResultException.class)
-                                .recoverWithUni(
-                                    () -> {
-                                      return (Uni) addClassification(session, classificationName, value, system, identityToken);
-                                    }
-                                )
-                                .onItem()
-                                .call(a -> {
-                                  return updateClassification(session, classificationName, value, system, identityToken);
-                                });
-               });
-  }
+                                    .onFailure(NoResultException.class)
+                                    .recoverWithUni(
+                                            () -> {
+                                                return (Uni) addClassification(session, classificationName, value, system, identityToken);
+                                            }
+                                    )
+                                    .onItem()
+                                    .call(a -> {
+                                        return updateClassification(session, classificationName, value, system, identityToken);
+                                    });
+                });
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    return addOrReuseClassification(session, classificationName.toString(), value, system, identityToken);
-  }
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrReuseClassification(session, classificationName.toString(), value, system, identityToken);
+    }
 
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
 
-    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
-        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 return session.fetch(system.getEnterpriseID())
-                     .chain(enterprise -> {
-                       return (Uni) tableForClassification.builder(session)
-                                        .findLink((J) this, classification, null)
-                                        .inActiveRange()
-                                        .inDateRange()
-                                        .withEnterprise(enterprise)
-                                        .canRead(system, identityToken)
-                                        .get()
-                                        .onFailure(NoResultException.class)
-                                        .recoverWithUni(() -> {
-                                          return (Uni) addClassification(session, classificationName, value, system, identityToken);
-                                        })
-                                        .onItem()
-                                        .call(a -> {
-                                          return Uni.createFrom()
-                                                     .item((IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) a);
-                                        });
-                     });
-               });
-  }
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    return session.fetch(system)
+                            .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                    .chain(enterprise -> {
+                                        return (Uni) tableForClassification.builder(session)
+                                                .findLink((J) this, classification, null)
+                                                .inActiveRange()
+                                                .inDateRange()
+                                                .withEnterprise(enterprise)
+                                                .canRead(system, identityToken)
+                                                .get()
+                                                .onFailure(NoResultException.class)
+                                                .recoverWithUni(() -> {
+                                                    return (Uni) addClassification(session, classificationName, value, system, identityToken);
+                                                })
+                                                .onItem()
+                                                .call(a -> {
+                                                    return Uni.createFrom()
+                                                            .item((IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) a);
+                                                });
+                                    }));
+                });
+    }
 
-  @SuppressWarnings("unchecked")
-  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> updateClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, ?, ?> tableForClassification =
-        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+    @SuppressWarnings("unchecked")
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> updateClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, ?, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 final IClassification<?, ?> finalClassification = classification;
-                 return tableForClassification.builder(session)
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    final IClassification<?, ?> finalClassification = classification;
+                    return tableForClassification.builder(session)
                             .findLink((J) this, finalClassification, null)
                             .inActiveRange()
                             .inDateRange()
@@ -368,166 +337,156 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                             .canRead(system, identityToken)
                             .get()
                             .chain(existingTable -> {
-                              if (existingTable == null)
-                              {
-                                return Uni.createFrom()
-                                           .failure(new ClassificationException("Unable to find classification"));
-                              }
-                              else
-                              {
-                                final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, ?, ?> finalTableForClassification =
-                                    (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, ?, ?>) existingTable;
-                                if (Strings.nullToEmpty(value)
-                                        .equals(existingTable.getValue()))
-                                {
-                                  return Uni.createFrom()
-                                             .item((IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) finalTableForClassification);
+                                if (existingTable == null) {
+                                    return Uni.createFrom()
+                                            .failure(new ClassificationException("Unable to find classification"));
+                                } else {
+                                    final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, ?, ?> finalTableForClassification =
+                                            (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, ?, ?>) existingTable;
+                                    if (Strings.nullToEmpty(value)
+                                            .equals(existingTable.getValue())) {
+                                        return Uni.createFrom()
+                                                .item((IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) finalTableForClassification);
+                                    }
+
+                                    final ISystems<?, ?> originalSystem = finalTableForClassification.getSystemID();
+                                    IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+
+                                    return session.fetch(system)
+                                            .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                                    .chain(systemEnterprise -> session.fetch(originalSystem)
+                                                            .chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
+                                                                    .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
+                                                                            .chain(archivedFlag -> {
+                                                                                finalTableForClassification.setActiveFlagID(archivedFlag);
+                                                                                finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                                                return session.merge(finalTableForClassification);
+                                                                            })
+                                                                            .chain(updatedTable -> {
+                                                                                IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> newTableForClassification =
+                                                                                        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+
+                                                                                newTableForClassification.setId(null);
+                                                                                newTableForClassification.setClassificationID(finalTableForClassification.getClassificationID());
+                                                                                newTableForClassification.setSystemID(system);
+                                                                                newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
+                                                                                newTableForClassification.setOriginalSourceSystemUniqueID(finalTableForClassification.getId());
+                                                                                newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                                                newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                                                newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                                                newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+
+                                                                                return flagService.getActiveFlag(session, originalEnterprise, identityToken)
+                                                                                        .map(activeFlag -> {
+                                                                                            newTableForClassification.setActiveFlagID(activeFlag);
+                                                                                            newTableForClassification.setValue(value);
+                                                                                            newTableForClassification.setEnterpriseID(systemEnterprise);
+
+                                                                                            configureForClassification(session, newTableForClassification, finalClassification, system);
+
+                                                                                            return newTableForClassification;
+                                                                                        });
+                                                                            }))))
+                                                    .chain(newTable -> session.persist(newTable)
+                                                            .replaceWith(Uni.createFrom()
+                                                                    .item(newTable)))
+                                                    .chain(newTable -> {
+                                                        // Execute the createDefaultSecurity operation and wait for it to complete
+                                                        return newTable.createDefaultSecurity(session, originalSystem, identityToken)
+                                                                .map(v -> (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) newTable); // Return the table after security operation completes
+                                                    }));
                                 }
-
-                                final ISystems<?, ?> originalSystem = finalTableForClassification.getSystemID();
-                                IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-
-                                return session.fetch(system.getEnterpriseID())
-                                           .chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
-                                               .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
-                                                  .chain(archivedFlag -> {
-                                                    finalTableForClassification.setActiveFlagID(archivedFlag);
-                                                    finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                                    return session.merge(finalTableForClassification);
-                                                  })
-                                                  .chain(updatedTable -> {
-                                                    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> newTableForClassification =
-                                                        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
-
-                                                    newTableForClassification.setId(null);
-                                                    newTableForClassification.setClassificationID(finalTableForClassification.getClassificationID());
-                                                    newTableForClassification.setSystemID(system);
-                                                    newTableForClassification.setOriginalSourceSystemID(originalSystem.getId());
-                                                    newTableForClassification.setOriginalSourceSystemUniqueID(finalTableForClassification.getId());
-                                                    newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                                    newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                                    newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                                    newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
-
-                                                    return flagService.getActiveFlag(session, originalEnterprise, identityToken)
-                                                               .map(activeFlag -> {
-                                                                 newTableForClassification.setActiveFlagID(activeFlag);
-                                                                 newTableForClassification.setValue(value);
-                                                                 newTableForClassification.setEnterpriseID(systemEnterprise);
-
-                                                                 configureForClassification(session, newTableForClassification, finalClassification, system);
-
-                                                                 return newTableForClassification;
-                                                               });
-                                                  })))
-                                           .chain(newTable -> session.persist(newTable)
-                                                                  .replaceWith(Uni.createFrom()
-                                                                                   .item(newTable)))
-                                           .chain(newTable -> {
-                                             // Execute the createDefaultSecurity operation and wait for it to complete
-                                             return newTable.createDefaultSecurity(session, originalSystem, identityToken)
-                                                        .map(v -> (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) newTable); // Return the table after security operation completes
-                                           });
-                              }
                             });
-               });
-  }
+                });
+    }
 
-  @SuppressWarnings("unchecked")
-  default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> archiveClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
-        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+    @SuppressWarnings("unchecked")
+    default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> archiveClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> initialTableForClassification = tableForClassification;
-                 return tableForClassification.builder(session)
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> initialTableForClassification = tableForClassification;
+                    return tableForClassification.builder(session)
                             .findLink((J) this, classification, null)
                             .inActiveRange()
                             .inDateRange()
                             .canRead(system, identityToken)
                             .get()
                             .chain(existingTable -> {
-                              if (existingTable == null)
-                              {
-                                return Uni.createFrom()
-                                           .item((IRelationshipValue<J, IClassification<?, ?>, ?>) initialTableForClassification);
-                              }
-                              else
-                              {
-                                final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> finalTableForClassification =
-                                    (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) existingTable;
-                                if (Strings.nullToEmpty(value)
-                                        .equals(existingTable.getValue()))
-                                {
-                                  IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-                                  return session.fetch(system.getEnterpriseID())
-                                             .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
-                                             .chain(archivedFlag -> {
-                                               finalTableForClassification.setActiveFlagID(archivedFlag);
-                                               finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                               return session.merge(finalTableForClassification);
-                                             }));
+                                if (existingTable == null) {
+                                    return Uni.createFrom()
+                                            .item((IRelationshipValue<J, IClassification<?, ?>, ?>) initialTableForClassification);
+                                } else {
+                                    final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> finalTableForClassification =
+                                            (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) existingTable;
+                                    if (Strings.nullToEmpty(value)
+                                            .equals(existingTable.getValue())) {
+                                        IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+                                        return session.fetch(system)
+                                                .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                                        .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
+                                                                .chain(archivedFlag -> {
+                                                                    finalTableForClassification.setActiveFlagID(archivedFlag);
+                                                                    finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                                    return session.merge(finalTableForClassification);
+                                                                })));
+                                    }
+
+                                    // Value does not match; no-op (return the current link)
+                                    return Uni.createFrom()
+                                            .item((IRelationshipValue<J, IClassification<?, ?>, ?>) existingTable);
                                 }
-
-                                // Value does not match; no-op (return the current link)
-                                return Uni.createFrom()
-                                           .item((IRelationshipValue<J, IClassification<?, ?>, ?>) existingTable);
-                              }
                             });
-               });
+                });
 
-  }
+    }
 
-  @SuppressWarnings("unchecked")
-  default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> removeClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
-  {
-    IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
-        (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
-    IClassificationService<?> classificationService = get(IClassificationService.class);
+    @SuppressWarnings("unchecked")
+    default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> removeClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
 
-    return classificationService.find(session, classificationName, system, identityToken)
-               .chain(classification -> {
-                 final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> initialTableForClassification = tableForClassification;
-                 return tableForClassification.builder(session)
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> {
+                    final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> initialTableForClassification = tableForClassification;
+                    return tableForClassification.builder(session)
                             .findLink((J) this, classification, null)
                             .inActiveRange()
                             .inDateRange()
                             .canRead(system, identityToken)
                             .get()
                             .chain(existingTable -> {
-                              if (existingTable == null)
-                              {
-                                return Uni.createFrom()
-                                           .item((IRelationshipValue<J, IClassification<?, ?>, ?>) initialTableForClassification);
-                              }
-                              else
-                              {
-                                final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> finalTableForClassification =
-                                    (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) existingTable;
-                                if (Strings.nullToEmpty(value)
-                                        .equals(existingTable.getValue()))
-                                {
-                                  IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-                                  return session.fetch(system.getEnterpriseID())
-                                             .chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
-                                             .chain(deletedFlag -> {
-                                               finalTableForClassification.setActiveFlagID(deletedFlag);
-                                               finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                               return session.merge(finalTableForClassification);
-                                             }));
+                                if (existingTable == null) {
+                                    return Uni.createFrom()
+                                            .item((IRelationshipValue<J, IClassification<?, ?>, ?>) initialTableForClassification);
+                                } else {
+                                    final IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> finalTableForClassification =
+                                            (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) existingTable;
+                                    if (Strings.nullToEmpty(value)
+                                            .equals(existingTable.getValue())) {
+                                        IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+                                        return session.fetch(system)
+                                                .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                                        .chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
+                                                                .chain(deletedFlag -> {
+                                                                    finalTableForClassification.setActiveFlagID(deletedFlag);
+                                                                    finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                                    return session.merge(finalTableForClassification);
+                                                                })));
+                                    }
+
+                                    // Value does not match; no-op (return the current link)
+                                    return Uni.createFrom()
+                                            .item((IRelationshipValue<J, IClassification<?, ?>, ?>) existingTable);
                                 }
-
-                                // Value does not match; no-op (return the current link)
-                                return Uni.createFrom()
-                                           .item((IRelationshipValue<J, IClassification<?, ?>, ?>) existingTable);
-                              }
                             });
-               });
-  }
+                });
+    }
 
-  void configureForClassification(Mutiny.Session session, IWarehouseRelationshipClassificationTable linkTable, IClassification<?, ?> classificationValue, ISystems<?, ?> system);
+    void configureForClassification(Mutiny.Session session, IWarehouseRelationshipClassificationTable linkTable, IClassification<?, ?> classificationValue, ISystems<?, ?> system);
 }
 

@@ -70,6 +70,7 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 			return systemsService.findSystem(session,enterprise,systemName);
 	}
 
+
  /**
   * Cache for system tokens, keyed by systemName and enterpriseId
   */

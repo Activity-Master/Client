@@ -154,14 +154,17 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
         final String finalClassificationNameCopy = finalClassificationName;
 
         return classificationService.find(session, finalClassificationNameCopy, system, identityToken)
-                .chain(classification -> session.fetch(system.getEnterpriseID())
-                        .chain(enterprise -> session.fetch(system.getActiveFlagID())
-                                .map(activeFlag -> {
-                                    // Set up the table
-                                    tableForClassification.setEnterpriseID(enterprise);
-                                    tableForClassification.setValue(Strings.nullToEmpty(value));
-                                    tableForClassification.setSystemID(system);
-                                    tableForClassification.setOriginalSourceSystemID(system.getId());
+                .chain(classification -> session.fetch(system)
+                        .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                .chain(enterprise -> {
+                                    IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+                                    return activeFlagSvc.getActiveFlag(session, enterprise)
+                                        .map(activeFlag -> {
+                                            // Set up the table
+                                            tableForClassification.setEnterpriseID(enterprise);
+                                            tableForClassification.setValue(Strings.nullToEmpty(value));
+                                            tableForClassification.setSystemID(fetchedSystem);
+                                            tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
                                     tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
                                     tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
                                     tableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
@@ -172,6 +175,7 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                                     configureResourceItemAddable(tableForClassification, (J) this, resourceItem, classification, value, enterprise);
 
                                     return tableForClassification;
+                                });
                                 })))
                 .chain(table -> session.persist(table)
                         .replaceWith(Uni.createFrom()
@@ -214,28 +218,32 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                             .get()
                             .onFailure(NoResultException.class)
                             .recoverWithUni(() -> {
-                                return session.fetch(system.getEnterpriseID())
-                                        .chain(enterprise -> session.fetch(system.getActiveFlagID())
-                                                .chain(activeFlag -> {
-                                                    tableForClassification.setEnterpriseID(enterprise);
-                                                    tableForClassification.setValue(storeValue);
-                                                    tableForClassification.setSystemID(system);
-                                                    tableForClassification.setOriginalSourceSystemID(system.getId());
+                                return session.fetch(system)
+                                        .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                                .chain(enterprise -> {
+                                                    IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+                                                    return activeFlagSvc.getActiveFlag(session, enterprise)
+                                                        .chain(activeFlag -> {
+                                                            tableForClassification.setEnterpriseID(enterprise);
+                                                            tableForClassification.setValue(storeValue);
+                                                            tableForClassification.setSystemID(fetchedSystem);
+                                                            tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
                                                     tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
                                                     tableForClassification.setActiveFlagID(activeFlag);
                                                     tableForClassification.setClassificationID(classification);
                                                     configureResourceItemAddable(tableForClassification, (J) this, resourceItem, classification, storeValue, enterprise);
 
-                                                    return (Uni) Uni.createFrom()
-                                                            .item(tableForClassification)
-                                                            .chain(table -> {
-                                                                return session.persist(table).replaceWith(Uni.createFrom().item(table));
-                                                            })
-                                                            .chain(table -> {
-                                                                table.createDefaultSecurity(session, system, identityToken);
-                                                                return Uni.createFrom()
-                                                                        .item((IRelationshipValue<J, IResourceItem<?, ?>, ?>) table);
-                                                            });
+                                                            return (Uni) Uni.createFrom()
+                                                                    .item(tableForClassification)
+                                                                    .chain(table -> {
+                                                                        return session.persist(table).replaceWith(Uni.createFrom().item(table));
+                                                                    })
+                                                                    .chain(table -> {
+                                                                        table.createDefaultSecurity(session, system, identityToken);
+                                                                        return Uni.createFrom()
+                                                                                .item((IRelationshipValue<J, IResourceItem<?, ?>, ?>) table);
+                                                                    });
+                                                        });
                                                 }));
                             })
                             .chain(result -> {
@@ -255,8 +263,10 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                                 ISystems<?, ?> originalSystem = existingTable.getSystemID();
                                 IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                return session.fetch(system.getEnterpriseID())
-                                        .chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+                                return session.fetch(system)
+                                        .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                                                .chain(systemEnterprise -> session.fetch(originalSystem)
+                                                        .chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
                                                 .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
                                                         .chain(archivedFlag -> {
                                                             existingTable.setActiveFlagID(archivedFlag);
@@ -294,7 +304,7 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                                                             // Return the table immediately without waiting for createDefaultSecurity to complete
                                                             return Uni.createFrom()
                                                                     .item((IRelationshipValue<J, IResourceItem<?, ?>, ?>) newTable);
-                                                        })));
+                                                        })))));
                             });
                 });
     }

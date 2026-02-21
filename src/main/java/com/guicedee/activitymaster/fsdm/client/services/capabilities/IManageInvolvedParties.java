@@ -174,10 +174,14 @@ public interface IManageInvolvedParties<J extends IWarehouseBaseTable<J, ?, ? ex
         IClassificationService<?> classificationService = get(IClassificationService.class);
 
         return classificationService.find(session, classificationName, system, identityToken)
-                       .chain(classification -> session.fetch(system.getEnterpriseID())
-                           .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                       .chain(classification -> session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                           .chain(enterprise -> {
+                               tableForClassification.setEnterpriseID(enterprise);
+                               IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+                               return activeFlagSvc.getActiveFlag(session, enterprise);
+                           })
                                .map(activeFlag -> {
-                                   tableForClassification.setEnterpriseID(enterprise);
+
                                    tableForClassification.setValue(Strings.nullToEmpty(value));
                                    tableForClassification.setSystemID(system);
                                    tableForClassification.setOriginalSourceSystemID(system.getId());
@@ -248,7 +252,7 @@ public interface IManageInvolvedParties<J extends IWarehouseBaseTable<J, ?, ? ex
                                               final IWarehouseRelationshipTable<?, ?, J, IInvolvedParty<?, ?>, UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IInvolvedParty<?, ?>, UUID, ?>) result;
                                               IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                              return session.fetch(system.getEnterpriseID())
+                                              return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                              .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                                               .chain(archivedFlag -> {
                                                                   existingTable.setActiveFlagID(archivedFlag);
@@ -285,7 +289,7 @@ public interface IManageInvolvedParties<J extends IWarehouseBaseTable<J, ?, ? ex
                                                                   return newTable.createDefaultSecurity(session, system, identityToken)
                                                                           .onFailure().recoverWithNull()  // Continue even if security setup fails
                                                                           .replaceWith(Uni.createFrom().item((IRelationshipValue<J, IInvolvedParty<?, ?>, ?>) existingTable));
-                                                              }));
+                                                              })));
                                           });
                        });
     }

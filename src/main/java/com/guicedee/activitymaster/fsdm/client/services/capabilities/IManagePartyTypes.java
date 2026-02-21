@@ -184,10 +184,13 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 			IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
 
 			return classificationService.find(session, classificationName, system, identityToken)
-				.chain(classification -> session.fetch(system.getEnterpriseID())
-				.chain(enterprise -> session.fetch(system.getActiveFlagID())
-					.map(activeFlag -> {
+				.chain(classification -> session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+				.chain(enterprise -> {
 					tableForClassification.setEnterpriseID(enterprise);
+					IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+					return activeFlagSvc.getActiveFlag(session, enterprise);
+				})
+					.map(activeFlag -> {
 					tableForClassification.setValue(Strings.nullToEmpty(value));
 					tableForClassification.setSystemID(system);
 					tableForClassification.setOriginalSourceSystemID(system.getId());
@@ -269,7 +272,7 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 							// Otherwise, update the relation
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return session.fetch(system.getEnterpriseID())
+							return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
 							.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 							.chain(archivedFlag -> {
 								existingTable.setActiveFlagID(archivedFlag);
@@ -306,7 +309,7 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 								newTable.createDefaultSecurity(session, system, identityToken);
 								// Return the table immediately without waiting for createDefaultSecurity to complete
 								return Uni.createFrom().item((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) newTable);
-							}));
+							})));
 					});
 			});
 	}

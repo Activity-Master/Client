@@ -146,25 +146,30 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 			final String finalClassificationNameCopy = finalClassificationName;
 
 			return classificationService.find(session, finalClassificationNameCopy, system, identityToken)
-				.chain(classification -> session.fetch(system.getEnterpriseID())
-					.chain(enterprise -> session.fetch(system.getActiveFlagID())
-						.map(activeFlag -> {
-					tableForClassification.setEnterpriseID(enterprise);
-					tableForClassification.setValue(Strings.nullToEmpty(value));
-					tableForClassification.setSystemID(system);
-					tableForClassification.setOriginalSourceSystemID(system.getId());
-					tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-					tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
-					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
-					tableForClassification.setActiveFlagID(activeFlag);
-					tableForClassification.setClassificationID(classification);
+				.chain(classification -> session.fetch(system)
+					.chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+						.chain(enterprise -> {
+							tableForClassification.setEnterpriseID(enterprise);
+							IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+							return activeFlagSvc.getActiveFlag(session, enterprise);
+						})
+							.map(activeFlag -> {
 
-					configureRulesAddable(tableForClassification, (J) this,
-							resourceItem,
-							classification, value, system);
+				tableForClassification.setValue(Strings.nullToEmpty(value));
+				tableForClassification.setSystemID(fetchedSystem);
+				tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
+				tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+				tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+				tableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+				tableForClassification.setActiveFlagID(activeFlag);
+				tableForClassification.setClassificationID(classification);
 
-					return tableForClassification;
-				})))
+				configureRulesAddable(tableForClassification, (J) this,
+						resourceItem,
+						classification, value, system);
+
+				return tableForClassification;
+			})))
 				.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
 				.chain(table -> {
 					// Start the createDefaultSecurity operation but don't wait for it to complete
@@ -219,8 +224,10 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 							ISystems<?, ?> originalSystem = existingTable.getSystemID();
 							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-							return session.fetch(system.getEnterpriseID())
-							.chain(systemEnterprise -> session.fetch(originalSystem.getEnterpriseID())
+							return session.fetch(system)
+							.chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+							.chain(systemEnterprise -> session.fetch(originalSystem)
+								.chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
 								.chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
 								.chain(archivedFlag -> {
 									existingTable.setActiveFlagID(archivedFlag);
@@ -255,7 +262,7 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 								.chain(newTable -> {
 									newTable.createDefaultSecurity(session, originalSystem, identityToken);
 									return Uni.createFrom().item((IRelationshipValue<J, IRules<?, ?>, ?>) newTable);
-								})));
+								})))));
 					});
 			});
 	}

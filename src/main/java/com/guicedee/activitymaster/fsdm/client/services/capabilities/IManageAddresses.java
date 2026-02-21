@@ -129,8 +129,10 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
         IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?> tableForClassification = com.guicedee.client.IGuiceContext.get(getAddressRelationshipClass());
         IClassificationService<?> addressService = get(IClassificationService.class);
         return addressService.find(session, addressClassification, system, identityToken)
-                       .chain(classification -> session.fetch(system.getEnterpriseID())
-                           .chain(enterprise -> session.fetch(system.getActiveFlagID())
+                       .chain(classification -> session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
+                           .chain(enterprise -> {
+                               IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+                               return activeFlagSvc.getActiveFlag(session, enterprise)
                                .map(activeFlag -> {
                                    tableForClassification.setEnterpriseID(enterprise);
                                    tableForClassification.setValue(value);
@@ -143,7 +145,8 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                    configureAddressLinkValue(tableForClassification, (J) this, secondary, classification, tableForClassification.getValue(), system);
 
                                    return tableForClassification;
-                               })))
+                               });
+                           })))
                        .chain(table -> session.persist(table)
                                                .replaceWith(Uni.createFrom()
                                                                     .item(table))
@@ -202,7 +205,7 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                               final IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?>) result;
                                               IActiveFlagService<?> flagService = get(IActiveFlagService.class);
 
-                                              return session.fetch(system.getEnterpriseID())
+                                              return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                              .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                                               .chain(archivedFlag -> {
                                                                   existingTable.setActiveFlagID(archivedFlag);
@@ -238,7 +241,7 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                                                   newTable.createDefaultSecurity(session, system, identityToken);
                                                                   return Uni.createFrom()
                                                                                  .item((IRelationshipValue<J, IAddress<?, ?>, ?>) existingTable);
-                                                              }));
+                                                              })));
                                           });
                        });
 
