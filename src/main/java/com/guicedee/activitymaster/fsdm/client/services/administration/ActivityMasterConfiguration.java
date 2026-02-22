@@ -29,6 +29,26 @@ public class ActivityMasterConfiguration
 	private static final ActivityMasterConfiguration configuration = new ActivityMasterConfiguration();
 
 	public static String applicationEnterpriseName;
+	private static String _activityMasterHost = "http://localhost:8080";
+
+	public static String activityMasterHost = _activityMasterHost;
+
+	static {
+		// Seed the system property so ${ACTIVITY_MASTER_HOST} resolves in @Endpoint URLs
+		if (System.getProperty("ACTIVITY_MASTER_HOST") == null) {
+			System.setProperty("ACTIVITY_MASTER_HOST", _activityMasterHost);
+		} else {
+			activityMasterHost = System.getProperty("ACTIVITY_MASTER_HOST");
+		}
+	}
+
+	/**
+	 * Sets the Activity Master host and keeps the ACTIVITY_MASTER_HOST system property in sync.
+	 */
+	public static void setActivityMasterHost(String host) {
+		activityMasterHost = host;
+		System.setProperty("ACTIVITY_MASTER_HOST", host);
+	}
 
 	private Set<IActivityMasterSystem<?>> allSystems;
 	private final List<IActivityMasterProgressMonitor> progressMonitors = new CopyOnWriteArrayList<>();

@@ -5,84 +5,82 @@ import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterP
 import com.guicedee.client.services.config.IGuiceScanModuleInclusions;
 
 module com.guicedee.activitymaster.fsdm.client {
-  exports com.guicedee.activitymaster.fsdm.client;
-  exports com.guicedee.activitymaster.fsdm.client.services.administration;
-  exports com.guicedee.activitymaster.fsdm.client.services.events;
-  exports com.guicedee.activitymaster.fsdm.client.services.capabilities;
-  exports com.guicedee.activitymaster.fsdm.client.services.systems;
-  exports com.guicedee.activitymaster.fsdm.client.services.deserializers;
+    exports com.guicedee.activitymaster.fsdm.client;
+    exports com.guicedee.activitymaster.fsdm.client.services.administration;
+    exports com.guicedee.activitymaster.fsdm.client.services.events;
+    exports com.guicedee.activitymaster.fsdm.client.services.capabilities;
+    exports com.guicedee.activitymaster.fsdm.client.services.systems;
+    exports com.guicedee.activitymaster.fsdm.client.services.deserializers;
 
-  requires transitive com.guicedee.guicedinjection;
-//  requires transitive io.cloudevents;
+    requires transitive com.guicedee.guicedinjection;
 
-  requires transitive io.vertx.core;
+    requires transitive io.vertx.core;
 
-//	exports com.guicedee.activitymaster.fsdm.client.services.converters.providers;
+    exports com.guicedee.activitymaster.fsdm.client.services.classifications;
+    exports com.guicedee.activitymaster.fsdm.client.services.classifications.address;
 
-  exports com.guicedee.activitymaster.fsdm.client.services.classifications;
-  exports com.guicedee.activitymaster.fsdm.client.services.classifications.address;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders;
 
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.classifications;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems;
 
-  exports com.guicedee.activitymaster.fsdm.client.services.builders;
+    exports com.guicedee.activitymaster.fsdm.client.services;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.resourceitem;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.products;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.address;
+    exports com.guicedee.activitymaster.fsdm.client.services.dto;
 
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.arrangements;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.geography;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.rules;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.party;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.events;
+    exports com.guicedee.activitymaster.fsdm.client.services.classifications.types;
+    exports com.guicedee.activitymaster.fsdm.client.services.capabilities.contains;
+    exports com.guicedee.activitymaster.fsdm.client.services.annotations;
+    exports com.guicedee.activitymaster.fsdm.client.services.exceptions;
+    exports com.guicedee.activitymaster.fsdm.client.implementations;
 
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.classifications;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems;
+    opens com.guicedee.activitymaster.fsdm.client.services.builders.warehouse to com.guicedee.activitymaster.fsdm;
 
-  exports com.guicedee.activitymaster.fsdm.client.services;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.resourceitem;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.products;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.address;
-  exports com.guicedee.activitymaster.fsdm.client.services.dto;
+    requires transitive com.entityassist;
+    requires transitive jakarta.persistence;
 
-  //exports com.guicedee.activitymaster.fsdm.client.implementations;
+    requires static lombok;
+    requires transitive jakarta.validation;
+    requires transitive org.hibernate.reactive;
+    requires transitive org.hibernate.validator;
+    requires transitive org.apache.logging.log4j;
+    requires com.guicedee.rest.client;
 
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.arrangements;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.geography;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.rules;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.party;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.events;
-  exports com.guicedee.activitymaster.fsdm.client.services.classifications.types;
-  exports com.guicedee.activitymaster.fsdm.client.services.capabilities.contains;
-  exports com.guicedee.activitymaster.fsdm.client.services.annotations;
-  exports com.guicedee.activitymaster.fsdm.client.services.exceptions;
-  exports com.guicedee.activitymaster.fsdm.client.implementations;
+    uses com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterSystem;
 
-  opens com.guicedee.activitymaster.fsdm.client.services.builders.warehouse to com.guicedee.activitymaster.fsdm;
+    uses IOnCreateUser;
+    uses IOnExpireUser;
+    uses IActivityMasterProgressMonitor;
 
-//	requires com.guicedee.services.openapi;
+    provides IActivityMasterProgressMonitor with ConsoleLogActivityMasterProgressMaster;
 
-  requires transitive com.entityassist;
-  requires transitive jakarta.persistence;
+    provides IGuiceScanModuleInclusions with com.guicedee.activitymaster.fsdm.client.implementations.ActivityMasterClientModuleInclusion;
 
-  requires static lombok;
-  requires transitive jakarta.validation;
-  requires transitive org.hibernate.reactive;
-  requires transitive org.hibernate.validator;
-  requires transitive org.apache.logging.log4j;
+    opens com.guicedee.activitymaster.fsdm.client.services.administration to com.google.guice;
+    opens com.guicedee.activitymaster.fsdm.client.services.deserializers to com.google.guice, com.fasterxml.jackson.databind;
+    exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base;
+    opens com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base to com.guicedee.activitymaster.fsdm;
+    exports com.guicedee.activitymaster.fsdm.client.services.rest;
+    exports com.guicedee.activitymaster.fsdm.client.services.rest.arrangements;
+    exports com.guicedee.activitymaster.fsdm.client.services.rest.events;
+    exports com.guicedee.activitymaster.fsdm.client.services.rest.parties;
+    exports com.guicedee.activitymaster.fsdm.client.services.rest.resourceitems;
 
-  /*requires com.guicedee.guicedpersistence;*/
-
-  uses com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterSystem;
-
-
-  uses IOnCreateUser;
-  uses IOnExpireUser;
-  uses IActivityMasterProgressMonitor;
-
-  provides IActivityMasterProgressMonitor with ConsoleLogActivityMasterProgressMaster;
-
-  provides IGuiceScanModuleInclusions with com.guicedee.activitymaster.fsdm.client.implementations.ActivityMasterClientModuleInclusion;
-
-  opens com.guicedee.activitymaster.fsdm.client.services.administration to com.google.guice;
-  opens com.guicedee.activitymaster.fsdm.client.services.deserializers to com.google.guice, com.fasterxml.jackson.databind;
-  exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base;
-  opens com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base to com.guicedee.activitymaster.fsdm;
-  //opens com.guicedee.activitymaster.fsdm.client.services.converters.providers to com.google.guice,com.fasterxml.jackson.databind;
-
+    opens com.guicedee.activitymaster.fsdm.client.services.rest to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.events to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.arrangements to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.resourceitems to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.parties to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
 }
 

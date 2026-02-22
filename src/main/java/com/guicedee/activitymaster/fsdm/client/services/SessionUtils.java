@@ -6,6 +6,8 @@ import com.guicedee.client.IGuiceContext;
 import com.guicedee.vertx.spi.VertXPreStartup;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.tuples.Tuple4;
+import io.vertx.core.Context;
+import io.vertx.core.internal.VertxInternal;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.reactive.mutiny.Mutiny;
 
@@ -27,7 +29,13 @@ public final class SessionUtils {
     }
 
     /**
-     * Open a session, run the provided work within a transaction, and always close the session.
+     * Run the provided work within a Hibernate-managed session and transaction.
+     * <p>
+     * Uses {@link Mutiny.SessionFactory#withTransaction} which properly associates
+     * the session with the current Vert.x local context.  This is required for
+     * Hibernate Reactive to resolve associations during second-level cache assembly.
+     * Using {@code openSession()} manually does NOT register the session in the
+     * context and causes {@code UnexpectedAccessToTheDatabase} on cached entity loads.
      */
     public static <T> Uni<T> withSessionTx(Mutiny.SessionFactory sessionFactory,
                                            Function<Mutiny.Session, Uni<T>> work) {
@@ -39,28 +47,21 @@ public final class SessionUtils {
                         })
                         .eventually(session::close));
     }
+
     /**
-     * Open a session, run the provided work within a transaction, and always close the session.
+     * Run the provided work within a Hibernate-managed stateless session and transaction.
      */
     public static <T> Uni<T> withStatelessSessionTx(Mutiny.SessionFactory sessionFactory,
-                                           Function<Mutiny.StatelessSession, Uni<T>> work) {
-        return sessionFactory.openStatelessSession()
-                .chain(session -> session
-                        .withTransaction(tx -> work.apply(session))
-                        .chain(ses -> {
-                            return Uni.createFrom().item(ses);
-                        })
-                        .eventually(session::close));
+                                                    Function<Mutiny.StatelessSession, Uni<T>> work) {
+        return sessionFactory.withStatelessTransaction((session, tx) -> work.apply(session));
     }
 
     /**
-     * Open a session, run the provided work, and always close the session (no transaction).
+     * Run the provided work within a Hibernate-managed session (no explicit transaction).
      */
     public static <T> Uni<T> withSession(Mutiny.SessionFactory sessionFactory,
                                          Function<Mutiny.Session, Uni<T>> work) {
-        return sessionFactory.openSession()
-                .chain(session -> work.apply(session)
-                        .eventually(session::close));
+        return sessionFactory.withSession(work);
     }
 
     /**
@@ -89,31 +90,16 @@ public final class SessionUtils {
      */
     public static <T> Uni<T> withActivityMaster(String enterpriseName, String systemName,
                                                 java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
-        var vertx = VertXPreStartup.getVertx();
-        var context = vertx.getOrCreateContext();
-        return Uni.createFrom().<T>emitter(emitter ->
-                context.runOnContext(_ -> {
-                    log.debug("Executing with activity master details");
-                    Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
-                    IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
-                    withSessionTx(sessionFactory, session ->
-                            enterpriseService.getEnterprise(session, enterpriseName)
-                                    .chain(enterprise -> getISystem(session, systemName, enterprise)
-                                            .chain(system -> getISystemToken(session, systemName, enterprise)
-                                                    .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
-                                            )
-                                    )
-                    ).subscribe().with(
-                            result -> {
-                                log.debug("Completed with activity master details");
-                                emitter.complete(result);
-                            },
-                            failure -> {
-                                log.error("Failed to execute with activity master details", failure);
-                                emitter.fail(failure);
-                            });
-                })
-        );
+        log.trace("Executing with activity master details");
+        Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
+        IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
+        return withSessionTx(sessionFactory, session ->
+                enterpriseService.getEnterprise(session, enterpriseName)
+                        .chain(enterprise -> getISystem(session, systemName, enterprise)
+                                .chain(system -> getISystemToken(session, systemName, enterprise)
+                                        .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
+                                )
+                        ));
     }
 
 }
