@@ -51,8 +51,8 @@ public class EnterpriseDeserializer extends JsonDeserializer<IEnterprise<?, ?>>
             {
                 log.debug("💾 Starting database session for Enterprise UUID lookup: {}", uuid);
                 
-                return factory.withSession(session ->
-                        session.withTransaction(tx -> {
+                return factory.openSession()
+                        .chain(session -> session.withTransaction(tx -> {
                             log.debug("🏛️ Opened transactional session for Enterprise UUID: {} (Session: {})", uuid, session.hashCode());
                             
                             IEnterpriseService<?> service = IGuiceContext.get(IEnterpriseService.class);
@@ -69,8 +69,8 @@ public class EnterpriseDeserializer extends JsonDeserializer<IEnterprise<?, ?>>
                                     .onFailure().invoke(error -> 
                                         log.error("❌ Failed to retrieve Enterprise for UUID {} with session {}: {}", 
                                             uuid, session.hashCode(), error.getMessage(), error));
-                        })
-                ).await().atMost(java.time.Duration.ofSeconds(50));
+                        }).eventually(session::close))
+                .await().atMost(java.time.Duration.ofSeconds(50));
             }
             catch (Exception e)
             {

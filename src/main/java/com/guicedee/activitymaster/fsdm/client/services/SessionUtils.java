@@ -3,11 +3,8 @@ package com.guicedee.activitymaster.fsdm.client.services;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
 import com.guicedee.client.IGuiceContext;
-import com.guicedee.vertx.spi.VertXPreStartup;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.tuples.Tuple4;
-import io.vertx.core.Context;
-import io.vertx.core.internal.VertxInternal;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.reactive.mutiny.Mutiny;
 
@@ -20,7 +17,18 @@ import static com.guicedee.activitymaster.fsdm.client.services.IActivityMasterSe
 
 /**
  * Utility helpers for consistent Mutiny session lifecycle handling across Vert.x event consumers.
- * Ensures sessions are explicitly opened and always closed, even on failure.
+ * <p>
+ * All methods use {@link Mutiny.SessionFactory#openSession()} to obtain a <strong>fresh</strong>
+ * session (and therefore a fresh pooled connection) for every call.  This is critical because
+ * {@code sessionFactory.withSession()} caches/reuses a single session per Vert.x context.
+ * When multiple REST requests or event-bus consumers execute in parallel on the same context
+ * they would all receive the <em>same</em> {@link Mutiny.Session}, and any concurrent use of
+ * that session throws {@code UnsupportedOperationException}.
+ * <p>
+ * Every session opened here is <strong>always</strong> closed via {@code .eventually(session::close)},
+ * even on failure, so connections are reliably returned to the pool.
+ *
+ * @see Mutiny.SessionFactory#openSession()
  */
 @Log4j2
 public final class SessionUtils {
@@ -29,22 +37,22 @@ public final class SessionUtils {
     }
 
     /**
-     * Run the provided work within a Hibernate-managed session and transaction.
+     * Run the provided work within a dedicated session and transaction.
      * <p>
-     * Uses {@link Mutiny.SessionFactory#withTransaction} which properly associates
-     * the session with the current Vert.x local context.  This is required for
-     * Hibernate Reactive to resolve associations during second-level cache assembly.
-     * Using {@code openSession()} manually does NOT register the session in the
-     * context and causes {@code UnexpectedAccessToTheDatabase} on cached entity loads.
+     * Opens a <strong>new</strong> session via {@link Mutiny.SessionFactory#openSession()},
+     * wraps the caller's work inside {@link Mutiny.Session#withTransaction}, and guarantees
+     * the session is closed when the chain completes (success or failure).
+     * <p>
+     * Because each invocation gets its own session, multiple concurrent callers on the same
+     * Vert.x context will each hold an independent connection from the pool — matching the
+     * behaviour demonstrated by {@code TestMultiConnectionsWithSession} where parallel
+     * {@code pg_sleep} queries execute simultaneously.
      */
     public static <T> Uni<T> withSessionTx(Mutiny.SessionFactory sessionFactory,
                                            Function<Mutiny.Session, Uni<T>> work) {
         return sessionFactory.openSession()
                 .chain(session -> session
                         .withTransaction(tx -> work.apply(session))
-                        .chain(ses -> {
-                            return Uni.createFrom().item(ses);
-                        })
                         .eventually(session::close));
     }
 
@@ -53,15 +61,23 @@ public final class SessionUtils {
      */
     public static <T> Uni<T> withStatelessSessionTx(Mutiny.SessionFactory sessionFactory,
                                                     Function<Mutiny.StatelessSession, Uni<T>> work) {
-        return sessionFactory.withStatelessTransaction((session, tx) -> work.apply(session));
+        return sessionFactory.openStatelessSession()
+                .chain(session -> session
+                        .withTransaction(tx -> work.apply(session))
+                        .eventually(session::close));
     }
 
     /**
-     * Run the provided work within a Hibernate-managed session (no explicit transaction).
+     * Run the provided work within a dedicated session (no explicit transaction).
+     * <p>
+     * Opens a <strong>new</strong> session via {@link Mutiny.SessionFactory#openSession()}
+     * and guarantees the session is closed when the chain completes.
      */
     public static <T> Uni<T> withSession(Mutiny.SessionFactory sessionFactory,
                                          Function<Mutiny.Session, Uni<T>> work) {
-        return sessionFactory.withSession(work);
+        return sessionFactory.openSession()
+                .chain(session -> work.apply(session)
+                        .eventually(session::close));
     }
 
     /**
@@ -100,6 +116,30 @@ public final class SessionUtils {
                                         .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
                                 )
                         ));
+    }
+
+    /**
+     * Fire-and-forget: subscribes to a {@link Uni} directly on the current thread.
+     * <p>
+     * Each {@code withActivityMaster} Uni opens its own session and transaction, so there is
+     * no shared session state to protect. The session's lifecycle is fully contained within
+     * the Uni chain, and the SQL client pool will dispatch responses on the correct event-loop
+     * thread that the underlying connection is bound to.
+     * <p>
+     * DO NOT wrap the subscription in a new event-loop context ({@code createEventLoopContext})
+     * — that assigns a random Netty thread which differs from the SQL connection's thread,
+     * causing Hibernate Reactive HR000069 (session used from different thread).
+     * <p>
+     * Failures are logged at ERROR level but never propagated to the caller.
+     *
+     * @param uni         the reactive pipeline to execute
+     * @param description a short label used in log messages (e.g. "event 123 relationship persistence")
+     */
+    public static void fireAndForget(Uni<?> uni, String description) {
+        uni.subscribe().with(
+                success -> log.trace("Async operation completed: {}", description),
+                failure -> log.error("Async operation failed: {}: {}", description, failure.getMessage(), failure)
+        );
     }
 
 }

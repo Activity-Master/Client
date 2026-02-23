@@ -37,14 +37,14 @@ public class InvolvedPartyIdentificationTypeDeserializer extends JsonDeserialize
 
             try
             {
-                return factory.withSession(session ->
-                        session.withTransaction(tx -> {
+                return factory.openSession()
+                        .chain(session -> session.withTransaction(tx -> {
                             log.debug("InvolvedPartyIdentificationTypeDeserializer: Opened transaction for UUID {}", uuid);
                             IInvolvedPartyService<?> service = IGuiceContext.get(IInvolvedPartyService.class);
                             return service.findIdentificationType(session, uuid)
                                     .invoke(entity -> log.debug("InvolvedPartyIdentificationTypeDeserializer: Found entity for UUID {} - {}", uuid, entity));
-                        })
-                ).await().atMost(java.time.Duration.ofSeconds(50));
+                        }).eventually(session::close))
+                .await().atMost(java.time.Duration.ofSeconds(50));
             }
             catch (Exception e)
             {
