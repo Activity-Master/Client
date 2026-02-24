@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Map;
+import java.util.UUID;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY, getterVisibility = JsonAutoDetect.Visibility.NONE, setterVisibility = JsonAutoDetect.Visibility.NONE)
@@ -23,6 +24,11 @@ public class ResourceItemCreateDTO {
      */
     @NotNull
     public String dataValue;
+    /**
+     * The data type / value description for the resource item.
+     */
+    @NotNull
+    public UUID key;
     /**
      * Optional binary data (Base64-encoded in JSON).
      */

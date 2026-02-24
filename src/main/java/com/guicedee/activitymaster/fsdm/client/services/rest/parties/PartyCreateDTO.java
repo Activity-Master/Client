@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Map;
+import java.util.UUID;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY, getterVisibility = JsonAutoDetect.Visibility.NONE, setterVisibility = JsonAutoDetect.Visibility.NONE)
@@ -27,6 +28,7 @@ public class PartyCreateDTO {
      * Whether this involved party is organic (true) or non-organic (false).
      */
     public boolean organic = true;
+    public UUID key;
     /**
      * Optional classifications to add after creation.
      * Key = classification name, Value = classification value.

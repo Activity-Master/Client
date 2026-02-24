@@ -19,6 +19,7 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 {
 	String ArrangementSystemName = "Arrangements System";
 
+
 	default
 	Uni<IArrangement<?,?>> create(Mutiny.Session session, Enum<?> type,
 								  Enum<?> arrangementTypeClassification,
@@ -26,12 +27,12 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 								  ISystems<?,?> system,
 								  UUID... identityToken)
 	{
-		return create(session, type.toString(), arrangementTypeClassification.toString(), arrangementTypeValue, system, identityToken);
+		return create(session, null,type.toString(), arrangementTypeClassification.toString(), arrangementTypeValue, system, identityToken);
 	}
 
 	IArrangement<?,?> get();
 
-	Uni<IArrangement<?,?>> create(Mutiny.Session session, String type,
+	Uni<IArrangement<?,?>> create(Mutiny.Session session,UUID key, String type,
                                   String arrangementTypeClassification,
                                   String arrangementTypeValue,
                                   ISystems<?,?> system,

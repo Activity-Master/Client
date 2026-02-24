@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Map;
+import java.util.UUID;
 
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY, getterVisibility = JsonAutoDetect.Visibility.NONE, setterVisibility = JsonAutoDetect.Visibility.NONE)
@@ -19,6 +20,8 @@ public class ArrangementCreateDTO {
     public String classification;
     @NotNull
     public String typeValue;
+    @NotNull
+    public UUID key;
 
     /**
      * Optional classifications to add/update after creation.

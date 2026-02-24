@@ -18,17 +18,19 @@ import static com.guicedee.activitymaster.fsdm.client.services.IActivityMasterSe
 /**
  * Utility helpers for consistent Mutiny session lifecycle handling across Vert.x event consumers.
  * <p>
- * All methods use {@link Mutiny.SessionFactory#openSession()} to obtain a <strong>fresh</strong>
- * session (and therefore a fresh pooled connection) for every call.  This is critical because
- * {@code sessionFactory.withSession()} caches/reuses a single session per Vert.x context.
- * When multiple REST requests or event-bus consumers execute in parallel on the same context
- * they would all receive the <em>same</em> {@link Mutiny.Session}, and any concurrent use of
- * that session throws {@code UnsupportedOperationException}.
+ * Session methods delegate to {@link Mutiny.SessionFactory#withTransaction} and
+ * {@link Mutiny.SessionFactory#withSession} which internally manage connection acquisition,
+ * context dispatch, and session lifecycle. This ensures the session is always opened on the
+ * same event-loop thread as the underlying SQL pool connection — critical for Hibernate
+ * Reactive's thread-affinity check (HR000069).
  * <p>
- * Every session opened here is <strong>always</strong> closed via {@code .eventually(session::close)},
- * even on failure, so connections are reliably returned to the pool.
+ * <strong>Important:</strong> Do NOT use {@code sessionFactory.openSession()} directly.
+ * {@code openSession()} pins the session to the <em>calling</em> thread, which may differ
+ * from the thread the SQL connection is bound to (especially when the pool has few active
+ * connections). The factory-managed methods handle this correctly.
  *
- * @see Mutiny.SessionFactory#openSession()
+ * @see Mutiny.SessionFactory#withTransaction
+ * @see Mutiny.SessionFactory#withSession
  */
 @Log4j2
 public final class SessionUtils {
@@ -39,21 +41,20 @@ public final class SessionUtils {
     /**
      * Run the provided work within a dedicated session and transaction.
      * <p>
-     * Opens a <strong>new</strong> session via {@link Mutiny.SessionFactory#openSession()},
-     * wraps the caller's work inside {@link Mutiny.Session#withTransaction}, and guarantees
-     * the session is closed when the chain completes (success or failure).
+     * Uses {@link Mutiny.SessionFactory#withTransaction(java.util.function.BiFunction)} which
+     * internally acquires a pooled connection <strong>first</strong>, then opens the session
+     * on the same event-loop thread that the connection is bound to. This guarantees that
+     * the session's thread-pinning matches the SQL I/O thread, preventing
+     * {@code HR000069: Detected use of the reactive Session from a different Thread}.
      * <p>
-     * Because each invocation gets its own session, multiple concurrent callers on the same
-     * Vert.x context will each hold an independent connection from the pool — matching the
-     * behaviour demonstrated by {@code TestMultiConnectionsWithSession} where parallel
-     * {@code pg_sleep} queries execute simultaneously.
+     * This is critical when the Vert.x SQL pool has few active connections (e.g. one):
+     * all SQL responses fire on that connection's event-loop thread, so the session must
+     * be opened on that same thread. {@code openSession()} pins to the <em>calling</em>
+     * thread (the HTTP request thread), which differs from the connection thread.
      */
     public static <T> Uni<T> withSessionTx(Mutiny.SessionFactory sessionFactory,
                                            Function<Mutiny.Session, Uni<T>> work) {
-        return sessionFactory.openSession()
-                .chain(session -> session
-                        .withTransaction(tx -> work.apply(session))
-                        .eventually(session::close));
+        return sessionFactory.withTransaction((session, tx) -> work.apply(session));
     }
 
     /**
@@ -70,14 +71,12 @@ public final class SessionUtils {
     /**
      * Run the provided work within a dedicated session (no explicit transaction).
      * <p>
-     * Opens a <strong>new</strong> session via {@link Mutiny.SessionFactory#openSession()}
-     * and guarantees the session is closed when the chain completes.
+     * Uses {@link Mutiny.SessionFactory#withSession(Function)} which internally
+     * manages the Vert.x context and thread affinity properly.
      */
     public static <T> Uni<T> withSession(Mutiny.SessionFactory sessionFactory,
                                          Function<Mutiny.Session, Uni<T>> work) {
-        return sessionFactory.openSession()
-                .chain(session -> work.apply(session)
-                        .eventually(session::close));
+        return sessionFactory.withSession(session -> work.apply(session));
     }
 
     /**
@@ -114,8 +113,13 @@ public final class SessionUtils {
                         .chain(enterprise -> getISystem(session, systemName, enterprise)
                                 .chain(system -> getISystemToken(session, systemName, enterprise)
                                         .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
+                                        .chain(a -> {
+                                            session.clear();
+                                            return Uni.createFrom().item(a);
+                                        })
                                 )
-                        ));
+                        )
+        );
     }
 
     /**
