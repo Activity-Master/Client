@@ -36,7 +36,7 @@ public class ArrangementUpdateDTO {
     public RelationshipUpdateEntry products;
     /** Rule type name → value operations */
     public RelationshipUpdateEntry ruleTypes;
-    /** Child arrangement ID (UUID string) → value operations */
+    /** Child arrangement: Key = classification name (mandatory), Value = child arrangement UUID string operations */
     public RelationshipUpdateEntry childArrangements;
 }
 

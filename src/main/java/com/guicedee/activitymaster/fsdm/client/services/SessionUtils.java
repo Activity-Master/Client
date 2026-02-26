@@ -5,6 +5,7 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.syste
 import com.guicedee.client.IGuiceContext;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.tuples.Tuple4;
+import io.vertx.core.Vertx;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.reactive.mutiny.Mutiny;
 
@@ -123,26 +124,31 @@ public final class SessionUtils {
     }
 
     /**
-     * Fire-and-forget: subscribes to a {@link Uni} directly on the current thread.
+     * Fire-and-forget: runs the given {@link Uni} on a <b>new duplicated Vert.x context</b>.
      * <p>
-     * Each {@code withActivityMaster} Uni opens its own session and transaction, so there is
-     * no shared session state to protect. The session's lifecycle is fully contained within
-     * the Uni chain, and the SQL client pool will dispatch responses on the correct event-loop
-     * thread that the underlying connection is bound to.
+     * Hibernate Reactive's {@code withTransaction} uses the Vert.x context to track the
+     * active session. When multiple fire-and-forget operations are subscribed from the same
+     * request handler, they share the caller's context and collide — causing
+     * "Illegal pop() with non-matching JdbcValuesSourceProcessingState" or HR000069 errors.
      * <p>
-     * DO NOT wrap the subscription in a new event-loop context ({@code createEventLoopContext})
-     * — that assigns a random Netty thread which differs from the SQL connection's thread,
-     * causing Hibernate Reactive HR000069 (session used from different thread).
+     * By dispatching each subscription onto its own duplicated context, each
+     * {@code withTransaction} call gets a completely isolated session and connection.
      * <p>
      * Failures are logged at ERROR level but never propagated to the caller.
      *
-     * @param uni         the reactive pipeline to execute
-     * @param description a short label used in log messages (e.g. "event 123 relationship persistence")
+     * @param uni         the reactive pipeline to execute (should use {@code withActivityMaster})
+     * @param description a short label used in log messages (e.g. "event 123 classifications")
      */
     public static void fireAndForget(Uni<?> uni, String description) {
-        uni.subscribe().with(
-                success -> log.trace("Async operation completed: {}", description),
-                failure -> log.error("Async operation failed: {}: {}", description, failure.getMessage(), failure)
+        Vertx vertx = Vertx.currentContext() != null
+                ? Vertx.currentContext().owner()
+                : IGuiceContext.get(Vertx.class);
+        io.vertx.core.Context newCtx = vertx.getOrCreateContext();
+        newCtx.runOnContext(v ->
+                uni.subscribe().with(
+                        success -> log.trace("Async operation completed: {}", description),
+                        failure -> log.error("Async operation failed: {}: {}", description, failure.getMessage(), failure)
+                )
         );
     }
 

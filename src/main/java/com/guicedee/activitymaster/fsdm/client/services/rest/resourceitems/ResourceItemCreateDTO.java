@@ -45,7 +45,7 @@ public class ResourceItemCreateDTO {
     public Map<String, String> types;
     /**
      * Optional child resource item IDs to link after creation.
-     * Key = child resource item UUID (as string), Value = relationship value.
+     * Key = classification name (mandatory), Value = child resource item UUID (as string).
      */
     public Map<String, String> children;
 }

@@ -14,20 +14,17 @@ import java.util.Map;
 @Setter
 public class EventCreateDTO {
     /**
-     * Event type name (e.g. "Login", "PackingSession").
+     * Event types to create/associate.
+     * Key = event type name (e.g. "Login", "PackingSession"), Value = relationship value.
+     * At least one entry is required — the first entry is used as the primary event type during creation.
      */
     @NotNull
-    public String type;
+    public Map<String, String> types;
     /**
      * Optional classifications to add after creation.
      * Key = classification name, Value = classification value.
      */
     public Map<String, String> classifications;
-    /**
-     * Optional additional event types to add after creation.
-     * Key = event type name, Value = relationship value.
-     */
-    public Map<String, String> types;
     /**
      * Optional involved parties. Key = classification name, Value = store value.
      */

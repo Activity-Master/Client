@@ -20,7 +20,7 @@ public class ResourceItemUpdateDTO {
     public RelationshipUpdateEntry classifications;
     /** Resource item type name → value operations */
     public RelationshipUpdateEntry types;
-    /** Child resource item UUID → value operations */
+    /** Child resource item: Key = classification name (mandatory), Value = child UUID string operations */
     public RelationshipUpdateEntry children;
 }
 
