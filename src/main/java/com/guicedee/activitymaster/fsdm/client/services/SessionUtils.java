@@ -55,7 +55,8 @@ public final class SessionUtils {
      */
     public static <T> Uni<T> withSessionTx(Mutiny.SessionFactory sessionFactory,
                                            Function<Mutiny.Session, Uni<T>> work) {
-        return sessionFactory.withTransaction((session, tx) -> work.apply(session));
+        return sessionFactory.openSession().chain(session -> session.withTransaction(tx -> work.apply(session)
+        ).eventually(session::close));
     }
 
     /**

@@ -70,8 +70,21 @@ public interface IResourceItemService<J extends IResourceItemService<J>>
 			* @param resourceItemId
 			* @return
 			*/
+		default Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId) {
+			return updateResourceData(session, data, resourceItemId, null);
+		}
 
-		Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId);
+		/**
+			* Direct method for updating only the data (not any metadata or last updated).
+			* Accepts an optional systemName used when auto-creating missing resource data.
+			*
+			* @param session
+			* @param data
+			* @param resourceItemId
+			* @param systemName the requesting system name (nullable — falls back to ActivityMasterSystemName)
+			* @return
+			*/
+		Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId, String systemName);
 
   Uni<Void> addResourceItemTypeRelationship(Mutiny.Session session, IResourceItem<?,?> resourceItem, String typeName, String value, ISystems<?, ?> system, UUID... identityToken);
 

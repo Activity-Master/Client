@@ -5,6 +5,7 @@ import static com.guicedee.activitymaster.fsdm.client.services.classifications.E
 
 public enum ResourceItemTypes
 {
+	Unknown("An unknown resource item type", ResourceItemType),
 	PhysicalDocuments("This is a reference to a physical document", ResourceItemType),
 	Documents("An electronic document", ResourceItemType),
 	JsonPacket("A JSON packet", ResourceItemType),
