@@ -28,7 +28,7 @@ Add the dependency to your Maven project. Versions are managed via the parent/BO
 
 ```xml
 <dependency>
-  <groupId>com.guicedee.activitymaster</groupId>
+  <groupId>com.activity-master</groupId>
   <artifactId>activity-master-client</artifactId>
 </dependency>
 ```
