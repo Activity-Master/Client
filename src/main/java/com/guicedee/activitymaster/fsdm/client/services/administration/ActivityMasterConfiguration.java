@@ -10,6 +10,7 @@ import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterP
 import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterSystem;
 import com.guicedee.client.IGuiceContext;
 import com.guicedee.client.scopes.CallScopeProperties;
+import com.guicedee.client.scopes.CallScoper;
 import io.smallrye.mutiny.Uni;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.reactive.mutiny.Mutiny;
@@ -62,13 +63,17 @@ public class ActivityMasterConfiguration
 
 	public boolean isSecurityEnabled()
 	{
-		CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
-		if (csp != null)
+		CallScoper callScoper = IGuiceContext.get(CallScoper.class);
+		if (callScoper.isStartedScope())
 		{
-			Boolean s = (Boolean) csp.getProperties().get("fsdm.securities");
-			if (s != null)
+			CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
+			if (csp != null)
 			{
-				return s;
+				Boolean s = (Boolean) csp.getProperties().get("fsdm.securities");
+				if (s != null)
+				{
+					return s;
+				}
 			}
 		}
 		return true;
@@ -76,10 +81,14 @@ public class ActivityMasterConfiguration
 
 	public void setSecurityEnabled(boolean securityEnabled)
 	{
-		CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
-		if (csp != null)
+		CallScoper callScoper = IGuiceContext.get(CallScoper.class);
+		if (callScoper.isStartedScope())
 		{
-			csp.getProperties().put("fsdm.securities", securityEnabled);
+			CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
+			if (csp != null)
+			{
+				csp.getProperties().put("fsdm.securities", securityEnabled);
+			}
 		}
 	}
 
