@@ -129,12 +129,11 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
                                         "and (effectivefromdate <= current_timestamp) " +
                                         "and (effectivetodate > current_timestamp) " +
                                         "and activeflagid in (:visibleIds)";
-                                return sess.createNativeQuery(sql)
-                                        .setParameter("ent", enterpriseId)
+                                return sess.createNativeQuery(sql, java.util.UUID.class)
+                                        .setParameter("ent", enterpriseId.getId())
                                         .setParameter("name", name)
                                         .setParameter("visibleIds", visibleIds)
-                                        .getSingleResult()
-                                        .map(result -> (java.util.UUID) result);
+                                        .getSingleResult();
                             });
                 });
     }
