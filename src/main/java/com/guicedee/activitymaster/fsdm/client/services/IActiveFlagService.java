@@ -41,47 +41,37 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      * Resolves an ActiveFlag ID (UUID) by its name within a specific enterprise using a lightweight
      * native SQL lookup with a small in-memory cache to reduce database load.
      */
-    default Uni<UUID> resolveActiveFlagIdByName(Mutiny.Session session, UUID enterpriseId, String flagName) {
-        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
-                .getActiveFlagId(session, enterpriseId, flagName, (sess, name) -> {
-                    String sql = "select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = :name";
-                    return sess.createNativeQuery(sql)
-                               .setParameter("ent", enterpriseId)
-                               .setParameter("name", name)
-                               .getSingleResult()
-                               .map(result -> (UUID) result);
-                });
-    }
+    Uni<UUID> resolveActiveFlagIdByName(Mutiny.Session session, IEnterprise<?, ?> enterpriseId, String flagName);
 
     /**
      * Returns the set of ActiveFlag UUIDs for the VisibleRangeAndUp for the given enterprise.
      * Contract: never returns null. If a required flag is missing, lets NoResultException propagate.
      */
-    default Uni<List<UUID>> getVisibleRangeAndUpIds(Mutiny.Session session, UUID enterpriseId) {
-        return resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Archived.name())
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.LongTermStorage.name())
+    default Uni<List<UUID>> getVisibleRangeAndUpIds(Mutiny.Session session, IEnterprise<?, ?> enterprise) {
+        return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Archived.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.LongTermStorage.name())
                 .map(id -> { List<UUID> l = new ArrayList<>(); l.add(list); l.add(id); return l; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.MidTermStorage.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.MidTermStorage.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.ShortTermStorage.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.ShortTermStorage.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Resolved.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Resolved.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Completed.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Completed.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Active.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Active.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Current.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Current.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Important.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Important.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Highlighted.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Highlighted.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Pending.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Pending.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Always.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Always.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Permanent.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Permanent.name())
                 .map(id -> { list.add(id); return list; }));
     }
 
@@ -89,13 +79,13 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      * Returns the set of ActiveFlag UUIDs for the RemovedRange for the given enterprise.
      * Contract: never returns null. If a required flag is missing, lets NoResultException propagate.
      */
-    default Uni<List<UUID>> getRemovedRangeIds(Mutiny.Session session, UUID enterpriseId) {
-        return resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Deleted.name())
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Hidden.name())
+    default Uni<List<UUID>> getRemovedRangeIds(Mutiny.Session session, IEnterprise<?, ?> enterprise) {
+        return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Deleted.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Hidden.name())
                 .map(id -> { List<UUID> l = new ArrayList<>(); l.add(list); l.add(id); return l; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Invisible.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Invisible.name())
                 .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterpriseId, ActiveFlag.Errored.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Errored.name())
                 .map(id -> { list.add(id); return list; }));
     }
 }

@@ -82,5 +82,6 @@ module com.guicedee.activitymaster.fsdm.client {
     opens com.guicedee.activitymaster.fsdm.client.services.rest.arrangements to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
     opens com.guicedee.activitymaster.fsdm.client.services.rest.resourceitems to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
     opens com.guicedee.activitymaster.fsdm.client.services.rest.parties to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    exports com.guicedee.activitymaster.fsdm.client.services.cache;
 }
 
