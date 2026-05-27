@@ -217,21 +217,21 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                         IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
                                         return activeFlagSvc.getActiveFlag(session, enterprise);
                                     })
-                                            .map(activeFlag -> {
-                                                tableForClassification.setActiveFlagID(activeFlag);
-                                                tableForClassification.setSystemID(fetchedSystem);
-                                                tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
-                                                tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
-                                                tableForClassification.setClassificationID(classification);
-                                                if (!Strings.isNullOrEmpty(value) && value.length() > 254) {
-                                                    throw new ClassificationException("Message value too long - " + value);
-                                                }
-                                                tableForClassification.setValue(value);
+                                    .map(activeFlag -> {
+                                        tableForClassification.setActiveFlagID(activeFlag);
+                                        tableForClassification.setSystemID(fetchedSystem);
+                                        tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
+                                        tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+                                        tableForClassification.setClassificationID(classification);
+                                        if (!Strings.isNullOrEmpty(value) && value.length() > 254) {
+                                            throw new ClassificationException("Message value too long - " + value);
+                                        }
+                                        tableForClassification.setValue(value);
 
-                                                configureForClassification(session, tableForClassification, classification, fetchedSystem);
+                                        configureForClassification(session, tableForClassification, classification, fetchedSystem);
 
-                                                return tableForClassification;
-                                            }));
+                                        return tableForClassification;
+                                    }));
                 })
                 .chain(table -> session.persist(table)
                         .replaceWith(Uni.createFrom()
