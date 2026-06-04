@@ -11,30 +11,126 @@ import java.util.List;
 import java.util.UUID;
 
 
+/**
+ * Service interface for managing Active Flags within the system.
+ * Active flags determine the visibility and state of records (e.g., Active, Archived, Deleted).
+ *
+ * @param <J> The type of the service that implements this interface
+ */
 public interface IActiveFlagService<J extends IActiveFlagService<J>>
 {
+    /**
+     * The name of the Active Flag system.
+     */
     String ActivateFlagSystemName = "Active Flag System";
 
+    /**
+     * Finds an active flag by its name within a specific enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param flag            The name of the flag to find
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting the found active flag
+     */
     Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.Session session, String flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /**
+     * Gets a new, uninitialized active flag instance.
+     *
+     * @return A new active flag instance
+     */
     IActiveFlag<?,?> get();
 
+    /**
+     * Finds an active flag by its enumeration value within a specific enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param flag            The ActiveFlag enum value
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting the found active flag
+     */
     Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.Session session, ActiveFlag flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /**
+     * Finds the range of active flags for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting a list of active flags in the active range
+     */
     Uni<List<IActiveFlag<?,?>>> findActiveRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ... identifyingToken);
 
+    /**
+     * Gets the range of visible active flags for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting a list of active flags in the visible range
+     */
     Uni<List<IActiveFlag<?,?>>> getVisibleRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /**
+     * Gets the range of removed active flags for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting a list of active flags in the removed range
+     */
     Uni<List<IActiveFlag<?,?>>> getRemovedRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /**
+     * Gets the range of archived active flags for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting a list of active flags in the archive range
+     */
     Uni<List<IActiveFlag<?,?>>> getArchiveRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
 
+    /**
+     * Gets the range of highlighted active flags for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting a list of active flags in the highlighted range
+     */
     Uni<List<IActiveFlag<?,?>>> getHighlightedRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /**
+     * Gets the default 'Active' flag for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting the 'Active' flag
+     */
     Uni<IActiveFlag<?,?>> getActiveFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
 
+    /**
+     * Gets the 'Archived' flag for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting the 'Archived' flag
+     */
     Uni<IActiveFlag<?,?>> getArchivedFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /**
+     * Gets the 'Deleted' flag for the given enterprise.
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting the 'Deleted' flag
+     */
     Uni<IActiveFlag<?,?>> getDeletedFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
     /**

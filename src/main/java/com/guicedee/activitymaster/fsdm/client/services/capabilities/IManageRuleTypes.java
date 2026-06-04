@@ -274,9 +274,10 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
                                                                 .chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
                                                                         .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
                                                                                 .chain(archivedFlag -> {
-                                                                                    existingTable.setActiveFlagID(archivedFlag);
-                                                                                    existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                                                    return session.merge(existingTable);
+                                                                                    // Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+                                                                                    // is closed without detaching the managed entity, which would corrupt the following insert.
+                                                                                    return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
+                                                                                            convertToUTCDateTime(RootEntity.getNow()));
                                                                                 })
                                                                                 .chain(() -> {
                                                                                     IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getRuleTypeRelationshipClass());
@@ -366,9 +367,10 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
                                                                 .chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
                                                                         .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
                                                                                 .chain(archivedFlag -> {
-                                                                                    existingTable.setActiveFlagID(archivedFlag);
-                                                                                    existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                                                    return session.merge(existingTable);
+                                                                                    // Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+                                                                                    // is closed without detaching the managed entity, which would corrupt the following insert.
+                                                                                    return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
+                                                                                            convertToUTCDateTime(RootEntity.getNow()));
                                                                                 })
                                                                                 .chain(() -> {
                                                                                     IWarehouseRelationshipTable<?, ?, J, IRulesType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getRuleTypeRelationshipClass());
@@ -444,7 +446,9 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
                                     return Uni.createFrom().item((IRelationshipValue<J, IRulesType<?, ?>, ?>) existingTable);
                                 }
 
-                                // Otherwise, expire the relation
+                                // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                session.detach(existingTable);
                                 existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
                                 return session.merge(existingTable);
                             });
@@ -494,6 +498,9 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
                                         .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                 .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                                         .chain(archivedFlag -> {
+                                                            // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                                            // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                                            session.detach(existingTable);
                                                             existingTable.setActiveFlagID(archivedFlag);
                                                             existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
                                                             return session.merge(existingTable);
@@ -545,6 +552,9 @@ public interface IManageRuleTypes<J extends IWarehouseBaseTable<J, ?, ? extends 
                                         .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                 .chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
                                                         .chain(deletedFlag -> {
+                                                            // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                                            // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                                            session.detach(existingTable);
                                                             existingTable.setActiveFlagID(deletedFlag);
                                                             existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
                                                             return session.merge(existingTable);

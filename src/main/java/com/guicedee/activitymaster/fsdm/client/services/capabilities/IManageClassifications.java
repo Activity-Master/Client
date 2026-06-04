@@ -358,11 +358,12 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                                             .chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
                                                                     .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
                                                                             .chain(archivedFlag -> {
-                                                                                finalTableForClassification.setActiveFlagID(archivedFlag);
-                                                                                finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-                                                                                return session.merge(finalTableForClassification);
+                                                                                // Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+                                                                                // is closed without detaching the managed entity, which would corrupt the following insert.
+                                                                                return SCDLinkMaintenance.retireActiveRow(session, finalTableForClassification, finalTableForClassification.getId(), archivedFlag,
+                                                                                        convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
                                                                             })
-                                                                            .chain(updatedTable -> {
+                                                                            .chain(retiredCount -> {
                                                                                 IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> newTableForClassification =
                                                                                         (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
 
@@ -429,6 +430,9 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                                 .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                         .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                                                 .chain(archivedFlag -> {
+                                                                    // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                                                    // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                                                    session.detach(finalTableForClassification);
                                                                     finalTableForClassification.setActiveFlagID(archivedFlag);
                                                                     finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
                                                                     return session.merge(finalTableForClassification);
@@ -473,6 +477,9 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                                 .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                                         .chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
                                                                 .chain(deletedFlag -> {
+                                                                    // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                                                    // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                                                    session.detach(finalTableForClassification);
                                                                     finalTableForClassification.setActiveFlagID(deletedFlag);
                                                                     finalTableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
                                                                     return session.merge(finalTableForClassification);

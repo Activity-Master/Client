@@ -12,62 +12,222 @@ import java.util.List;
 import java.util.UUID;
 
 
+/**
+ * Service interface for managing resource items.
+ * Resource items are atomic pieces of information or files stored within the system.
+ *
+ * @param <J> The type of the service that implements this interface
+ */
 public interface IResourceItemService<J extends IResourceItemService<J>> {
+    /**
+     * The name of the Resource Items system.
+     */
     String ResourceItemSystemName = "Resource Items System";
 
+    /**
+     * Gets a new, uninitialized resource item instance.
+     *
+     * @return A new resource item instance
+     */
     IResourceItem<?, ?> get();
 
+    /**
+     * Gets a new, uninitialized resource data instance.
+     *
+     * @return A new resource data instance
+     */
     IResourceData<?, ?, ?> getData();
 
+    /**
+     * Creates a new resource item type using an enum.
+     *
+     * @param session        The Mutiny session to use
+     * @param value           The type enum
+     * @param system          The system creating the type
+     * @param identityToken   Optional security identity tokens
+     * @return A Uni emitting the created resource item type
+     */
     default Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, Enum<?> value, ISystems<?, ?> system, UUID... identityToken) {
         return createType(session, value.toString(), value.toString(), system, identityToken);
     }
 
+    /**
+     * Creates a new resource item type using an enum and a description.
+     *
+     * @param session        The Mutiny session to use
+     * @param value           The type enum
+     * @param description     The description
+     * @param system          The system creating the type
+     * @param identityToken   Optional security identity tokens
+     * @return A Uni emitting the created resource item type
+     */
     default Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, Enum<?> value, String description, ISystems<?, ?> system, UUID... identityToken) {
         return createType(session, value.toString(), description, system, identityToken);
     }
 
+    /**
+     * Gets a new, uninitialized resource item type instance.
+     *
+     * @return A new resource item type instance
+     */
     IResourceItemType<?, ?> getType();
 
+    /**
+     * Creates a new resource item type by name and description.
+     *
+     * @param session        The Mutiny session to use
+     * @param value           The name of the type
+     * @param description     The description
+     * @param system          The system creating the type
+     * @param identityToken   Optional security identity tokens
+     * @return A Uni emitting the created resource item type
+     */
     Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, String value, String description, ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item type with a specific key.
+     *
+     * @param session        The Mutiny session to use
+     * @param value           The name of the type
+     * @param key             The UUID key for the type
+     * @param description     The description
+     * @param system          The system creating the type
+     * @param identityToken   Optional security identity tokens
+     * @return A Uni emitting the created resource item type
+     */
     Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, String value, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item.
+     *
+     * @param session               The Mutiny session to use
+     * @param identityResourceType  The name of the resource item type
+     * @param resourceItemDataValue The text value for the resource item
+     * @param system                The system creating the item
+     * @param identityToken         Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, String resourceItemDataValue,
                                     ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item with binary data.
+     *
+     * @param session               The Mutiny session to use
+     * @param identityResourceType  The name of the resource item type
+     * @param resourceItemDataValue The text value for the resource item
+     * @param data                  The binary data
+     * @param system                The system creating the item
+     * @param identityToken         Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, String resourceItemDataValue, byte[] data,
                                     ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item with a specific key.
+     *
+     * @param session               The Mutiny session to use
+     * @param identityResourceType  The name of the resource item type
+     * @param key                   The UUID key for the item
+     * @param resourceItemDataValue The text value for the resource item
+     * @param system                The system creating the item
+     * @param identityToken         Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, UUID key, String resourceItemDataValue,
                                     ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item with a specific key and binary data.
+     *
+     * @param session               The Mutiny session to use
+     * @param identityResourceType  The name of the resource item type
+     * @param key                   The UUID key for the item
+     * @param resourceItemDataValue The text value for the resource item
+     * @param data                  The binary data
+     * @param system                The system creating the item
+     * @param identityToken         Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, UUID key, String resourceItemDataValue, byte[] data,
                                     ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item with source system ID and effective date.
+     *
+     * @param session                     The Mutiny session to use
+     * @param identityResourceType        The name of the resource item type
+     * @param resourceItemDataValue       The text value for the resource item
+     * @param originalSourceSystemUniqueID The ID in the source system
+     * @param effectiveFromDate            The effective date
+     * @param system                      The system creating the item
+     * @param identityToken               Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
                                     LocalDateTime effectiveFromDate,
                                     ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item with source system ID, effective date, and binary data.
+     *
+     * @param session                     The Mutiny session to use
+     * @param identityResourceType        The name of the resource item type
+     * @param resourceItemDataValue       The text value for the resource item
+     * @param originalSourceSystemUniqueID The ID in the source system
+     * @param effectiveFromDate            The effective date
+     * @param data                        The binary data
+     * @param system                      The system creating the item
+     * @param identityToken               Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
                                     LocalDateTime effectiveFromDate, byte[] data,
                                     ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item with key, source system ID, and effective date.
+     *
+     * @param session                     The Mutiny session to use
+     * @param identityResourceType        The name of the resource item type
+     * @param key                         The UUID key for the item
+     * @param resourceItemDataValue       The text value for the resource item
+     * @param originalSourceSystemUniqueID The ID in the source system
+     * @param effectiveFromDate            The effective date
+     * @param system                      The system creating the item
+     * @param identityToken               Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, UUID key, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
                                     LocalDateTime effectiveFromDate,
                                     ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Creates a new resource item with key, source system ID, effective date, and binary data.
+     *
+     * @param session                     The Mutiny session to use
+     * @param identityResourceType        The name of the resource item type
+     * @param key                         The UUID key for the item
+     * @param resourceItemDataValue       The text value for the resource item
+     * @param originalSourceSystemUniqueID The ID in the source system
+     * @param effectiveFromDate            The effective date
+     * @param data                        The binary data
+     * @param system                      The system creating the item
+     * @param identityToken               Optional security identity tokens
+     * @return A Uni emitting the created resource item
+     */
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, UUID key, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
                                     LocalDateTime effectiveFromDate, byte[] data,
                                     ISystems<?, ?> system, UUID... identityToken);
 
     /**
-     * Direct method for updating only the data (not any metadata or last updated)
+     * Direct method for updating only the binary data of a resource item.
      *
-     * @param session
-     * @param data
-     * @param resourceItemId
-     * @return
+     * @param session        The Mutiny session to use
+     * @param data           The new binary data
+     * @param resourceItemId The UUID of the resource item
+     * @return A Uni that completes when the data is updated
      */
     default Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId) {
         return updateResourceData(session, data, resourceItemId, null);
@@ -77,40 +237,127 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      * Direct method for updating only the data (not any metadata or last updated).
      * Accepts an optional systemName used when auto-creating missing resource data.
      *
-     * @param session
-     * @param data
-     * @param resourceItemId
-     * @param systemName     the requesting system name (nullable — falls back to ActivityMasterSystemName)
-     * @return
+     * @param session        The Mutiny session to use
+     * @param data           The new binary data
+     * @param resourceItemId The UUID of the resource item
+     * @param systemName     The requesting system name (nullable — falls back to ActivityMasterSystemName)
+     * @return A Uni that completes when the data is updated
      */
     Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId, String systemName);
 
+    /**
+     * Adds a relationship between a resource item and a type.
+     *
+     * @param session        The Mutiny session to use
+     * @param resourceItem   The resource item
+     * @param typeName       The name of the relationship type
+     * @param value          The value for the relationship
+     * @param system         The system performing the operation
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni that completes when the relationship is added
+     */
     Uni<Void> addResourceItemTypeRelationship(Mutiny.Session session, IResourceItem<?, ?> resourceItem, String typeName, String value, ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Finds a resource item by its type and classification.
+     *
+     * @param session        The Mutiny session to use
+     * @param resourceType   The resource item type name
+     * @param classification The classification name
+     * @param value          The classification value
+     * @param systems        The system searching for the item
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the found resource item
+     */
     Uni<IResourceItem<?, ?>> findByClassification(Mutiny.Session session, String resourceType,
                                                   String classification,
                                                   String value,
                                                   ISystems<?, ?> systems,
                                                   UUID... identityToken);
 
+    /**
+     * Finds all resource items matching a type and classification.
+     *
+     * @param session        The Mutiny session to use
+     * @param resourceType   The resource item type name
+     * @param classification The classification name
+     * @param value          The classification value
+     * @param systems        The system searching for items
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting a list of relationship values containing resource items
+     */
     Uni<List<IRelationshipValue<IResourceItem<?, ?>, IClassification<?, ?>, ?>>> findByClassificationAll(Mutiny.Session session, String resourceType,
                                                                                                          String classification,
                                                                                                          String value,
                                                                                                          ISystems<?, ?> systems,
                                                                                                          UUID... identityToken);
 
+    /**
+     * Finds a resource item by its unique ID.
+     *
+     * @param session The Mutiny session to use
+     * @param uuid    The UUID of the resource item
+     * @return A Uni emitting the found resource item
+     */
     Uni<IResourceItem<?, ?>> findByUUID(Mutiny.Session session, UUID uuid);
 
+    /**
+     * Finds a resource item by its original source unique ID.
+     *
+     * @param session               The Mutiny session to use
+     * @param originalSourceUniqueID The ID in the source system
+     * @param systems               The system searching for the item
+     * @param identityToken          Optional security identity tokens
+     * @return A Uni emitting the found resource item
+     */
     Uni<IResourceItem<?, ?>> findByOriginalSourceUniqueID(Mutiny.Session session, UUID originalSourceUniqueID,
                                                           ISystems<?, ?> systems,
                                                           UUID... identityToken);
 
+    /**
+     * Finds a resource item type by name.
+     *
+     * @param session        The Mutiny session to use
+     * @param type           The name of the type
+     * @param system         The system searching for the type
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the found resource item type
+     */
     Uni<IResourceItemType<?, ?>> findResourceItemType(Mutiny.Session session, String type, ISystems<?, ?> system, UUID... identityToken);
 
+    /**
+     * Finds all resource items of a given type.
+     *
+     * @param session        The Mutiny session to use
+     * @param type           The name of the resource item type
+     * @param systems        The system searching for items
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting a list of resource items
+     */
     Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.Session session, String type, ISystems<?, ?> systems, UUID... identityToken);
 
+    /**
+     * Finds resource items of a given type with a specific value.
+     *
+     * @param session        The Mutiny session to use
+     * @param type           The name of the resource item type
+     * @param value          The text value to match
+     * @param systems        The system searching for items
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting a list of resource items
+     */
     Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.Session session, String type, String value, ISystems<?, ?> systems, UUID... identityToken);
 
+    /**
+     * Creates a new resource item and then attempts to find it (idempotent creation).
+     *
+     * @param session               The Mutiny session to use
+     * @param identityResourceType  The name of the resource item type
+     * @param resourceItemDataValue The text value
+     * @param system                The system performing the operation
+     * @param identityToken         Optional security identity tokens
+     * @return A Uni emitting the resource item
+     */
     Uni<IResourceItem<?, ?>> createAndFind(Mutiny.Session session, String identityResourceType, String resourceItemDataValue,
                                            ISystems<?, ?> system, UUID... identityToken);
 

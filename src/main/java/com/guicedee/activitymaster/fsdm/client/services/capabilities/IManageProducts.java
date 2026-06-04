@@ -305,9 +305,10 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 							.chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
 								.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 								.chain(archivedFlag -> {
-									existingTable.setActiveFlagID(archivedFlag);
-									existingTable.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									return session.merge(existingTable);
+									// Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+									// is closed without detaching the managed entity, which would corrupt the following insert.
+									return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
+									        convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 								})
 								.chain(() -> {
 									IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> newTableForClassification = get(getProductRelationshipClass());

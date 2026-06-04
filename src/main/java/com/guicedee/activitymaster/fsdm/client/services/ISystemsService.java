@@ -47,46 +47,99 @@ public interface ISystemsService<J extends ISystemsService<J>> {
 
     /**
      * Gets the Activity Master system.
+     *
+     * @param session        The Mutiny session to use
+     * @param system         The system making the request
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the Activity Master system
      */
     Uni<ISystems<?, ?>> getActivityMaster(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
 
     /**
-     * Gets the Activity Master system.
+     * Gets the Activity Master system for a specific enterprise.
+     *
+     * @param session           The Mutiny session to use
+     * @param requestingSystem  The enterprise requesting the system
+     * @param identityToken     Optional security identity tokens
+     * @return A Uni emitting the Activity Master system
      */
     Uni<ISystems<?, ?>> getActivityMaster(Mutiny.Session session, IEnterprise<?, ?> requestingSystem, UUID... identityToken);
 
     /**
-     * Checks if a system exists.
+     * Checks if a system with the specified name exists within an enterprise.
+     *
+     * @param session        The Mutiny session to use
+     * @param enterprise     The enterprise to search within
+     * @param systemName     The name of the system to check
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting true if the system exists, false otherwise
      */
     Uni<Boolean> doesSystemExist(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, UUID... identityToken);
 
     /**
      * Finds a system by enterprise and system name.
+     *
+     * @param session        The Mutiny session to use
+     * @param enterprise     The enterprise to search within
+     * @param systemName     The name of the system to find
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the found system
      */
     Uni<ISystems<?, ?>> findSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, UUID... identityToken);
 
     /**
-     * Finds a system by system and token.
+     * Finds a system by system object and token.
+     *
+     * @param session        The Mutiny session to use
+     * @param system         The system object
+     * @param token          The token to search for
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the found system
      */
     Uni<ISystems<?, ?>> findSystem(Mutiny.Session session, ISystems<?, ?> system, String token, UUID... identityToken);
 
     /**
-     * Registers a new system.
+     * Registers a new system for an enterprise.
+     *
+     * @param session    The Mutiny session to use
+     * @param enterprise The enterprise to register the system for
+     * @param newSystem  The system object to register
+     * @return A Uni emitting the registration result string
      */
     Uni<String> registerNewSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise, ISystems<?, ?> newSystem);
 
     /**
-     * Creates a new system.
+     * Creates a new system within an enterprise.
+     *
+     * @param session        The Mutiny session to use
+     * @param enterprise     The enterprise to create the system for
+     * @param systemName     The name of the new system
+     * @param systemDesc     The description of the new system
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the created system
      */
     Uni<ISystems<?, ?>> create(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, String systemDesc, UUID... identityToken);
 
     /**
-     * Creates a new system with history name.
+     * Creates a new system with a specific history name.
+     *
+     * @param session        The Mutiny session to use
+     * @param enterprise     The enterprise to create the system for
+     * @param systemName     The name of the new system
+     * @param systemDesc     The description of the new system
+     * @param historyName    The history name for the system
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the created system
      */
     Uni<ISystems<?, ?>> create(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, String systemDesc, String historyName, UUID... identityToken);
 
     /**
      * Gets the security identity token for a system.
+     *
+     * @param session        The Mutiny session to use
+     * @param system         The system to get the token for
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the security identity token UUID
      */
     Uni<UUID> getSecurityIdentityToken(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
 

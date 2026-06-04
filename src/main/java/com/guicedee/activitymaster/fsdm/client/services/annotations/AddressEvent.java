@@ -3,7 +3,8 @@ package com.guicedee.activitymaster.fsdm.client.services.annotations;
 import java.lang.annotation.*;
 
 /**
- * Save a change to addresses in the current running event
+ * Annotation to save a change to addresses in the current running event.
+ * It specifies the action taken on the address and an optional classification.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
@@ -11,6 +12,17 @@ import java.lang.annotation.*;
 @Documented
 public @interface AddressEvent
 {
+	/**
+	 * The action performed on the address.
+	 *
+	 * @return The event action
+	 */
 	EventAction value();
+
+	/**
+	 * The classification name associated with the address event.
+	 *
+	 * @return The classification name, defaults to "NoClassification"
+	 */
 	String classificationName() default "NoClassification";
 }

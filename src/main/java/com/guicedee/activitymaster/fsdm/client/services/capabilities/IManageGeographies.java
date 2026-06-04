@@ -192,17 +192,18 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 							return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
 								.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
 								.chain(archivedFlag -> {
-									existingTable.setActiveFlagID(archivedFlag);
-									existingTable.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									return session.merge(existingTable);
+									// Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+									// is closed without detaching the managed entity, which would corrupt the following insert.
+									return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
+									        convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 								})
-								.chain(updatedTable -> {
+								.chain(retiredCount -> {
 									IWarehouseRelationshipTable<?, ?, J, IGeography<?, ?>, java.util.UUID, ?> newTableForClassification = get(getGeographyRelationshipClass());
 									newTableForClassification.setId(null);
-									newTableForClassification.setClassificationID(updatedTable.getClassificationID());
+									newTableForClassification.setClassificationID(existingTable.getClassificationID());
 									newTableForClassification.setSystemID(system);
-									newTableForClassification.setOriginalSourceSystemID(updatedTable.getId());
-									newTableForClassification.setOriginalSourceSystemUniqueID(updatedTable.getId());
+									newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+									newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
 									newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 									newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
@@ -213,7 +214,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 											newTableForClassification.setActiveFlagID(activeFlag);
 											newTableForClassification.setValue(storeValue == null ? "" : storeValue);
 											newTableForClassification.setEnterpriseID(enterprise);
-											configureGeographyAddable(newTableForClassification, (J) updatedTable.getPrimary(), updatedTable.getSecondary(),
+											configureGeographyAddable(newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(),
 													classification, storeValue, system);
 											return newTableForClassification;
 										})
@@ -222,7 +223,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 											// Start the createDefaultSecurity operation but don't wait for it to complete
 											table.createDefaultSecurity(session, system, identityToken);
 											// Return the original table immediately without waiting for createDefaultSecurity to complete
-											return Uni.createFrom().item(updatedTable);
+											return Uni.createFrom().item(table);
 										});
 							})));
 						});

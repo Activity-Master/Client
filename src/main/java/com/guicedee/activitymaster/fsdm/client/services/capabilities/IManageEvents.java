@@ -271,9 +271,10 @@ public interface IManageEvents<J extends IWarehouseBaseTable<J, ?, ? extends Ser
                                         .chain(systemEnterprise -> session.fetch(originalSystem).chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
                                                 .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
                                                         .chain(archivedFlag -> {
-                                                            existingTable.setActiveFlagID(archivedFlag);
-                                                            existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                            return session.merge(existingTable);
+                                                            // Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+                                                            // is closed without detaching the managed entity, which would corrupt the following insert.
+                                                            return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
+                                                                    convertToUTCDateTime(RootEntity.getNow()));
                                                         })
                                                         .chain(() -> {
                                                             IWarehouseRelationshipTable<?, ?, J, IEvent<?, ?>, java.util.UUID, ?> newTableForClassification = get(getEventRelationshipClass());
@@ -365,9 +366,10 @@ public interface IManageEvents<J extends IWarehouseBaseTable<J, ?, ? extends Ser
                                         .chain(systemEnterprise -> session.fetch(originalSystem).chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
                                                 .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
                                                         .chain(archivedFlag -> {
-                                                            existingTable.setActiveFlagID(archivedFlag);
-                                                            existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                            return session.merge(existingTable);
+                                                            // Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+                                                            // is closed without detaching the managed entity, which would corrupt the following insert.
+                                                            return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
+                                                                    convertToUTCDateTime(RootEntity.getNow()));
                                                         })
                                                         .chain(() -> {
                                                             IWarehouseRelationshipTable<?, ?, J, IEvent<?, ?>, java.util.UUID, ?> newTableForClassification = get(getEventRelationshipClass());
@@ -444,7 +446,9 @@ public interface IManageEvents<J extends IWarehouseBaseTable<J, ?, ? extends Ser
                                     return Uni.createFrom().item((IRelationshipValue<J, IEvent<?, ?>, ?>) existingTable);
                                 }
 
-                                // Otherwise, expire the relation
+                                // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                session.detach(existingTable);
                                 existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
                                 return session.merge(existingTable);
                             });
@@ -498,6 +502,9 @@ public interface IManageEvents<J extends IWarehouseBaseTable<J, ?, ? extends Ser
                                 return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                         .chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
                                                 .chain(archivedFlag -> {
+                                                    // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                                    // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                                    session.detach(existingTable);
                                                     existingTable.setActiveFlagID(archivedFlag);
                                                     existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
                                                     return session.merge(existingTable);
@@ -553,6 +560,9 @@ public interface IManageEvents<J extends IWarehouseBaseTable<J, ?, ? extends Ser
                                 return session.fetch(system).chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
                                         .chain(enterprise -> flagService.getDeletedFlag(session, enterprise, identityToken)
                                                 .chain(deletedFlag -> {
+                                                    // Detach so the merge is an explicit update of a detached instance; under Hibernate
+                                                    // Reactive bytecode enhancement mutating a managed entity + merge is a no-op (not flushed).
+                                                    session.detach(existingTable);
                                                     existingTable.setActiveFlagID(deletedFlag);
                                                     existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
                                                     return session.merge(existingTable);

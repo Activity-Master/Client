@@ -20,7 +20,7 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 	/**
 	 * Loads systems for the specified enterprise.
 	 *
-	 * @param session
+	 * @param session        The Mutiny session to use
 	 * @param enterpriseName the name of the enterprise
 	 * @return a Uni that completes when the systems are loaded
 	 */
@@ -29,7 +29,7 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 	/**
      * Loads updates for the specified enterprise.
      *
-     * @param session
+     * @param session    The Mutiny session to use
      * @param enterprise the enterprise
      * @return a Uni that completes when the updates are loaded
      */
@@ -52,6 +52,14 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 	@Deprecated
 	Uni<Void> updatePartitionBases();
 
+	/**
+	 * Gets a system by enumeration name for the specified enterprise.
+	 *
+	 * @param session    The Mutiny session to use
+	 * @param systemName the enum value representing the system name
+	 * @param enterprise the enterprise
+	 * @return a Uni that emits the system
+	 */
 	static Uni<ISystems<?, ?>> getISystem(Mutiny.Session session, Enum systemName, IEnterprise<?,?> enterprise) {
 		return getISystem(session, systemName.toString(), enterprise);
 	}
@@ -60,7 +68,7 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 	/**
 	 * Gets a system by name for the specified enterprise.
 	 *
-	 * @param session
+	 * @param session    The Mutiny session to use
 	 * @param systemName the name of the system
 	 * @param enterprise the enterprise
 	 * @return a Uni that emits the system
@@ -76,16 +84,16 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
   */
  Map<String, Map<UUID, UUID>> SYSTEM_TOKEN_CACHE = new ConcurrentHashMap<>();
 
- /**
-  * Gets a system token by name for the specified enterprise.
-  * Results are cached per systemName per enterprise.
-  *
-  * @param session
-  * @param systemName the name of the system
-  * @param enterprise the enterprise
-  * @return a Uni that emits the system token
-  */
- static Uni<UUID> getISystemToken(Mutiny.Session session, String systemName, IEnterprise<?,?> enterprise) {
+	/**
+	 * Gets a system token by name for the specified enterprise.
+	 * Results are cached per systemName per enterprise.
+	 *
+	 * @param session    The Mutiny session to use
+	 * @param systemName the name of the system
+	 * @param enterprise the enterprise
+	 * @return a Uni that emits the system token
+	 */
+	static Uni<UUID> getISystemToken(Mutiny.Session session, String systemName, IEnterprise<?,?> enterprise) {
  	// Check if we have a cached token for this system and enterprise
  	UUID enterpriseId = enterprise.getId();
  	Map<UUID, UUID> enterpriseTokens = SYSTEM_TOKEN_CACHE.computeIfAbsent(systemName, k -> new ConcurrentHashMap<>());

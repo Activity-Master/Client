@@ -26,10 +26,11 @@ public interface IContainsHierarchy<J extends IWarehouseBaseTable<J, ?, I>, I ex
 {
   private String getHierarchyRelationshipTable()
   {
-    @SuppressWarnings("rawtypes")
-    RootEntity me = (RootEntity) this;
-    String myTableName = me.getTableName();
-    String className = getClass().getCanonicalName() + "X" + (myTableName.indexOf('.') != -1 ? myTableName.substring(myTableName.indexOf('.') + 1) : myTableName);
+    // The self-hierarchy join entity is named <EntityClass>X<EntityClass>. Derive the suffix from the
+    // entity's simple class name rather than its table name: the table name may be lower-cased (e.g.
+    // ResourceItem -> "resourceitem"), which produced an invalid class name (ResourceItemXresourceitem)
+    // and a NoClassDefFoundError ("wrong name"). The simple class name preserves the correct casing.
+    String className = getClass().getCanonicalName() + "X" + getClass().getSimpleName();
 
     return className;
   }

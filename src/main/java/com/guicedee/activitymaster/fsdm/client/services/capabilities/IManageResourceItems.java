@@ -269,9 +269,10 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                                                         .chain(fetchedOriginalSystem -> session.fetch(fetchedOriginalSystem.getEnterpriseID())
                                                 .chain(originalEnterprise -> flagService.getArchivedFlag(session, systemEnterprise, identityToken)
                                                         .chain(archivedFlag -> {
-                                                            existingTable.setActiveFlagID(archivedFlag);
-                                                            existingTable.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
-                                                            return session.merge(existingTable);
+                                                            // Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
+                                                            // is closed without detaching the managed entity, which would corrupt the following insert.
+                                                            return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
+                                                                    convertToUTCDateTime(RootEntity.getNow()));
                                                         })
                                                         .chain(() -> {
                                                             IWarehouseRelationshipTable<?, ?, J, IResourceItem<?, ?>, java.util.UUID, ?> newTableForClassification = get(getResourceItemRelationshipClass());
