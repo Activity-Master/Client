@@ -116,8 +116,13 @@ public final class SessionUtils {
                                 .chain(system -> getISystemToken(session, systemName, enterprise)
                                         .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
                                         .chain(a -> {
-                                            session.clear();
-                                            return Uni.createFrom().item(a);
+                                            // Flush any pending changes to the database BEFORE clearing the
+                                            // persistence context. session.clear() detaches everything and would
+                                            // otherwise discard not-yet-flushed inserts/updates, so the surrounding
+                                            // transaction would commit nothing (writes silently lost).
+                                            return session.flush()
+                                                    .invoke(session::clear)
+                                                    .replaceWith(a);
                                         })
                                 )
                         )

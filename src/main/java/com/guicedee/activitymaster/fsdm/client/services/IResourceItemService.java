@@ -122,16 +122,23 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
         return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
                 .getResourceItemTypeId(session, enterpriseId.getId(), resourceItemTypeName, (sess, name) -> {
                     var afService = com.guicedee.client.IGuiceContext.get(com.guicedee.activitymaster.fsdm.client.services.IActiveFlagService.class);
+                    // Compare the SCD effective window against the same logical "now" the entities are written
+                    // with (convertToUTCDateTime(RootEntity.getNow())) rather than the database current_timestamp.
+                    // The native query does not auto-flush and the DB clock can trail the just-written effective
+                    // date, so using current_timestamp made a row created earlier in this transaction invisible.
+                    java.time.OffsetDateTime now = com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderSCD
+                            .convertToUTCDateTime(com.entityassist.RootEntity.getNow());
                     return afService.getVisibleRangeAndUpIds(sess, enterpriseId)
                             .flatMap(visibleIds -> {
                                 String sql = "select resourceitemtypeid from resource.resourceitemtype " +
                                         "where enterpriseid = :ent and resourceitemtypename = :name " +
-                                        "and (effectivefromdate <= current_timestamp) " +
-                                        "and (effectivetodate > current_timestamp) " +
+                                        "and (effectivefromdate <= :now) " +
+                                        "and (effectivetodate > :now) " +
                                         "and activeflagid in (:visibleIds)";
                                 return sess.createNativeQuery(sql, java.util.UUID.class)
                                         .setParameter("ent", enterpriseId.getId())
                                         .setParameter("name", name)
+                                        .setParameter("now", now)
                                         .setParameter("visibleIds", visibleIds)
                                         .getSingleResult();
                             });
