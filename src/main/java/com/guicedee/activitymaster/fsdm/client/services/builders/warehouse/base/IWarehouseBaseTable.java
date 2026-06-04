@@ -18,6 +18,14 @@ import java.io.Serializable;
 import java.time.Duration;
 import java.util.UUID;
 
+/**
+ * Base interface for all warehouse tables in Activity Master.
+ * Provides support for SCD (Slowly Changing Dimension) and record expiration.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ * @param <I> The identifier type
+ */
 public interface IWarehouseBaseTable<
                                             J extends IWarehouseBaseTable<J, Q, I>,
                                             Q extends IQueryBuilderDefault<Q, J, I>,
@@ -26,7 +34,7 @@ public interface IWarehouseBaseTable<
 {
 
     /**
-     * Expires with immediate effect, opening a dedicated session.
+     * Expires the current record with immediate effect, opening a dedicated session.
      * <p>
      * Prefer {@link #expire(Mutiny.Session)} when an active session is already available
      * to avoid opening a second connection and to keep the work inside the caller's transaction.
@@ -39,11 +47,10 @@ public interface IWarehouseBaseTable<
     }
 
     /**
-     * Expires with immediate effect using the provided session.
+     * Expires the current record with immediate effect using the provided session.
      * <p>
      * This is the preferred overload when called from within an existing
-     * {@code withSessionTx} / {@code withActivityMaster} block because it
-     * reuses the caller's session and transaction instead of opening a new one.
+     * {@code withSessionTx} block because it reuses the caller's session and transaction.
      *
      * @param session the active Mutiny session to use
      * @return the expired entity
@@ -54,9 +61,12 @@ public interface IWarehouseBaseTable<
     }
 
     /**
-     * Expires after the given duration, opening a dedicated session and transaction.
+     * Expires the current record after the given duration, opening a dedicated session and transaction.
      * <p>
      * Prefer {@link #expire(Mutiny.Session, Duration)} when an active session is already available.
+     *
+     * @param duration The duration to add to the current time for expiry
+     * @return The expired entity
      */
     @SuppressWarnings("unchecked")
     default Uni<J> expire(Duration duration)
@@ -81,7 +91,7 @@ public interface IWarehouseBaseTable<
     }
 
     /**
-     * Expires after the given duration using the provided session.
+     * Expires the current record after the given duration using the provided session.
      * <p>
      * The caller is responsible for transaction and session lifecycle management.
      *
@@ -103,6 +113,10 @@ public interface IWarehouseBaseTable<
 
     /**
      * Internal implementation shared by all expire overloads.
+     *
+     * @param session  The session
+     * @param duration The duration
+     * @return The updated entity
      */
     @SuppressWarnings("unchecked")
     private Uni<J> expireInternal(Mutiny.Session session, Duration duration)
@@ -120,6 +134,11 @@ public interface IWarehouseBaseTable<
                 .invoke(() -> log.debug("✅ Entity expired and updated in DB: {}", me.getId()));
     }
 
+    /**
+     * Checks if the entity is a "fake" or transient entity (no ID assigned yet).
+     *
+     * @return true if ID is null
+     */
     default boolean isFake()
     {
         return getId() == null;

@@ -8,6 +8,12 @@ import java.io.Serializable;
 import java.util.UUID;
 
 
+/**
+ * Warehouse table interface for Addresses.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface IAddress<J extends IAddress<J, Q>,
 		Q extends IAddressQueryBuilder<Q, J>>
 		extends IWarehouseBaseTable<J, Q, UUID>,
@@ -19,7 +25,18 @@ public interface IAddress<J extends IAddress<J, Q>,
 		        IContainsClassifications<J>,
 		        IManageGeographies<J>
 {
+	/**
+	 * Returns the address string value.
+	 *
+	 * @return The address value
+	 */
 	String getValue();
-	
+
+	/**
+	 * Sets the address string value.
+	 *
+	 * @param value The value to set
+	 * @return This entity
+	 */
 	J setValue(String value);
 }

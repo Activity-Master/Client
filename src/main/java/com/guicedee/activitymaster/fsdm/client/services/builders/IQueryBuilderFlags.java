@@ -30,6 +30,14 @@ import java.util.function.Supplier;
 
 import static com.entityassist.enumerations.Operand.*;
 
+/**
+ * Query builder interface for entities with active flags.
+ * Provides methods for filtering based on active and visible ranges.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the warehouse entity
+ * @param <I> The type of the entity identifier
+ */
 @SuppressWarnings("DuplicatedCode")
 public interface IQueryBuilderFlags<J
                                         extends IQueryBuilderFlags<J, E, I>,
@@ -38,6 +46,12 @@ public interface IQueryBuilderFlags<J
     extends IQueryBuilderDefault<J, E, I>
 {
 
+  /**
+   * Converts a collection of strings to a SQL-safe comma-separated string for IN clauses.
+   *
+   * @param values The values to convert
+   * @return The formatted SQL string
+   */
   static String listToSqlString(Collection<String> values)
   {
     StringBuilder sb = new StringBuilder();
@@ -52,6 +66,12 @@ public interface IQueryBuilderFlags<J
     return sb.toString();
   }
 
+  /**
+   * Converts a collection of strings to a SQL-safe string for PostgreSQL cross-table definitions.
+   *
+   * @param values The values to convert
+   * @return The formatted SQL string
+   */
   static String listToSqlPostgresCrossTableString(Collection<String> values)
   {
     StringBuilder sb = new StringBuilder();
@@ -66,16 +86,38 @@ public interface IQueryBuilderFlags<J
     return sb.toString();
   }
 
+  /**
+   * Builds a CASE WHEN string for SQL pivot operations.
+   *
+   * @param columnName      The name of the column to check
+   * @param searchName      The value to search for
+   * @param valueColumnName The name of the value column to return
+   * @return The CASE statement string
+   */
   static String buildCaseString(String columnName, String searchName, String valueColumnName)
   {
     return "\t\t\tCASE WHEN " + columnName + " = '" + searchName + "' THEN " + valueColumnName + " END AS \"" + searchName + "\",";
   }
 
+  /**
+   * Builds an aggregate function string for SQL queries.
+   *
+   * @param aggregate       The aggregate function (e.g., MAX, SUM)
+   * @param valueColumnName The column to aggregate
+   * @return The aggregate expression string
+   */
   static String buildAggregrateString(String aggregate, String valueColumnName)
   {
     return "" + aggregate + "(" + valueColumnName + ") AS \"" + valueColumnName + "\",";
   }
 
+  /**
+   * Converts a collection of values to an aggregate select string.
+   *
+   * @param aggregrate The aggregate function
+   * @param values     The column values to aggregate
+   * @return The formatted SELECT expressions
+   */
   static String listToAggregateSelect(String aggregrate, Collection<String> values)
   {
     StringBuilder sb = new StringBuilder();
@@ -87,6 +129,14 @@ public interface IQueryBuilderFlags<J
     return sb.toString();
   }
 
+  /**
+   * Converts a collection of values to a CASE statement select string for PostgreSQL.
+   *
+   * @param columnName      The column name
+   * @param valueColumnName The value column name
+   * @param values          The values to generate cases for
+   * @return The formatted CASE expressions
+   */
   static String listToCaseSqlPostgresCrossTableString(String columnName, String valueColumnName, Collection<String> values)
   {
     StringBuilder sb = new StringBuilder();
@@ -98,6 +148,12 @@ public interface IQueryBuilderFlags<J
     return sb.toString();
   }
 
+  /**
+   * Converts a collection of strings to a SQL-safe pivot column string.
+   *
+   * @param values The values to convert
+   * @return The formatted pivot string
+   */
   static String listToPivotString(Collection<String> values)
   {
     StringBuilder sb = new StringBuilder();
@@ -112,6 +168,11 @@ public interface IQueryBuilderFlags<J
     return sb.toString();
   }
 
+  /**
+   * Filters the query to only include records within the active range.
+   *
+   * @return This builder
+   */
   @jakarta.validation.constraints.NotNull
   default J inActiveRange()
   {
@@ -125,6 +186,11 @@ public interface IQueryBuilderFlags<J
     return (J) this;
   }
 
+  /**
+   * Filters the query to only include records within the visible range.
+   *
+   * @return This builder
+   */
   @jakarta.validation.constraints.NotNull
   default J inVisibleRange()
   {
@@ -138,6 +204,11 @@ public interface IQueryBuilderFlags<J
     return (J) this;
   }
 
+  /**
+   * Orders the results by effective from date descending (latest first).
+   *
+   * @return This builder
+   */
   default J latestFirst()
   {
     orderBy(getAttribute("effectiveFromDate"), OrderByType.DESC);

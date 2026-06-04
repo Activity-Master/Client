@@ -7,6 +7,7 @@ import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.tuples.Tuple4;
 import io.vertx.core.Vertx;
 import lombok.extern.log4j.Log4j2;
+import org.hibernate.FlushMode;
 import org.hibernate.reactive.mutiny.Mutiny;
 
 import java.util.UUID;
@@ -82,6 +83,41 @@ public final class SessionUtils {
     }
 
     /**
+     * Run read-only work within a dedicated session (no transaction, no flush).
+     * <p>
+     * Optimised for pure reads (e.g. GraphQL data fetchers): the session is marked
+     * {@link Mutiny.Session#setDefaultReadOnly(boolean) default read-only} so every entity it loads
+     * is hydrated <em>without</em> a dirty-checking snapshot, and the flush mode is set to
+     * {@link FlushMode#MANUAL} so Hibernate never auto-flushes before a query. This lowers CPU and
+     * GC pressure on read-heavy paths. No transaction is opened and no {@code flush()}/{@code clear()}
+     * is performed, because nothing is being written.
+     * <p>
+     * <strong>Do not</strong> perform writes through a session obtained here — pending changes will
+     * not be flushed.
+     */
+    public static <T> Uni<T> withSessionReadOnly(Mutiny.SessionFactory sessionFactory,
+                                                 Function<Mutiny.Session, Uni<T>> work) {
+        return sessionFactory.withSession(session -> {
+            session.setDefaultReadOnly(true);
+            session.setFlushMode(FlushMode.MANUAL);
+            return work.apply(session);
+        });
+    }
+
+    /**
+     * Run read work within a Hibernate-managed stateless session (no transaction).
+     * <p>
+     * A {@link Mutiny.StatelessSession} has no persistence context: no first-level cache, no
+     * dirty checking and no auto-flush. It is the leanest option for projection/DTO reads that do
+     * not need lazy navigation back through managed entities. Prefer this for high-volume leaf
+     * GraphQL fetchers that map straight to a transport shape.
+     */
+    public static <T> Uni<T> withStatelessSession(Mutiny.SessionFactory sessionFactory,
+                                                  Function<Mutiny.StatelessSession, Uni<T>> work) {
+        return sessionFactory.withStatelessSession(session -> work.apply(session));
+    }
+
+    /**
      * Executes a consumer with the enterprise system and identity tokens.
      *
      * @param enterpriseName The AM Enterprise Name
@@ -124,6 +160,38 @@ public final class SessionUtils {
                                                     .invoke(session::clear)
                                                     .replaceWith(a);
                                         })
+                                )
+                        )
+        );
+    }
+
+    /**
+     * Read-only variant of {@link #withActivityMaster(String, String, java.util.function.Function)}
+     * for pure-read paths such as GraphQL data fetchers.
+     * <p>
+     * Resolves the same enterprise/system/identity-token context, but runs inside a
+     * {@link #withSessionReadOnly read-only, no-transaction} session: entities are loaded without
+     * dirty-checking snapshots, auto-flush is disabled ({@link FlushMode#MANUAL}) and there is no
+     * trailing {@code flush()}/{@code clear()}. Because the session is {@code defaultReadOnly}, every
+     * nested EntityAssist query inherits read-only execution automatically.
+     * <p>
+     * <strong>Reads only.</strong> Use {@link #withActivityMaster} for any flow that writes.
+     *
+     * @param enterpriseName The AM Enterprise Name
+     * @param systemName     The AM System Name performing the read
+     * @param fn             Reactive read function receiving (session, enterprise, system, tokens)
+     * @return A Uni of the function's result type.
+     */
+    public static <T> Uni<T> withActivityMasterReadOnly(String enterpriseName, String systemName,
+                                                        java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+        log.trace("Executing read-only with activity master details");
+        Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
+        IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
+        return withSessionReadOnly(sessionFactory, session ->
+                enterpriseService.getEnterprise(session, enterpriseName)
+                        .chain(enterprise -> getISystem(session, systemName, enterprise)
+                                .chain(system -> getISystemToken(session, systemName, enterprise)
+                                        .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
                                 )
                         )
         );

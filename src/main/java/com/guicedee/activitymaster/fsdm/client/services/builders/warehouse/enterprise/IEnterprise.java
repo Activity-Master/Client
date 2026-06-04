@@ -9,6 +9,12 @@ import java.util.UUID;
 
 
 //@Schema(name = "Enterprise")
+/**
+ * Warehouse table interface for Enterprise entities.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface IEnterprise<J extends IEnterprise<J, Q>,
 		Q extends IEnterpriseQueryBuilder<Q, J>>
 		extends IWarehouseBaseTable<J,Q, UUID>,

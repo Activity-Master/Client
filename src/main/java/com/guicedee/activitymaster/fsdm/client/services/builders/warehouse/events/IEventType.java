@@ -6,6 +6,12 @@ import com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IC
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Interface for Event Type entities in the warehouse.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface IEventType<J extends IEventType<J, Q>,
 		Q extends IEventTypeQueryBuilder<Q, J>>
 		extends IWarehouseBaseTable<J, Q, UUID>,

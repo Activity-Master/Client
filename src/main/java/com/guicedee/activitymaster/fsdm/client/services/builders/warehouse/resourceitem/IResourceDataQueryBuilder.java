@@ -6,6 +6,12 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderDe
 import java.util.UUID;
 
 
+/**
+ * Query builder for Resource Data.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the resource data entity
+ */
 public interface IResourceDataQueryBuilder<
 		J extends IResourceDataQueryBuilder<J,E>,
 		E extends IResourceData<E,J,?>

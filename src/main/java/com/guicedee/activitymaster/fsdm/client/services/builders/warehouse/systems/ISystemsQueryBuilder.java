@@ -7,6 +7,12 @@ import java.io.Serializable;
 import java.util.UUID;
 
 
+/**
+ * Query builder for System entities.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the System entity
+ */
 public interface ISystemsQueryBuilder<J extends ISystemsQueryBuilder<J, E>, E extends ISystems<E, J>>
 		extends IQueryBuilderNamesAndDescriptions<J, E, UUID>,
 		        IQueryBuilderClassifications<J,E, UUID>

@@ -8,6 +8,12 @@ import java.io.Serializable;
 import java.util.UUID;
 
 
+/**
+ * Warehouse table interface for Event entities.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface IEvent<J extends IEvent<J, Q>, Q extends IEventQueryBuilder<Q, J>>
 		extends IWarehouseBaseTable<J, Q, UUID>,
 		        IManageEventTypes<J>,

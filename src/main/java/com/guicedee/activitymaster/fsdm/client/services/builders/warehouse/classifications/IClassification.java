@@ -10,6 +10,12 @@ import java.io.Serializable;
 import java.util.UUID;
 
 
+/**
+ * Warehouse table interface for Classification entities.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface IClassification<J extends IClassification<J, Q>,
 		Q extends IClassificationQueryBuilder<Q, J>>
 		extends IWarehouseNameAndDescriptionTable<J, Q, UUID>,

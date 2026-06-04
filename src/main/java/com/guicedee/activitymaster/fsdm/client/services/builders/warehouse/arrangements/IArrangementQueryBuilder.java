@@ -8,6 +8,13 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderFl
 import java.util.UUID;
 
 
+/**
+ * Query builder for Arrangements.
+ * Provides filtering for active range, classifications, and enterprise context.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the arrangement entity
+ */
 public interface IArrangementQueryBuilder<J extends IArrangementQueryBuilder<J,E>,E extends IArrangement<E,J>>
 		extends IQueryBuilderDefault<J, E, UUID>,
 		        IQueryBuilderFlags<J,E, UUID>,

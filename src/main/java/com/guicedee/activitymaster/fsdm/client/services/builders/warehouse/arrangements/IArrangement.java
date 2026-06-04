@@ -7,6 +7,12 @@ import com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IC
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Warehouse table interface for Arrangement entities.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface IArrangement<J extends IArrangement<J, Q>,
 		Q extends IArrangementQueryBuilder<Q, J>>
 		extends IWarehouseBaseTable<J, Q, UUID>,

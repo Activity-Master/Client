@@ -6,69 +6,76 @@ import java.io.Serializable;
 import java.time.*;
 import java.util.UUID;
 
+/**
+ * Interface for entities that support Slowly Changing Dimension (SCD) behavior.
+ * This includes tracking effective dates and warehouse timestamps.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ * @param <I> The identifier type
+ */
 public interface ISCDEntity<J extends ISCDEntity<J, Q, I>, Q extends IQueryBuilderSCD<Q, J, I>, I extends UUID>
         extends IBaseEntity<J, Q, I>
 {
 
     /**
-     * Returns the effective from date for the given setting
+     * Returns the effective from date for this entity.
      *
-     * @return
+     * @return The effective from date
      */
     OffsetDateTime getEffectiveFromDate();
+
     /**
-     * Sets the effective from date value for default value
+     * Sets the effective from date for this entity.
      *
-     * @param effectiveFromDate
-     *
-     * @return
+     * @param effectiveFromDate The date to set
+     * @return This entity
      */
     J setEffectiveFromDate(OffsetDateTime effectiveFromDate);
 
     /**
-     * Returns the effice to date setting for active flag calculation
+     * Returns the effective to date for this entity.
      *
-     * @return
+     * @return The effective to date
      */
     OffsetDateTime getEffectiveToDate();
 
     /**
-     * Sets the effective to date column value for active flag determination
+     * Sets the effective to date for this entity.
      *
-     * @param effectiveToDate
-     * @return This
+     * @param effectiveToDate The date to set
+     * @return This entity
      */
     J setEffectiveToDate(OffsetDateTime effectiveToDate);
 
     /**
-     * Returns the warehouse created timestamp column value
+     * Returns the timestamp when this record was created in the warehouse.
      *
-     * @return The current time
+     * @return The creation timestamp
      */
     OffsetDateTime getWarehouseCreatedTimestamp();
 
     /**
-     * Sets the warehouse created timestamp
+     * Sets the warehouse creation timestamp.
      *
-     * @param warehouseCreatedTimestamp The time to apply
-     * @return This
+     * @param warehouseCreatedTimestamp The timestamp to set
+     * @return This entity
      */
     J setWarehouseCreatedTimestamp(OffsetDateTime warehouseCreatedTimestamp);
 
 
     /**
-     * Returns the last time the warehouse timestamp column was updated
+     * Returns the timestamp when this record was last updated in the warehouse.
      *
-     * @return The time
+     * @return The last update timestamp
      */
     OffsetDateTime getWarehouseLastUpdatedTimestamp();
 
     /**
-     * Sets the last time the warehouse timestamp column was updated
+     * Sets the warehouse last updated timestamp.
      *
-     * @param warehouseLastUpdatedTimestamp
-     *
-     * @return This
+     * @param warehouseLastUpdatedTimestamp The timestamp to set
+     * @return This entity
      */
     J setWarehouseLastUpdatedTimestamp(OffsetDateTime warehouseLastUpdatedTimestamp);
 }

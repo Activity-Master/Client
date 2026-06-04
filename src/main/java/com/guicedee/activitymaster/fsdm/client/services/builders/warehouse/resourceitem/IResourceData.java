@@ -9,6 +9,14 @@ import com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IC
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Interface for Resource Data entities in the warehouse.
+ * Resource Data holds the actual content or payload for a resource item.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ * @param <S> The security table type
+ */
 public interface IResourceData<J extends IResourceData<J, Q,S>,
 		Q extends IResourceDataQueryBuilder<Q, J>,
 		S extends IWarehouseSecurityTable<S,?, UUID>

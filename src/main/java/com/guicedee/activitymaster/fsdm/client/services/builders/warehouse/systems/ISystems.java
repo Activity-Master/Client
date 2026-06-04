@@ -12,6 +12,12 @@ import java.util.UUID;
 
 
 //@Schema(name = "System")
+/**
+ * Warehouse table interface for System entities.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface ISystems<J extends ISystems<J, Q>,
                                  Q extends ISystemsQueryBuilder<Q, J>
                                  >

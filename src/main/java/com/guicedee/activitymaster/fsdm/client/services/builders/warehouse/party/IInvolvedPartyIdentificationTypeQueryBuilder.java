@@ -8,6 +8,12 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderFl
 import java.util.UUID;
 
 
+/**
+ * Query builder for Involved Party Identification Types.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the identification type entity
+ */
 public interface IInvolvedPartyIdentificationTypeQueryBuilder<J extends IInvolvedPartyIdentificationTypeQueryBuilder<J, E>, E extends IInvolvedPartyIdentificationType<E, J>>
 		extends IQueryBuilderDefault<J, E, UUID>,
 		        IQueryBuilderFlags<J,E, UUID>,

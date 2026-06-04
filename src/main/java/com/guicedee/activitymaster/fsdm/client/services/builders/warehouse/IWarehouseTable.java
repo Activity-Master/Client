@@ -7,6 +7,14 @@ import com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IC
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Standard warehouse table interface.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ * @param <I> The identifier type
+ * @param <S> The security table type
+ */
 public interface IWarehouseTable<
 		J extends IWarehouseTable<J, Q, I, S>,
 		Q extends IQueryBuilderDefault<Q, J, I>,

@@ -8,6 +8,12 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderFl
 import java.util.UUID;
 
 
+/**
+ * Query builder for Product entities.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the Product entity
+ */
 public interface IProductQueryBuilder<J extends IProductQueryBuilder<J, E>, E extends IProduct<E, J>>
 		extends IQueryBuilderDefault<J, E, UUID>,
 		        IQueryBuilderFlags<J,E, UUID>,

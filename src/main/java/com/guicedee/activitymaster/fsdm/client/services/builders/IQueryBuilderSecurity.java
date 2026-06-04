@@ -11,16 +11,35 @@ import java.util.UUID;
 import java.util.logging.Logger;
 
 
+/**
+ * Query builder interface for entities with row-level security.
+ * Security is enforced when enabled in {@link ActivityMasterConfiguration}.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the warehouse entity
+ * @param <I> The type of the entity identifier
+ */
 public interface IQueryBuilderSecurity<J extends IQueryBuilderSecurity<J, E, I>,
         E extends IWarehouseBaseTable<E, J, I>,
         I extends UUID>
         extends IQueryBuilderDefault<J, E, I> {
 
+    /**
+     * Internal method to determine the security relationship table name.
+     *
+     * @return The canonical name of the security token entity
+     */
     private String getSecuritiessRelationshipTable() {
         String className = getEntity().getClass().getCanonicalName().replace("QueryBuilder", "") + "SecurityToken";
         return className;
     }
 
+    /**
+     * Internal method to resolve the security relationship class.
+     *
+     * @return The security table class
+     * @throws RuntimeException if the class cannot be found
+     */
     private Class<? extends IWarehouseSecurityTable<?, ?, ?>> getSecuritiesRelationshipClass() {
         String joinTableName = getSecuritiessRelationshipTable();
         try {
@@ -31,6 +50,14 @@ public interface IQueryBuilderSecurity<J extends IQueryBuilderSecurity<J, E, I>,
         }
     }
 
+    /**
+     * Adds a filter to check if the current user/system can read the requested entity.
+     * Note: Currently a pass-through when security is disabled in configuration.
+     *
+     * @param system        The system context
+     * @param identityToken Security tokens for the current user/session
+     * @return This builder
+     */
     @NotNull
     default J canRead(ISystems<?, ?> system, UUID... identityToken) {
         // Security is only enforced when explicitly enabled via configuration.

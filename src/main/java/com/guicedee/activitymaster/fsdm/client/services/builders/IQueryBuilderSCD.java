@@ -17,6 +17,10 @@ import java.util.UUID;
  * <p>
  * It also includes methods for working with warehouse tables, such as querying entities in active and visible ranges,
  * deleting entities with a specific active flag type, archiving entities, and updating entities with a new status.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the warehouse entity
+ * @param <I> The type of the entity identifier
  */
 @SuppressWarnings("unused")
 public interface IQueryBuilderSCD<J extends IQueryBuilderSCD<J, E, I>,
@@ -26,66 +30,63 @@ public interface IQueryBuilderSCD<J extends IQueryBuilderSCD<J, E, I>,
 {
 
     /**
-     * A timestamp designating the end of time or not applied
+     * A timestamp designating the end of time (2999-12-31), used for active records.
      */
     public static final LocalDateTime EndOfTime = LocalDateTime.of(2999, 12, 31, 23, 59, 59, 999);
 
     /**
-     * Where effective from date is greater than today
+     * Filters for entities where the effective from date is greater than today.
      *
-     * @return This
+     * @return This builder
      */
     J inDateRange();
 
     /**
-     * Returns the effective from and to date to be applied
-     * <p>
-     * Usually getDate()
+     * Filters for entities that are effective on the specified date.
      *
-     * @param betweenThisDate The date
-     * @return This
+     * @param betweenThisDate The date to check effectiveness for
+     * @return This builder
      */
     J inDateRange(LocalDateTime betweenThisDate);
 
     /**
-     * Returns the effective from and to date to be applied when only the effective date is taken into consideration
+     * Filters for entities based on the effective to date.
      *
-     * @param effectiveToDate The date
-     * @return This
+     * @param effectiveToDate The to date to check
+     * @param toDate          Whether to filter specifically on the to date
+     * @return This builder
      */
     J inDateRange(LocalDateTime effectiveToDate, boolean toDate);
 
     /**
-     * In date range from till now
+     * Filters for entities effective from a specified date until now.
      *
-     * @param fromDate The date for from
-     * @return This
+     * @param fromDate The start date
+     * @return This builder
      */
     J inDateRangeSpecified(LocalDateTime fromDate);
 
     /**
-     * Specifies where effective from date greater and effective to date less than
+     * Filters for entities effective within the specified start and end dates.
      *
-     * @param fromDate The from date
-     * @param toDate   The to date
-     * @return This
+     * @param fromDate The start date
+     * @param toDate   The end date
+     * @return This builder
      */
     J inDateRange(LocalDateTime fromDate, LocalDateTime toDate);
 
     /**
-     * Performs any required logic between the original and new entities during an update operation
-     * which is a delete and marking of the record as historical, and the insert of a new record which is updated
-     * <p>
-     * The old and new entities may have the same id, the new entity id is emptied after this call for persistence.
+     * Performs any required logic between the original and new entities during an update operation.
+     * This typically involves marking the original record as historical and inserting a new updated record.
      *
-     * @param originalEntity The entity that is going to be deleted
-     * @param newEntity      The entity that is going to be created
-     * @return currently always true @TODO
+     * @param originalEntity The entity that is being replaced/deleted
+     * @param newEntity      The new entity that will replace it
+     * @return true if successful
      */
     boolean onDeleteUpdate(E originalEntity, E newEntity);
 
     /**
-     * Converts a LocalDateTime to a UTC OffsetDateTime
+     * Converts a LocalDateTime to a UTC OffsetDateTime.
      *
      * @param ldt The LocalDateTime to convert
      * @return The OffsetDateTime in UTC
@@ -103,7 +104,7 @@ public interface IQueryBuilderSCD<J extends IQueryBuilderSCD<J, E, I>,
     }
 
     /**
-     * Converts an OffsetDateTime to a LocalDateTime in the system default timezone
+     * Converts an OffsetDateTime to a LocalDateTime in the system default timezone.
      *
      * @param ldt The OffsetDateTime to convert
      * @return The LocalDateTime in the system default timezone
@@ -119,7 +120,7 @@ public interface IQueryBuilderSCD<J extends IQueryBuilderSCD<J, E, I>,
     }
 
     /**
-     * Converts an OffsetDateTime to a LocalDateTime in the specified timezone
+     * Converts an OffsetDateTime to a LocalDateTime in the specified timezone.
      *
      * @param ldt  The OffsetDateTime to convert
      * @param zone The timezone to convert to
@@ -136,7 +137,7 @@ public interface IQueryBuilderSCD<J extends IQueryBuilderSCD<J, E, I>,
     }
 
     /**
-     * Converts an OffsetDateTime to a LocalDateTime in the specified timezone
+     * Converts an OffsetDateTime to a LocalDateTime in the specified timezone ID.
      *
      * @param ldt      The OffsetDateTime to convert
      * @param timezone The timezone ID to convert to
@@ -153,46 +154,43 @@ public interface IQueryBuilderSCD<J extends IQueryBuilderSCD<J, E, I>,
     }
 
     /**
-     * Filters from the Active Flag suite where it is in the active range
+     * Filters records that are within the active range based on their active flag.
      *
-     * @return This
+     * @return This builder
      */
     J inActiveRange();
 
     /**
-     * Selects all records in the visible range
+     * Filters records that are within the visible range based on their active flag.
      *
-     * @return This
+     * @return This builder
      */
     J inVisibleRange();
 
     /**
-     * Updates the current record with the given active flag type
-     * uses the merge
+     * "Deletes" an entity by updating its active flag to the specified type.
      *
-     * @param newActiveFlagType The new flag type to apply
-     * @param entity            The entity to operate on
-     * @return The entity
+     * @param newActiveFlagType The new active flag status (e.g., Deleted)
+     * @param entity            The entity to update
+     * @return A Uni containing the updated entity
      */
     Uni<E> delete(ActiveFlag newActiveFlagType, E entity);
 
     /**
-     * Marks the record as archived updating the warehouse and effective to date timestamps
+     * Marks the record as archived by updating warehouse and effective to date timestamps.
      *
-     * @param entity The entity
-     * @return The Entity as a Uni
+     * @param entity The entity to archive
+     * @return A Uni containing the archived entity
      */
     Uni<E> archive(E entity);
 
     /**
-     * Marks the given entity as the given status, with the effective to date and warehouse last updated as now
-     * Merges the entity, then detaches,
-     * <p>
-     * Persists the new record down with the end of time used
+     * Closes the current record and returns a newly created record with the specified status.
+     * Used for SCD type 2 updates.
      *
-     * @param entity The entity
-     * @param status The new status
-     * @return The updated entity as a Uni
+     * @param entity The current entity
+     * @param status The status for the new record
+     * @return A Uni containing the newly created entity
      */
     Uni<E> closeAndReturnNewlyUpdate(E entity, ActiveFlag status);
 }

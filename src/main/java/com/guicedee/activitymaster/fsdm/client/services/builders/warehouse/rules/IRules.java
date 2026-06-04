@@ -8,6 +8,12 @@ import com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IC
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Warehouse table interface for Rules entities.
+ *
+ * @param <J> The entity type
+ * @param <Q> The query builder type
+ */
 public interface IRules<J extends IRules<J, Q>,
 		Q extends IRulesQueryBuilder<Q, J>>
 		extends IWarehouseBaseTable<J, Q, UUID>,

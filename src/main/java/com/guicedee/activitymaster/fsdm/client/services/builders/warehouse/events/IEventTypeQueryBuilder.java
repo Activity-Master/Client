@@ -8,6 +8,12 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderFl
 import java.util.UUID;
 
 
+/**
+ * Query builder for Event Types.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the event type entity
+ */
 public interface IEventTypeQueryBuilder<J extends IEventTypeQueryBuilder<J, E>, E extends IEventType<E, J>>
 		extends IQueryBuilderDefault<J, E, UUID>,
 		        IQueryBuilderFlags<J,E, UUID>,

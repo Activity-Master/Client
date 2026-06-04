@@ -24,12 +24,25 @@ import java.util.*;
 
 import static com.entityassist.enumerations.Operand.*;
 
+/**
+ * Query builder interface for entities with classification relationships.
+ * Provides methods for filtering by classification name, value, and performing pivot operations.
+ *
+ * @param <J> The type of the query builder
+ * @param <E> The type of the warehouse entity
+ * @param <I> The type of the entity identifier
+ */
 public interface IQueryBuilderClassifications<
                                                  J extends IQueryBuilderClassifications<J, E, I>,
                                                  E extends IWarehouseBaseTable<E, J, I>,
                                                  I extends UUID>
     extends IQueryBuilderFlags<J, E, I>
 {
+  /**
+   * Dynamically resolves the relationship class for classifications linked to this entity.
+   *
+   * @return The relationship class, or null if not found
+   */
   default Class<? extends IWarehouseRelationshipTable<?, ?, E, IClassification<?, ?>, UUID, ?>> getClassificationsRelationshipClass()
   {
     String myTableName = getEntity().getClass()
@@ -47,6 +60,12 @@ public interface IQueryBuilderClassifications<
     }
   }
 
+  /**
+   * Adds a filter for a specific classification entity.
+   *
+   * @param classification The classification to filter by
+   * @return This builder
+   */
   default J withClassification(IClassification<?, ?> classification)
   {
     if (classification != null)
@@ -57,6 +76,13 @@ public interface IQueryBuilderClassifications<
     return (J) this;
   }
 
+  /**
+   * Adds a filter for a classification by its name and system.
+   *
+   * @param classificationName The name of the classification
+   * @param system             The system the classification belongs to
+   * @return This builder
+   */
   default J withClassification(String classificationName, ISystems<?, ?> system)
   {
     IClassificationService<?> service = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
@@ -94,16 +120,41 @@ public interface IQueryBuilderClassifications<
     return (J) this;
   }
 
+  /**
+   * Filters the query to include only entities that have the specified classification and value.
+   *
+   * @param classification The classification to check
+   * @param value          The value associated with the classification
+   * @param identityToken  Optional security tokens
+   * @return This builder
+   */
   default J hasClassification(IClassification<?, ?> classification, String value, UUID... identityToken)
   {
     return hasClassification(classification.getName(), value, classification.getSystemID(), identityToken);
   }
 
+  /**
+   * Filters the query to include only entities that have the specified classification name.
+   *
+   * @param classification The classification name
+   * @param system         The system it belongs to
+   * @param identityToken  Optional security tokens
+   * @return This builder
+   */
   default J hasClassification(String classification, ISystems<?, ?> system, UUID... identityToken)
   {
     return hasClassification(classification, null, system, identityToken);
   }
 
+  /**
+   * Filters the query to include only entities that have the specified classification name and value.
+   *
+   * @param classificationName The classification name
+   * @param value              The value associated with the classification
+   * @param system             The system it belongs to
+   * @param identityToken      Optional security tokens
+   * @return This builder
+   */
   default J hasClassification(String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
   {
     Class<? extends IWarehouseRelationshipTable<?, ?, E, IClassification<?, ?>, UUID, ?>> relationshipTable = getClassificationsRelationshipClass();
@@ -126,11 +177,33 @@ public interface IQueryBuilderClassifications<
   }
 
 
+  /**
+   * Retrieves a pivot-style list of classification values for the specified entities.
+   *
+   * @param session              The reactive session
+   * @param classificationValues The primary classification name to pivot
+   * @param idValuesIn           The set of entity IDs to include
+   * @param system               The system context
+   * @param identityToken        Security tokens
+   * @param values               Additional classification names to pivot
+   * @return A Uni containing a list of object arrays (pivot rows)
+   */
   default Uni<List<Object[]>> getClassificationsValuePivot(Mutiny.Session session, String classificationValues, Set<String> idValuesIn, ISystems<?, ?> system, UUID[] identityToken, String... values)
   {
     return getClassificationsValuePivot(session, SelectAggregrate.Max, classificationValues, idValuesIn, system, identityToken, values);
   }
 
+  /**
+   * Retrieves a pivot-style list of classification values for a single entity or a specific ID string.
+   *
+   * @param session              The reactive session
+   * @param classificationValues The primary classification name to pivot
+   * @param idValuesIn           The entity ID (as a string) to include
+   * @param system               The system context
+   * @param identityToken        Security tokens
+   * @param values               Additional classification names to pivot
+   * @return A Uni containing a list of object arrays
+   */
   default Uni<List<Object[]>> getClassificationsValuePivot(Mutiny.Session session, String classificationValues, String idValuesIn, ISystems<?, ?> system, UUID[] identityToken, String... values)
   {
     if (idValuesIn == null)
@@ -143,6 +216,18 @@ public interface IQueryBuilderClassifications<
     }
   }
 
+  /**
+   * Retrieves a pivot-style list of classification values using the specified aggregate function.
+   *
+   * @param session              The reactive session
+   * @param aggregrate           The aggregate function to use (e.g., Max)
+   * @param classificationValues The primary classification name to pivot
+   * @param idValuesIn           The set of entity IDs to include
+   * @param system               The system context
+   * @param identityToken        Security tokens
+   * @param values               Additional classification names to pivot
+   * @return A Uni containing a list of object arrays
+   */
   @SuppressWarnings("SqlResolve")
   default Uni<List<Object[]>> getClassificationsValuePivot(Mutiny.Session session, SelectAggregrate aggregrate, String classificationValues, Set<String> idValuesIn, ISystems<?, ?> system, UUID[] identityToken, String... values)
   {

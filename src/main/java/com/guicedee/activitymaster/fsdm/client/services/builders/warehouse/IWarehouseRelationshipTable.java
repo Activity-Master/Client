@@ -8,6 +8,16 @@ import com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.*;
 import java.io.Serializable;
 import java.util.UUID;
 
+/**
+ * Interface for warehouse tables that represent relationships between two other warehouse entities.
+ *
+ * @param <J>  The entity type
+ * @param <Q>  The query builder type
+ * @param <P>  The primary (parent) entity type
+ * @param <S>  The secondary (child) entity type
+ * @param <I>  The identifier type
+ * @param <QS> The security table type
+ */
 public interface IWarehouseRelationshipTable<
 		J extends IWarehouseRelationshipTable<J, Q, P, S, I,QS>,
 		Q extends IQueryBuilderRelationships<Q, J, P, S, I>,
