@@ -161,6 +161,43 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                 .map(list -> (List<IRelationshipValue<J, IClassification<?, ?>, ?>>) list);
     }
 
+    /**
+     * Bulk-reads every classification attached to this entity in a single security-checked query and
+     * returns them as a {@code classification-name -> value} map.
+     * <p>
+     * This is the batched read path for hydration flows (e.g. GraphQL/REST DTO assembly) that would
+     * otherwise chain a separate {@link #findClassification} round-trip per field. Because a single
+     * {@link Mutiny.Session} may only run one operation at a time (Hibernate Reactive forbids parallel
+     * operations on a session), the classifications cannot be fetched concurrently — instead they are
+     * loaded once via {@link #findClassifications(Mutiny.Session, ISystems, UUID...)} (which already
+     * applies {@code canRead}, active-range, date-range and latest-first ordering) and each lazy
+     * secondary classification is fetched to resolve its name. Where a classification appears more
+     * than once, the latest value wins (the list is ordered latest-first).
+     *
+     * @param session       The reactive session
+     * @param system        The system the read is scoped to
+     * @param identityToken Optional security identity tokens
+     * @return A Uni emitting a map of classification name to its (latest) value
+     */
+    default Uni<java.util.Map<String, String>> findClassificationValues(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken) {
+        return findClassifications(session, system, identityToken)
+                .chain(links -> {
+                    java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
+                    Uni<Void> chain = Uni.createFrom().voidItem();
+                    for (IRelationshipValue<J, IClassification<?, ?>, ?> link : links) {
+                        chain = chain.chain(() -> session.fetch(link.getSecondary())
+                                .invoke(classification -> {
+                                    if (classification != null && classification.getName() != null) {
+                                        // latest-first ordering: keep the first (latest) value seen per name
+                                        values.putIfAbsent(classification.getName(), link.getValue());
+                                    }
+                                })
+                                .replaceWithVoid());
+                    }
+                    return chain.replaceWith(values);
+                });
+    }
+
     default Uni<IRelationshipValue<J, IClassification<?, ?>, ?>> findClassification(Mutiny.Session session, Enum<?> classificationName, ISystems<?, ?> system, UUID... identityToken) {
         return findClassification(session, classificationName.toString(), system, identityToken);
     }
