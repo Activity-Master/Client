@@ -29,6 +29,19 @@ public class ActivityMasterConfiguration
 {
 	private static final ActivityMasterConfiguration configuration = new ActivityMasterConfiguration();
 
+	/**
+	 * Call-scope property key under which the row-level security read-enforcement flag is stored.
+	 */
+	public static final String SCOPE_KEY_SECURITY = "fsdm.securities";
+	/**
+	 * Call-scope property key under which the per-request enterprise id is stored.
+	 */
+	public static final String SCOPE_KEY_ENTERPRISE_ID = "fsdm.enterpriseId";
+	/**
+	 * Call-scope property key under which the current caller identity token is stored.
+	 */
+	public static final String SCOPE_KEY_IDENTITY_TOKEN = "fsdm.identityToken";
+
 	public static String applicationEnterpriseName;
 	private static String _activityMasterHost = "http://localhost:8080";
 
@@ -69,7 +82,7 @@ public class ActivityMasterConfiguration
 			CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
 			if (csp != null)
 			{
-				Boolean s = (Boolean) csp.getProperties().get("fsdm.securities");
+				Boolean s = (Boolean) csp.getProperties().get(SCOPE_KEY_SECURITY);
 				if (s != null)
 				{
 					return s;
@@ -87,9 +100,113 @@ public class ActivityMasterConfiguration
 			CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
 			if (csp != null)
 			{
-				csp.getProperties().put("fsdm.securities", securityEnabled);
+				csp.getProperties().put(SCOPE_KEY_SECURITY, securityEnabled);
 			}
 		}
+	}
+
+	/**
+	 * Reads a value stored on the active call scope, or {@code null} when there is no started scope
+	 * (e.g. a plain thread with no Vert.x context) or the key is absent.
+	 *
+	 * @param key the call-scope property key
+	 * @param <T> the expected value type
+	 * @return the scoped value, or {@code null}
+	 */
+	@SuppressWarnings("unchecked")
+	private <T> T getScopedProperty(Object key)
+	{
+		CallScoper callScoper = IGuiceContext.get(CallScoper.class);
+		if (callScoper.isStartedScope())
+		{
+			CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
+			if (csp != null)
+			{
+				return (T) csp.getProperties().get(key);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Stores (or, when {@code value} is {@code null}, removes) a value on the active call scope.
+	 * No-op when there is no started scope.
+	 *
+	 * @param key   the call-scope property key
+	 * @param value the value to store, or {@code null} to clear it
+	 */
+	private void setScopedProperty(Object key, Object value)
+	{
+		CallScoper callScoper = IGuiceContext.get(CallScoper.class);
+		if (callScoper.isStartedScope())
+		{
+			CallScopeProperties csp = IGuiceContext.get(CallScopeProperties.class);
+			if (csp != null)
+			{
+				if (value == null)
+				{
+					csp.getProperties().remove(key);
+				}
+				else
+				{
+					csp.getProperties().put(key, value);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Returns the call-scoped enterprise id for the active request, if one has been supplied
+	 * (e.g. by a REST or event-bus entry point).
+	 * <p>
+	 * Unlike {@link #applicationEnterpriseName} — the process-wide enterprise <em>name</em> resolved
+	 * once at application startup — this is the enterprise the <strong>current call</strong> is
+	 * operating against and may differ per request. Incoming calls onto the REST/event-bus surface
+	 * pass an enterprise id which is placed on the context here for use across Activity Master.
+	 *
+	 * @return the call-scoped enterprise id, or {@code null} when none is set on the active scope
+	 */
+	public UUID getEnterpriseId()
+	{
+		return getScopedProperty(SCOPE_KEY_ENTERPRISE_ID);
+	}
+
+	/**
+	 * Sets the call-scoped enterprise id for the active request. Pass {@code null} to clear it.
+	 *
+	 * @param enterpriseId the enterprise id for the current call
+	 * @return this configuration for chaining
+	 */
+	@SuppressWarnings("UnusedReturnValue")
+	public ActivityMasterConfiguration setEnterpriseId(UUID enterpriseId)
+	{
+		setScopedProperty(SCOPE_KEY_ENTERPRISE_ID, enterpriseId);
+		return this;
+	}
+
+	/**
+	 * Returns the call-scoped identity token of the current caller (the authenticated user/system
+	 * identity, an {@code Identity}-classification security token UUID). This is the token threaded
+	 * into row-level access checks (e.g. {@code canRead}/{@code canWrite}) for the active request.
+	 *
+	 * @return the current identity token, or {@code null} when none is set on the active scope
+	 */
+	public UUID getIdentityToken()
+	{
+		return getScopedProperty(SCOPE_KEY_IDENTITY_TOKEN);
+	}
+
+	/**
+	 * Sets the call-scoped identity token of the current caller. Pass {@code null} to clear it.
+	 *
+	 * @param identityToken the caller's identity token for the current call
+	 * @return this configuration for chaining
+	 */
+	@SuppressWarnings("UnusedReturnValue")
+	public ActivityMasterConfiguration setIdentityToken(UUID identityToken)
+	{
+		setScopedProperty(SCOPE_KEY_IDENTITY_TOKEN, identityToken);
+		return this;
 	}
 
 	public String getApplicationEnterpriseName()
@@ -114,6 +231,8 @@ public class ActivityMasterConfiguration
 	{
 		setApplicationEnterpriseName(dto.getEnterpriseName());
 		setSecurityEnabled(dto.getSecurities());
+		setEnterpriseId(dto.getEnterpriseId());
+		setIdentityToken(dto.getIdentityToken());
 	}
 
 	public Set<IActivityMasterSystem<?>> getAllSystems()
@@ -159,6 +278,8 @@ public class ActivityMasterConfiguration
 	public static class ActivityMasterConfigurationDTO
 	{
 		private String enterpriseName;
+		private UUID enterpriseId;
+		private UUID identityToken;
 		private ISecurityToken<?, ?> token;
 		private Boolean securities;
 
@@ -172,6 +293,10 @@ public class ActivityMasterConfiguration
 			                                            .getApplicationEnterpriseName();
 			securities = ActivityMasterConfiguration.get()
 			                                        .isSecurityEnabled();
+			enterpriseId = ActivityMasterConfiguration.get()
+			                                          .getEnterpriseId();
+			identityToken = ActivityMasterConfiguration.get()
+			                                           .getIdentityToken();
 			return this;
 		}
 
@@ -183,6 +308,28 @@ public class ActivityMasterConfiguration
 		public ActivityMasterConfigurationDTO setEnterpriseName(String enterpriseName)
 		{
 			this.enterpriseName = enterpriseName;
+			return this;
+		}
+
+		public UUID getEnterpriseId()
+		{
+			return enterpriseId;
+		}
+
+		public ActivityMasterConfigurationDTO setEnterpriseId(UUID enterpriseId)
+		{
+			this.enterpriseId = enterpriseId;
+			return this;
+		}
+
+		public UUID getIdentityToken()
+		{
+			return identityToken;
+		}
+
+		public ActivityMasterConfigurationDTO setIdentityToken(UUID identityToken)
+		{
+			this.identityToken = identityToken;
 			return this;
 		}
 

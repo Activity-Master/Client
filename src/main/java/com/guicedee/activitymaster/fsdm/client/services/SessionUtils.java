@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services;
 
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
+import com.guicedee.activitymaster.fsdm.client.services.administration.ActivityMasterConfiguration;
 import com.guicedee.client.IGuiceContext;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.tuples.Tuple4;
@@ -195,6 +196,63 @@ public final class SessionUtils {
                                 )
                         )
         );
+    }
+
+    /**
+     * Context-aware variant of {@link #withActivityMaster(String, String, Function)} that resolves
+     * the enterprise and caller identity from the
+     * {@link ActivityMasterConfiguration call context} rather than from explicit arguments.
+     * <p>
+     * Resolution:
+     * <ul>
+     *   <li><b>Enterprise</b> — the call-scoped {@link ActivityMasterConfiguration#getEnterpriseId()
+     *       enterprise id} (typically supplied by the REST/event-bus entry point for the current
+     *       request) is used when present; otherwise it falls back to the process-wide
+     *       {@link ActivityMasterConfiguration#applicationEnterpriseName startup enterprise name}
+     *       resolved once at application start.</li>
+     *   <li><b>Tokens</b> — the resolved system token is always supplied as element {@code [0]}; when a
+     *       call-scoped {@link ActivityMasterConfiguration#getIdentityToken() identity token} is
+     *       present it is appended as element {@code [1]}, so downstream access checks evaluate the
+     *       caller's identity alongside the system identity.</li>
+     * </ul>
+     *
+     * @param systemName the AM system performing the work
+     * @param fn         reactive function receiving (session, enterprise, system, tokens)
+     * @return a Uni of the function's result type
+     */
+    public static <T> Uni<T> withActivityMasterFromContext(String systemName,
+                                                           Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+        log.trace("Executing with activity master details resolved from call context");
+        ActivityMasterConfiguration configuration = ActivityMasterConfiguration.get();
+        UUID enterpriseId = configuration.getEnterpriseId();
+        Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
+        IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
+        return withSessionTx(sessionFactory, session -> {
+            Uni<IEnterprise<?, ?>> enterpriseUni = enterpriseId != null
+                    ? enterpriseService.getEnterprise(session, enterpriseId)
+                    : enterpriseService.getEnterprise(session, ActivityMasterConfiguration.applicationEnterpriseName);
+            return enterpriseUni
+                    .chain(enterprise -> getISystem(session, systemName, enterprise)
+                            .chain(system -> getISystemToken(session, systemName, enterprise)
+                                    .chain(token -> fn.apply(Tuple4.of(session, enterprise, system,
+                                            contextTokens(token, configuration.getIdentityToken()))))
+                                    .chain(a -> session.flush()
+                                            .invoke(session::clear)
+                                            .replaceWith(a))
+                            )
+                    );
+        });
+    }
+
+    /**
+     * Builds the token array passed to downstream work: the system token first, with the call
+     * context's identity token appended when present and distinct.
+     */
+    private static UUID[] contextTokens(UUID systemToken, UUID identityToken) {
+        if (identityToken != null && !identityToken.equals(systemToken)) {
+            return new UUID[]{systemToken, identityToken};
+        }
+        return new UUID[]{systemToken};
     }
 
     /**

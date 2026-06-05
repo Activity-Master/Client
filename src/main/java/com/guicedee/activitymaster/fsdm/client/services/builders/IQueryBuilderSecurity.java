@@ -52,7 +52,19 @@ public interface IQueryBuilderSecurity<J extends IQueryBuilderSecurity<J, E, I>,
 
     /**
      * Adds a filter to check if the current user/system can read the requested entity.
-     * Note: Currently a pass-through when security is disabled in configuration.
+     * <p>
+     * Because the applicable-token expansion (identity token &rarr; every group/folder it belongs to,
+     * transitively) is resolved with a reactive {@code WITH RECURSIVE} query, it cannot be performed
+     * inline inside this synchronous fluent builder method. The real query-level trim is therefore a
+     * two-step flow:
+     * <ol>
+     *     <li>resolve the readable ids reactively via
+     *         {@link com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable#readableIds(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}, then</li>
+     *     <li>apply them synchronously with {@link IQueryBuilderDefault#canRead(java.util.Collection)} before {@code getAll()}.</li>
+     * </ol>
+     * This overload remains a pass-through (no async expansion is possible here); callers that need a
+     * security-trimmed list query should use the {@code readableIds} + {@link IQueryBuilderDefault#canRead(java.util.Collection)}
+     * pairing.
      *
      * @param system        The system context
      * @param identityToken Security tokens for the current user/session
@@ -68,16 +80,10 @@ public interface IQueryBuilderSecurity<J extends IQueryBuilderSecurity<J, E, I>,
         }
         // If no identity tokens provided, skip security filtering (useful for tests and public reads)
         if (identityToken == null || identityToken.length == 0) {
-            //todo this must get locked down always expect a populated system calling and the party identity token
-            //Logger.getLogger("Security Check").warning("Skipping security check due to no security identity tokens provided.");
             return (J) this;
         }
-
-        Class<? extends IWarehouseSecurityTable<?, ?, ?>> securityRelationshipClass = getSecuritiesRelationshipClass();
-
-        //	J securityJoin = join(getAttribute("securities"));
-
-
+        // The applicable-token set cannot be resolved synchronously here (it requires a reactive
+        // recursive query). Use readableIds(...) + IQueryBuilderDefault#canRead(Collection<UUID>) for the trim.
         return (J) this;
     }
 
