@@ -80,7 +80,7 @@ public final class SessionUtils {
      */
     public static <T> Uni<T> withSession(Mutiny.SessionFactory sessionFactory,
                                          Function<Mutiny.Session, Uni<T>> work) {
-        return sessionFactory.withSession(session -> work.apply(session));
+        return sessionFactory.withSession(work::apply);
     }
 
     /**
@@ -115,7 +115,7 @@ public final class SessionUtils {
      */
     public static <T> Uni<T> withStatelessSession(Mutiny.SessionFactory sessionFactory,
                                                   Function<Mutiny.StatelessSession, Uni<T>> work) {
-        return sessionFactory.withStatelessSession(session -> work.apply(session));
+        return sessionFactory.withStatelessSession(work::apply);
     }
 
     /**

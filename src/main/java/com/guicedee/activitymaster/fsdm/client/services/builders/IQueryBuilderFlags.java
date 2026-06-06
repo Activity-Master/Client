@@ -38,7 +38,6 @@ import static com.entityassist.enumerations.Operand.*;
  * @param <E> The type of the warehouse entity
  * @param <I> The type of the entity identifier
  */
-@SuppressWarnings("DuplicatedCode")
 public interface IQueryBuilderFlags<J
                                         extends IQueryBuilderFlags<J, E, I>,
                                        E extends IWarehouseBaseTable<E, J, I>,

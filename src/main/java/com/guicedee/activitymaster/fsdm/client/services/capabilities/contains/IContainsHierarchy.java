@@ -49,7 +49,6 @@ public interface IContainsHierarchy<J extends IWarehouseBaseTable<J, ?, I>, I ex
     }
   }
 
-  @SuppressWarnings("DuplicatedCode")
   default Uni<J> archiveChild(Mutiny.Session session, IWarehouseTable<?, ?, ? extends Serializable, ?> child, String classificationName, String hierarchyValue, ISystems<?, ?> system, UUID... identifyingToken)
   {
     @SuppressWarnings("unchecked")

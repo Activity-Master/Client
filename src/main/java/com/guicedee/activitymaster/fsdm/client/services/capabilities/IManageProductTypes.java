@@ -251,9 +251,7 @@ public interface IManageProductTypes<J extends IWarehouseBaseTable<J, ?, ? exten
                                                                 configureProductTypeLinkValue(tableForClassification, (J) this, productItemType, classification, value, enterprise);
 
                                                                 return (Uni) Uni.createFrom().item(tableForClassification)
-                                                                        .chain(table -> {
-                                                                            return session.merge(table);
-                                                                        })
+                                                                        .chain(session::merge)
                                                                         .chain(table -> {
                                                                             // Chain the security setup operation
                                                                             return table.createDefaultSecurity(session, system, identityToken)

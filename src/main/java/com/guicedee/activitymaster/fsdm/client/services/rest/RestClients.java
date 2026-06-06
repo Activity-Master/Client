@@ -21,7 +21,6 @@ import com.guicedee.rest.client.RestClient;
 import com.guicedee.rest.client.annotations.Endpoint;
 import io.smallrye.mutiny.Uni;
 
-@SuppressWarnings("BindingAnnotationWithoutInject")
 public class RestClients {
 
     @Endpoint(url = "${ACTIVITY_MASTER_HOST}/{enterpriseName}/arrangement/{systemName}/create",method = "POST")

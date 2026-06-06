@@ -165,8 +165,7 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 																						 ISystems<?, ?> system,
 																						 UUID... identityToken)
 	{
-		@SuppressWarnings("unchecked")
-		IInvolvedPartyService<?> partyService = com.guicedee.client.IGuiceContext.get(IInvolvedPartyService.class);
+        IInvolvedPartyService<?> partyService = com.guicedee.client.IGuiceContext.get(IInvolvedPartyService.class);
 		return partyService.findType(session, involvedPartyIdentificationType, system, identityToken)
 			.chain(type -> addInvolvedPartyType(session, type, classificationName, value, system, identityToken));
 	}
@@ -205,7 +204,7 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 
 					return tableForClassification;
 				})))
-				.chain(table -> session.merge(table))
+				.chain(session::merge)
 				.chain(table -> {
 					return table.createDefaultSecurity(session, system, identityToken)
 							.replaceWith((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) table);
@@ -222,7 +221,6 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 																								 ISystems<?, ?> system,
 																								 UUID... identityToken)
 	{
-		@SuppressWarnings("unchecked")
 		IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
 		return partyService.findType(session, involvedPartyType, system, identityToken)
 			.chain(type -> addOrUpdateInvolvedPartyType(session, classificationValue, type, searchValue, storeValue, system, identityToken));

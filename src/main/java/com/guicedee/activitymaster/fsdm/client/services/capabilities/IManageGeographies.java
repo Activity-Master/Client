@@ -66,8 +66,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 		{
 			queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"));
 		}
-		//noinspection rawtypes
-		return (Uni<IRelationshipValue<J, IGeography<?, ?>, ?>>) queryBuilderRelationshipClassification.get()
+        return (Uni<IRelationshipValue<J, IGeography<?, ?>, ?>>) queryBuilderRelationshipClassification.get()
 				.onItem().ifNull().failWith(() -> new NoSuchElementException("Geography not found"));
 	}
 
@@ -88,8 +87,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 		{
 			queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"));
 		}
-		//noinspection rawtypes
-		return queryBuilderRelationshipClassification.getAll()
+        return queryBuilderRelationshipClassification.getAll()
 				.map(list -> (List<IRelationshipValue<J, IGeography<?, ?>, ?>>) list);
 	}
 

@@ -99,7 +99,6 @@ public interface IWarehouseBaseTable<
      * @param duration how far in the future to set the expiry (Duration.ZERO = immediate)
      * @return the expired entity
      */
-    @SuppressWarnings("unchecked")
     default Uni<J> expire(Mutiny.Session session, Duration duration)
     {
         return expireInternal(session, duration)

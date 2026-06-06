@@ -20,7 +20,6 @@ import java.util.UUID;
  *
  * @param <J>
  */
-@SuppressWarnings("rawtypes")
 @Log4j2
 public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaultSystem<J>>
         implements IActivityMasterSystem<J>
