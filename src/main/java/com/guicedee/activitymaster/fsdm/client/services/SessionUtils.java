@@ -119,7 +119,35 @@ public final class SessionUtils {
     }
 
     /**
+     * Runs work as a <em>named system using that system's own identity token</em>.
+     * <p>
+     * This is the canonical, blast-radius-minimising entry point: instead of every caller borrowing
+     * the broadly-privileged ActivityMaster system token, each system resolves and runs under
+     * <strong>its own</strong> security identity token (via
+     * {@link IActivityMasterService#getISystemToken}). The supplied token therefore only grants the
+     * access that <em>that</em> system has been scoped for in the security graph, so a compromised or
+     * misbehaving caller can only reach what its own system is permitted to reach.
+     *
+     * @param enterpriseName The AM Enterprise Name (security scope)
+     * @param systemName     The AM System Name that is performing the task — its own identity token is supplied to the work
+     * @param consumer       The consumer to execute, receiving a tuple of (session, enterprise, system, tokens)
+     * @return A reactive chain that can be executed with this session closed after completion.
+     */
+    public static Uni<Void> withSystemAndToken(String enterpriseName, String systemName, Consumer<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>> consumer) {
+        return withSystemAndToken(enterpriseName, systemName, tuple -> {
+            consumer.accept(tuple);
+            return Uni.createFrom().voidItem();
+        });
+    }
+
+    /**
      * Executes a consumer with the enterprise system and identity tokens.
+     * <p>
+     * <strong>Naming note:</strong> this is a backward-compatible alias for
+     * {@link #withSystemAndToken(String, String, Consumer)} — it does <em>not</em> force the
+     * ActivityMaster system token. The {@code systemName} you pass determines which system's own
+     * identity token is supplied. Prefer {@link #withSystemAndToken} in new code to make the
+     * per-system token intent explicit.
      *
      * @param enterpriseName The AM Enterprise Name
      * @param systemName     The AM System Name that is performing the task
@@ -127,24 +155,27 @@ public final class SessionUtils {
      * @return A reactive chain that can be executed with this session closed after completion. The consumer receives a tuple of (session, enterprise, system, tokens).
      */
     public static Uni<Void> withActivityMaster(String enterpriseName, String systemName, Consumer<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>> consumer) {
-        return withActivityMaster(enterpriseName, systemName, tuple -> {
-            consumer.accept(tuple);
-            return Uni.createFrom().voidItem();
-        });
+        return withSystemAndToken(enterpriseName, systemName, consumer);
     }
 
     /**
-     * Executes a reactive function with the enterprise system and identity tokens.
+     * Executes a reactive function as a <em>named system using that system's own identity token</em>.
      * Designed for use directly inside reactive chains.
+     * <p>
+     * This is the canonical, blast-radius-minimising entry point. The token array passed to the work
+     * carries the {@code systemName} system's own identity token (resolved via
+     * {@link IActivityMasterService#getISystemToken}), so downstream access checks evaluate only the
+     * privileges that that specific system has been granted — never the broad ActivityMaster system
+     * token unless {@code systemName} actually <em>is</em> the ActivityMaster system.
      *
-     * @param enterpriseName The AM Enterprise Name
-     * @param systemName     The AM System Name that is performing the task
+     * @param enterpriseName The AM Enterprise Name (security scope)
+     * @param systemName     The AM System Name that is performing the task — its own identity token is supplied
      * @param fn             Reactive function to execute which receives (session, enterprise, system, tokens)
      * @return A Uni of the function's result type. Session lifecycle and transaction are managed internally.
      */
-    public static <T> Uni<T> withActivityMaster(String enterpriseName, String systemName,
+    public static <T> Uni<T> withSystemAndToken(String enterpriseName, String systemName,
                                                 java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
-        log.trace("Executing with activity master details");
+        log.trace("Executing as system '{}' with its own identity token", systemName);
         Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
         IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
         return withSessionTx(sessionFactory, session ->
@@ -161,14 +192,35 @@ public final class SessionUtils {
                                                     .invoke(session::clear)
                                                     .replaceWith(a);
                                         })
-                                )
-                        )
+                                 )
+                         )
         );
     }
 
     /**
-     * Read-only variant of {@link #withActivityMaster(String, String, java.util.function.Function)}
-     * for pure-read paths such as GraphQL data fetchers.
+     * Executes a reactive function with the enterprise system and identity tokens.
+     * Designed for use directly inside reactive chains.
+     * <p>
+     * <strong>Naming note:</strong> this is a backward-compatible alias for
+     * {@link #withSystemAndToken(String, String, java.util.function.Function)} — it does <em>not</em>
+     * force the ActivityMaster system token. The {@code systemName} you pass determines which
+     * system's own identity token is supplied. Prefer {@link #withSystemAndToken} in new code to make
+     * the per-system token intent explicit.
+     *
+     * @param enterpriseName The AM Enterprise Name
+     * @param systemName     The AM System Name that is performing the task
+     * @param fn             Reactive function to execute which receives (session, enterprise, system, tokens)
+     * @return A Uni of the function's result type. Session lifecycle and transaction are managed internally.
+     */
+    public static <T> Uni<T> withActivityMaster(String enterpriseName, String systemName,
+                                                java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+        return withSystemAndToken(enterpriseName, systemName, fn);
+    }
+
+    /**
+     * Read-only variant of {@link #withSystemAndToken(String, String, java.util.function.Function)}
+     * for pure-read paths such as GraphQL data fetchers — runs as the named system using
+     * <em>that system's own identity token</em>, keeping the blast radius scoped to that system.
      * <p>
      * Resolves the same enterprise/system/identity-token context, but runs inside a
      * {@link #withSessionReadOnly read-only, no-transaction} session: entities are loaded without
@@ -176,16 +228,16 @@ public final class SessionUtils {
      * trailing {@code flush()}/{@code clear()}. Because the session is {@code defaultReadOnly}, every
      * nested EntityAssist query inherits read-only execution automatically.
      * <p>
-     * <strong>Reads only.</strong> Use {@link #withActivityMaster} for any flow that writes.
+     * <strong>Reads only.</strong> Use {@link #withSystemAndToken} for any flow that writes.
      *
-     * @param enterpriseName The AM Enterprise Name
-     * @param systemName     The AM System Name performing the read
+     * @param enterpriseName The AM Enterprise Name (security scope)
+     * @param systemName     The AM System Name performing the read — its own identity token is supplied
      * @param fn             Reactive read function receiving (session, enterprise, system, tokens)
      * @return A Uni of the function's result type.
      */
-    public static <T> Uni<T> withActivityMasterReadOnly(String enterpriseName, String systemName,
+    public static <T> Uni<T> withSystemAndTokenReadOnly(String enterpriseName, String systemName,
                                                         java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
-        log.trace("Executing read-only with activity master details");
+        log.trace("Executing read-only as system '{}' with its own identity token", systemName);
         Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
         IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
         return withSessionReadOnly(sessionFactory, session ->
@@ -196,6 +248,25 @@ public final class SessionUtils {
                                 )
                         )
         );
+    }
+
+    /**
+     * Read-only variant of {@link #withActivityMaster(String, String, java.util.function.Function)}
+     * for pure-read paths such as GraphQL data fetchers.
+     * <p>
+     * <strong>Naming note:</strong> backward-compatible alias for
+     * {@link #withSystemAndTokenReadOnly(String, String, java.util.function.Function)}; the
+     * {@code systemName} you pass determines which system's own identity token is supplied. Prefer
+     * {@link #withSystemAndTokenReadOnly} in new code.
+     *
+     * @param enterpriseName The AM Enterprise Name
+     * @param systemName     The AM System Name performing the read
+     * @param fn             Reactive read function receiving (session, enterprise, system, tokens)
+     * @return A Uni of the function's result type.
+     */
+    public static <T> Uni<T> withActivityMasterReadOnly(String enterpriseName, String systemName,
+                                                        java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+        return withSystemAndTokenReadOnly(enterpriseName, systemName, fn);
     }
 
     /**
@@ -242,6 +313,43 @@ public final class SessionUtils {
                             )
                     );
         });
+    }
+
+    /**
+     * Context-aware variant that runs as the named system using <em>that system's own identity
+     * token</em>, resolving the enterprise (and any caller identity token) from the
+     * {@link ActivityMasterConfiguration call context}. Backward-compatible alias for
+     * {@link #withActivityMasterFromContext(String, Function)} with a name that makes the
+     * per-system-token intent explicit.
+     *
+     * @param systemName the AM system performing the work — its own identity token is supplied as element {@code [0]}
+     * @param fn         reactive function receiving (session, enterprise, system, tokens)
+     * @return a Uni of the function's result type
+     */
+    public static <T> Uni<T> withSystemAndTokenFromContext(String systemName,
+                                                           Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+        return withActivityMasterFromContext(systemName, fn);
+    }
+
+    /**
+     * Resolves a single named system's own security identity token within an enterprise, opening and
+     * closing a dedicated read-only session internally.
+     * <p>
+     * Use this when a caller only needs <em>another</em> system's scoped token (for example to stamp
+     * security or to act on its behalf) without standing up a full {@link #withSystemAndToken} work
+     * block — keeping the access scoped to that specific system rather than the broad ActivityMaster
+     * system token.
+     *
+     * @param enterpriseName the AM enterprise name (security scope)
+     * @param systemName     the AM system whose own identity token is required
+     * @return a Uni emitting that system's identity token UUID
+     */
+    public static Uni<UUID> getSystemToken(String enterpriseName, String systemName) {
+        Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
+        IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
+        return withSessionReadOnly(sessionFactory, session ->
+                enterpriseService.getEnterprise(session, enterpriseName)
+                        .chain(enterprise -> getISystemToken(session, systemName, enterprise)));
     }
 
     /**

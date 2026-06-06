@@ -89,10 +89,4 @@ public interface IClassificationDataConceptService<J extends IClassificationData
      * @return A Uni emitting the security hierarchy data concept
      */
     Uni<IClassificationDataConcept<?, ?>> getSecurityHierarchyConcept(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
-     * Resolves a Classification Data Concept ID (UUID) by its unique name within an enterprise and system.
-     * Contract: never returns null. If not found, lets NoResultException propagate.
-     */
-    Uni<UUID> resolveCdcIdByName(Mutiny.Session session, IEnterprise<?, ?> enterpriseId, UUID systemId, String conceptName);
 }

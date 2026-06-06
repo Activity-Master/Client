@@ -7,7 +7,7 @@ import com.guicedee.activitymaster.fsdm.client.services.IEnterpriseService;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken;
 import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterProgressMonitor;
-import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterSystem;
+import com.guicedee.activitymaster.fsdm.client.services.systems.IMasterSystem;
 import com.guicedee.client.IGuiceContext;
 import com.guicedee.client.scopes.CallScopeProperties;
 import com.guicedee.client.scopes.CallScoper;
@@ -64,7 +64,7 @@ public class ActivityMasterConfiguration
 		System.setProperty("ACTIVITY_MASTER_HOST", host);
 	}
 
-	private Set<IActivityMasterSystem<?>> allSystems;
+	private Set<IMasterSystem<?>> allSystems;
 	private final List<IActivityMasterProgressMonitor> progressMonitors = new CopyOnWriteArrayList<>();
 
 	private boolean enterpriseReady;
@@ -235,11 +235,11 @@ public class ActivityMasterConfiguration
 		setIdentityToken(dto.getIdentityToken());
 	}
 
-	public Set<IActivityMasterSystem<?>> getAllSystems()
+	public Set<IMasterSystem<?>> getAllSystems()
 	{
 		if (allSystems == null)
 		{
-			allSystems = IActivityMasterSystem.allSystems();
+			allSystems = IMasterSystem.allSystems();
 			allSystems = new TreeSet<>(allSystems);
 		}
 		return allSystems;

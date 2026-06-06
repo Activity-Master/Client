@@ -109,7 +109,7 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
                        .chain(ent -> {
                            logProgress("System Loading", "Starting Systems... ", 1);
                            setCurrentTask(0);
-                           Multi<IActivityMasterSystem<?>> multi = Multi.createFrom()
+                           Multi<IMasterSystem<?>> multi = Multi.createFrom()
                                    .iterable(configuration.getAllSystems());
                            multi.invoke(iActivityMasterSystem -> {
                                        logProgress("System Loading", "Starting up system " + iActivityMasterSystem.getClass()

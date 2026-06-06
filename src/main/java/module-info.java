@@ -2,6 +2,7 @@ import com.guicedee.activitymaster.fsdm.client.services.ConsoleLogActivityMaster
 import com.guicedee.activitymaster.fsdm.client.services.events.IOnCreateUser;
 import com.guicedee.activitymaster.fsdm.client.services.events.IOnExpireUser;
 import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterProgressMonitor;
+import com.guicedee.activitymaster.fsdm.client.services.systems.IMasterSystem;
 import com.guicedee.client.services.config.IGuiceScanModuleInclusions;
 
 module com.guicedee.activitymaster.fsdm.client {
@@ -57,7 +58,7 @@ module com.guicedee.activitymaster.fsdm.client {
     requires transitive org.apache.logging.log4j;
     requires com.guicedee.rest.client;
 
-    uses com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterSystem;
+    uses IMasterSystem;
 
     uses IOnCreateUser;
     uses IOnExpireUser;

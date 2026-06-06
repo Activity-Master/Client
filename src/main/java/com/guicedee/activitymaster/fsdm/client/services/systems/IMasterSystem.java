@@ -14,7 +14,7 @@ import java.util.*;
  * A system or micro service registered to store and retrieve data from the database
  * @param <J>
  */
-public interface IActivityMasterSystem<J extends IActivityMasterSystem<J>>
+public interface IMasterSystem<J extends IMasterSystem<J>>
 		extends IDefaultService<J>, IProgressable
 {
 	Uni<ISystems<?,?>> registerSystem(Mutiny.Session session, IEnterprise<?,?> enterprise);
@@ -39,9 +39,9 @@ public interface IActivityMasterSystem<J extends IActivityMasterSystem<J>>
 	String getSystemDescription();
 	
 	@SuppressWarnings({"UnnecessaryLocalVariable", "rawtypes", "unchecked"})
-	static @NotNull Set<IActivityMasterSystem<?>> allSystems()
+	static @NotNull Set<IMasterSystem<?>> allSystems()
 	{
-		Set iActivityMasterSystems = IGuiceContext.loaderToSet(ServiceLoader.load(IActivityMasterSystem.class));
+		Set iActivityMasterSystems = IGuiceContext.loaderToSet(ServiceLoader.load(IMasterSystem.class));
 		return iActivityMasterSystems;
 	}
 	

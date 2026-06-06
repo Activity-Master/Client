@@ -5,8 +5,7 @@ import com.guicedee.activitymaster.fsdm.client.services.IEnterpriseService;
 import com.guicedee.activitymaster.fsdm.client.services.ISystemsService;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
-import com.guicedee.activitymaster.fsdm.client.services.systems.IActivityMasterSystem;
-import com.guicedee.client.IGuiceContext;
+import com.guicedee.activitymaster.fsdm.client.services.systems.IMasterSystem;
 import io.smallrye.mutiny.Uni;
 import lombok.extern.log4j.Log4j2;
 import org.hibernate.reactive.mutiny.Mutiny;
@@ -21,8 +20,8 @@ import java.util.UUID;
  * @param <J>
  */
 @Log4j2
-public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaultSystem<J>>
-        implements IActivityMasterSystem<J>
+public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
+        implements IMasterSystem<J>
 {
     @Inject
     private ISystemsService<?> systemsService;
@@ -69,7 +68,7 @@ public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaul
 
     public Uni<ISystems<?, ?>> getSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise)
     {
-        for (IActivityMasterSystem<?> allSystem : IActivityMasterSystem.allSystems())
+        for (IMasterSystem<?> allSystem : IMasterSystem.allSystems())
         {
             if (allSystem.getSystemName()
                         .equals(getSystemName()))
@@ -82,7 +81,7 @@ public abstract class ActivityMasterDefaultSystem<J extends ActivityMasterDefaul
 
     public Uni<UUID> getSystemToken(Mutiny.Session session, IEnterprise<?, ?> enterprise)
     {
-        for (IActivityMasterSystem<?> allSystem : IActivityMasterSystem.allSystems())
+        for (IMasterSystem<?> allSystem : IMasterSystem.allSystems())
         {
             if (allSystem.getSystemName()
                         .equals(getSystemName()))
