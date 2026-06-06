@@ -213,11 +213,8 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                })))
                        .chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
                        .chain(table -> {
-                           // Start the createDefaultSecurity operation but don't wait for it to complete
-                           table.createDefaultSecurity(session, system, identityToken);
-                           // Return the table immediately without waiting for createDefaultSecurity to complete
-                           return Uni.createFrom()
-                                          .item((IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) table);
+                           return table.createDefaultSecurity(session, system, identityToken)
+                                          .replaceWith((IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) table);
                        });
     }
 
@@ -328,9 +325,8 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                                                   return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
                                                               })
                                                               .chain(newTable -> {
-                                                                  newTable.createDefaultSecurity(session, system, identityToken);
-                                                                  return Uni.createFrom()
-                                                                                 .item((IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) newTable);
+                                                                  return newTable.createDefaultSecurity(session, system, identityToken)
+                                                                                 .replaceWith((IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) newTable);
                                                               })));
                                           });
                        });

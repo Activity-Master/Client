@@ -150,13 +150,8 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                        .chain(table -> session.persist(table)
                                                .replaceWith(Uni.createFrom()
                                                                     .item(table))
-                                               .chain(persisted -> {
-                                                   // Start the createDefaultSecurity operation but don't wait for it to complete
-                                                   persisted.createDefaultSecurity(session, system, identityToken);
-                                                   // Return the table immediately without waiting for createDefaultSecurity to complete
-                                                   return Uni.createFrom()
-                                                                  .item((IRelationshipValue<J, IAddress<?, ?>, ?>) persisted);
-                                               }));
+                                               .chain(persisted -> persisted.createDefaultSecurity(session, system, identityToken)
+                                                       .replaceWith((IRelationshipValue<J, IAddress<?, ?>, ?>) persisted)));
     }
 
     /**
@@ -238,11 +233,8 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                                               .chain(newTable -> {
                                                                   return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
                                                               })
-                                                              .chain(newTable -> {
-                                                                  newTable.createDefaultSecurity(session, system, identityToken);
-                                                                  return Uni.createFrom()
-                                                                                 .item((IRelationshipValue<J, IAddress<?, ?>, ?>) existingTable);
-                                                              })));
+                                                              .chain(newTable -> newTable.createDefaultSecurity(session, system, identityToken)
+                                                                      .replaceWith((IRelationshipValue<J, IAddress<?, ?>, ?>) existingTable))));
                                           });
                        });
 

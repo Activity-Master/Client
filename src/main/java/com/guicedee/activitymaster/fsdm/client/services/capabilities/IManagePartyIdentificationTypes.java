@@ -215,11 +215,8 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                    })))
                            .chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
                            .chain(table -> {
-                               // Start the createDefaultSecurity operation but don't wait for it to complete
-                               table.createDefaultSecurity(session, system, identityToken);
-                               // Return the table immediately without waiting for createDefaultSecurity to complete
-                               return Uni.createFrom()
-                                              .item((IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>) table);
+                               return table.createDefaultSecurity(session, system, identityToken)
+                                              .replaceWith((IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>) table);
                            });
     }
 
@@ -329,11 +326,10 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                                                   .chain(newTable -> {
                                                                       return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
                                                                   })
-                                                                  .chain(newTable -> {
-                                                                      newTable.createDefaultSecurity(session, system, identityToken);
-                                                                      return Uni.createFrom()
-                                                                                     .item((IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>) newTable);
-                                                                  })));
+                                                                   .chain(newTable -> {
+                                                                       return newTable.createDefaultSecurity(session, system, identityToken)
+                                                                                      .replaceWith((IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>) newTable);
+                                                                   })));
                                               });
                            });
     }

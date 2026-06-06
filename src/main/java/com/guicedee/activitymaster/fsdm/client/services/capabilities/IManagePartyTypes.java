@@ -207,10 +207,8 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 				})))
 				.chain(table -> session.merge(table))
 				.chain(table -> {
-					// Start the createDefaultSecurity operation but don't wait for it to complete
-					table.createDefaultSecurity(session, system, identityToken);
-					// Return the table immediately without waiting for createDefaultSecurity to complete
-					return Uni.createFrom().item((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) table);
+					return table.createDefaultSecurity(session, system, identityToken)
+							.replaceWith((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) table);
 				});
 	}
 
@@ -306,10 +304,8 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 								return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
 							})
 							.chain(newTable -> {
-								// Start the createDefaultSecurity operation but don't wait for it to complete
-								newTable.createDefaultSecurity(session, system, identityToken);
-								// Return the table immediately without waiting for createDefaultSecurity to complete
-								return Uni.createFrom().item((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) newTable);
+								return newTable.createDefaultSecurity(session, system, identityToken)
+										.replaceWith((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) newTable);
 							})));
 					});
 			});

@@ -150,12 +150,8 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 						return tableForClassification;
 					})))
 				.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
-				.chain(table -> {
-					// Start the createDefaultSecurity operation but don't wait for it to complete
-					table.createDefaultSecurity(session, system, identityToken);
-					// Return the table immediately without waiting for createDefaultSecurity to complete
-					return Uni.createFrom().item(table);
-				});
+				.chain(table -> table.createDefaultSecurity(session, system, identityToken)
+						.replaceWith((IRelationshipValue<J, IGeography<?, ?>, ?>) table));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -219,12 +215,8 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 											return newTableForClassification;
 										})
 										.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
-										.chain(table -> {
-											// Start the createDefaultSecurity operation but don't wait for it to complete
-											table.createDefaultSecurity(session, system, identityToken);
-											// Return the original table immediately without waiting for createDefaultSecurity to complete
-											return Uni.createFrom().item(table);
-										});
+										.chain(table -> table.createDefaultSecurity(session, system, identityToken)
+												.replaceWith((IRelationshipValue<J, IGeography<?, ?>, ?>) table));
 							})));
 						});
 				});

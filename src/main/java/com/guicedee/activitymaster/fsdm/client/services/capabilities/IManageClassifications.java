@@ -254,7 +254,7 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                         IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
                                         return activeFlagSvc.getActiveFlag(session, enterprise);
                                     })
-                                    .map(activeFlag -> {
+                                    .chain(activeFlag -> {
                                         tableForClassification.setActiveFlagID(activeFlag);
                                         tableForClassification.setSystemID(fetchedSystem);
                                         tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
@@ -265,39 +265,67 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                         }
                                         tableForClassification.setValue(value);
 
-                                        configureForClassification(session, tableForClassification, classification, fetchedSystem);
-
-                                        return tableForClassification;
+                                        return configureForClassification(session, tableForClassification, classification, fetchedSystem)
+                                                .replaceWith(tableForClassification);
                                     }));
                 })
                 .chain(table -> session.persist(table)
                         .replaceWith(Uni.createFrom()
                                 .item(table)))
                 .chain(table -> {
-                    // Execute the createDefaultSecurity operation and wait for it to complete
+                    // In a bulk-load context the link row is recorded for batched/stateless security at the
+                    // end of the phase; otherwise create its default security per-row (single-entity create).
+                    if (com.guicedee.activitymaster.fsdm.client.services.DefaultSecurityCollector.isActive(session)) {
+                        com.guicedee.activitymaster.fsdm.client.services.DefaultSecurityCollector.record(session, table);
+                        return Uni.createFrom().item(table);
+                    }
                     return table.createDefaultSecurity(session, system, identityToken)
                             .map(v -> table); // Return the table after security operation completes
                 });
     }
 
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
-        return addOrUpdateClassification(session, classificationName.toString(), null, value, system, identityToken);
+        return addOrUpdateClassification(session, classificationName.toString(), EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, null, value, system, identityToken);
     }
 
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
-        return addOrUpdateClassification(session, classificationName.toString(), searchValue, value, system, identityToken);
+        return addOrUpdateClassification(session, classificationName.toString(), EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, searchValue, value, system, identityToken);
+    }
+
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName.toString(), concept, null, value, system, identityToken);
+    }
+
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, EnterpriseClassificationDataConcepts concept, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName.toString(), concept, searchValue, value, system, identityToken);
     }
 
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
-        return addOrUpdateClassification(session, classificationName, null, value, system, identityToken);
+        return addOrUpdateClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, null, value, system, identityToken);
     }
 
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, searchValue, value, system, identityToken);
+    }
+
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName, concept, null, value, system, identityToken);
+    }
+
+    /**
+     * Adds or updates a classification link, scoping the underlying classification lookup to the supplied data concept.
+     * <p>
+     * Classification names are frequently duplicated across concepts (for example ISO codes reused by the Languages,
+     * Country and Currency concepts). Passing the {@code concept} disambiguates the lookup so the correct classification
+     * is resolved instead of collapsing onto {@code NoClassificationDataConceptName}. Callers that do not supply a
+     * concept default to {@link EnterpriseClassificationDataConcepts#NoClassificationDataConceptName}.
+     */
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, String classificationName, EnterpriseClassificationDataConcepts concept, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
         IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
                 (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
         IClassificationService<?> classificationService = get(IClassificationService.class);
 
-        return (Uni) classificationService.find(session, classificationName, system, identityToken)
+        return (Uni) classificationService.find(session, classificationName, concept, system, identityToken)
                 .chain(classification -> {
                     IQueryBuilderRelationships<?, ?, J, IClassification<?, ?>, UUID> queryBuilder =
                             tableForClassification.builder(session)
@@ -312,27 +340,40 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                     .onFailure(NoResultException.class)
                                     .recoverWithUni(
                                             () -> {
-                                                return (Uni) addClassification(session, classificationName, value, system, identityToken);
+                                                return (Uni) addClassification(session, classificationName, concept, value, system, identityToken);
                                             }
                                     )
                                     .onItem()
                                     .call(a -> {
-                                        return updateClassification(session, classificationName, value, system, identityToken);
+                                        return updateClassification(session, classificationName, concept, value, system, identityToken);
                                     });
                 });
     }
 
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
-        return addOrReuseClassification(session, classificationName.toString(), value, system, identityToken);
+        return addOrReuseClassification(session, classificationName.toString(), EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, value, system, identityToken);
+    }
+
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, Enum<?> classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrReuseClassification(session, classificationName.toString(), concept, value, system, identityToken);
     }
 
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrReuseClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, value, system, identityToken);
+    }
+
+    /**
+     * Finds an existing classification link or creates one, scoping the underlying classification lookup to the
+     * supplied data concept so duplicate names across concepts resolve correctly. Callers that do not supply a concept
+     * default to {@link EnterpriseClassificationDataConcepts#NoClassificationDataConceptName}.
+     */
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrReuseClassification(Mutiny.Session session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
 
         IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
                 (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
         IClassificationService<?> classificationService = get(IClassificationService.class);
 
-        return classificationService.find(session, classificationName, system, identityToken)
+        return classificationService.find(session, classificationName, concept, system, identityToken)
                 .chain(classification -> {
                     return session.fetch(system)
                             .chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
@@ -346,7 +387,7 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                                 .get()
                                                 .onFailure(NoResultException.class)
                                                 .recoverWithUni(() -> {
-                                                    return (Uni) addClassification(session, classificationName, value, system, identityToken);
+                                                    return (Uni) addClassification(session, classificationName, concept, value, system, identityToken);
                                                 })
                                                 .onItem()
                                                 .call(a -> {
@@ -357,13 +398,17 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                 });
     }
 
-    @SuppressWarnings("unchecked")
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> updateClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return updateClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, value, system, identityToken);
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> updateClassification(Mutiny.Session session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
         IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, ?, ?> tableForClassification =
                 (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
         IClassificationService<?> classificationService = get(IClassificationService.class);
 
-        return classificationService.find(session, classificationName, system, identityToken)
+        return classificationService.find(session, classificationName, concept, system, identityToken)
                 .chain(classification -> {
                     final IClassification<?, ?> finalClassification = classification;
                     return tableForClassification.builder(session)
@@ -415,21 +460,24 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                                                                 newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
 
                                                                                 return flagService.getActiveFlag(session, originalEnterprise, identityToken)
-                                                                                        .map(activeFlag -> {
+                                                                                        .chain(activeFlag -> {
                                                                                             newTableForClassification.setActiveFlagID(activeFlag);
                                                                                             newTableForClassification.setValue(value);
                                                                                             newTableForClassification.setEnterpriseID(systemEnterprise);
 
-                                                                                            configureForClassification(session, newTableForClassification, finalClassification, system);
-
-                                                                                            return newTableForClassification;
+                                                                                            return configureForClassification(session, newTableForClassification, finalClassification, system)
+                                                                                                    .replaceWith(newTableForClassification);
                                                                                         });
                                                                             }))))
                                                     .chain(newTable -> session.persist(newTable)
                                                             .replaceWith(Uni.createFrom()
                                                                     .item(newTable)))
                                                     .chain(newTable -> {
-                                                        // Execute the createDefaultSecurity operation and wait for it to complete
+                                                        // Batch in a bulk-load context; otherwise per-row default security.
+                                                        if (com.guicedee.activitymaster.fsdm.client.services.DefaultSecurityCollector.isActive(session)) {
+                                                            com.guicedee.activitymaster.fsdm.client.services.DefaultSecurityCollector.record(session, (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable<?, ?, ?, ?>) newTable);
+                                                            return Uni.createFrom().item((IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) newTable);
+                                                        }
                                                         return newTable.createDefaultSecurity(session, originalSystem, identityToken)
                                                                 .map(v -> (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) newTable); // Return the table after security operation completes
                                                     }));
@@ -531,6 +579,13 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                 });
     }
 
-    void configureForClassification(Mutiny.Session session, IWarehouseRelationshipClassificationTable linkTable, IClassification<?, ?> classificationValue, ISystems<?, ?> system);
+    /**
+     * Reactive, non-blocking configuration of a classification link. Implementors that only need to
+     * set fields can return {@code Uni.createFrom().voidItem()}. Implementors that must resolve data
+     * reactively - e.g. a classification-&gt;classification link that looks up the NoClassification
+     * record - return the resolving chain so the Vert.x event loop is never blocked with
+     * {@code await().atMost(...)}.
+     */
+    Uni<Void> configureForClassification(Mutiny.Session session, IWarehouseRelationshipClassificationTable linkTable, IClassification<?, ?> classificationValue, ISystems<?, ?> system);
 }
 

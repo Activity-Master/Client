@@ -181,11 +181,8 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                         .replaceWith(Uni.createFrom()
                                 .item(table))
                         .chain(tableDone -> {
-                            // Start the createDefaultSecurity operation but don't wait for it to complete
-                            tableDone.createDefaultSecurity(session, system, identityToken);
-                            // Return the table immediately without waiting for createDefaultSecurity to complete
-                            return Uni.createFrom()
-                                    .item((IRelationshipValue<J, IResourceItem<?, ?>, ?>) tableDone);
+                            return tableDone.createDefaultSecurity(session, system, identityToken)
+                                    .replaceWith((IRelationshipValue<J, IResourceItem<?, ?>, ?>) tableDone);
                         }));
     }
 
@@ -239,9 +236,8 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                                                                         return session.persist(table).replaceWith(Uni.createFrom().item(table));
                                                                     })
                                                                     .chain(table -> {
-                                                                        table.createDefaultSecurity(session, system, identityToken);
-                                                                        return Uni.createFrom()
-                                                                                .item((IRelationshipValue<J, IResourceItem<?, ?>, ?>) table);
+                                                                        return table.createDefaultSecurity(session, system, identityToken)
+                                                                                .replaceWith((IRelationshipValue<J, IResourceItem<?, ?>, ?>) table);
                                                                     });
                                                         });
                                                 }));
@@ -300,11 +296,8 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                                                                     .replaceWith(Uni.createFrom().item(newTable));
                                                         })
                                                         .chain(newTable -> {
-                                                            // Start the createDefaultSecurity operation but don't wait for it to complete
-                                                            newTable.createDefaultSecurity(session, originalSystem, identityToken);
-                                                            // Return the table immediately without waiting for createDefaultSecurity to complete
-                                                            return Uni.createFrom()
-                                                                    .item((IRelationshipValue<J, IResourceItem<?, ?>, ?>) newTable);
+                                                            return newTable.createDefaultSecurity(session, originalSystem, identityToken)
+                                                                    .replaceWith((IRelationshipValue<J, IResourceItem<?, ?>, ?>) newTable);
                                                         })))));
                             });
                 });

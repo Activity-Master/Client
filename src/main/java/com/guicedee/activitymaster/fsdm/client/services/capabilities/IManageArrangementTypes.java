@@ -201,12 +201,8 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                                 .createFrom()
                                 .item(table)))
                 .chain(table -> {
-                    // Start the createDefaultSecurity operation but don't wait for it to complete
-                    table.createDefaultSecurity(session, system, identityToken);
-                    // Return the table immediately without waiting for createDefaultSecurity to complete
-                    return Uni
-                            .createFrom()
-                            .item((IRelationshipValue<J, IArrangementType<?, ?>, ?>) table);
+                    return table.createDefaultSecurity(session, system, identityToken)
+                            .replaceWith((IRelationshipValue<J, IArrangementType<?, ?>, ?>) table);
                 }));
     }
 
@@ -299,10 +295,8 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                                                                     .item(newTable));
                                                 })
                                                 .chain(newTable -> {
-                                                    newTable.createDefaultSecurity(session, system, identityToken);
-                                                    return Uni
-                                                            .createFrom()
-                                                            .item((IRelationshipValue<J, IArrangementType<?, ?>, ?>) existingTable);
+                                                    return newTable.createDefaultSecurity(session, system, identityToken)
+                                                            .replaceWith((IRelationshipValue<J, IArrangementType<?, ?>, ?>) existingTable);
                                                 })));
                             });
                 });

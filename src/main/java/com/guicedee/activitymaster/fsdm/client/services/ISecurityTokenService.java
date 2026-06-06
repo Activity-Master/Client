@@ -3,6 +3,7 @@ package com.guicedee.activitymaster.fsdm.client.services;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.classifications.IClassification;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
+import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable;
 import io.smallrye.mutiny.Uni;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.reactive.mutiny.Mutiny;
@@ -125,6 +126,45 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	 * @return A Uni emitting the 'Everywhere' group token
 	 */
 	Uni<ISecurityToken<?,?>> getEverywhereGroup(Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Applies default security to <em>every</em> row of {@code table} that does not yet have it, using a
+	 * single batched, stateless transaction. The canonical group/folder tokens (Administrators, Everyone,
+	 * Everywhere, Systems, Applications, Plugins, Guests) are resolved <strong>once</strong> for the whole
+	 * pass, rows that already have security are skipped (idempotent), and the inserts are written on a
+	 * {@link org.hibernate.reactive.mutiny.Mutiny.StatelessSession} so the persistence context never grows.
+	 * <p>
+	 * This is the bulk-friendly alternative to calling {@link IWarehouseCoreTable#createDefaultSecurity(Mutiny.Session, ISystems, UUID...)}
+	 * per row (which re-resolves the folder tokens and issues find+persist round-trips for every record).
+	 * Use it after a bulk load (e.g. geography import) to secure all newly-created rows efficiently.
+	 *
+	 * @param session        the live session (used for the read/count gate)
+	 * @param table          a prototype instance of the entity type whose rows should be secured
+	 * @param system         the owning system
+	 * @param identityToken  optional security identity tokens
+	 * @return a Uni that completes when all pending rows have been secured
+	 */
+	Uni<Void> applyDefaultSecurityToTable(Mutiny.Session session, IWarehouseCoreTable<?,?,?,?> table, ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Applies default security to an explicit set of <strong>just-created</strong> rows in a single
+	 * batched, stateless transaction. Unlike {@link #applyDefaultSecurityToTable(Mutiny.Session, IWarehouseCoreTable, ISystems, UUID...)}
+	 * this performs <em>no</em> full-table scan and <em>no</em> per-row existence gate — the caller has
+	 * already established that these rows are new (e.g. a bulk loader that only creates rows when they
+	 * were absent). The seven canonical group/folder tokens are resolved <strong>once</strong> and all
+	 * rows are written on a {@link org.hibernate.reactive.mutiny.Mutiny.StatelessSession}.
+	 * <p>
+	 * This is the most efficient option for securing the output of a bulk import: collect the created
+	 * entities as they are persisted, then secure them all here at the end of the load phase.
+	 *
+	 * @param session        the live session (used only to resolve the shared tokens)
+	 * @param rows           the just-created entities to secure; {@code null}/empty is a no-op
+	 * @param system         the owning system
+	 * @param identityToken  optional security identity tokens
+	 * @return a Uni that completes when all rows have been secured
+	 */
+	Uni<Void> applyDefaultSecurityToRows(Mutiny.Session session, java.util.Collection<? extends IWarehouseCoreTable<?,?,?,?>> rows,
+	                                     ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Gets the 'Guests' folder token.
