@@ -36,6 +36,29 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
     Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.Session session, String flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
     /**
+     * Opt-in <strong>scope-restricted</strong> ActiveFlag create. Unlike the standard reference-data create (which
+     * stamps <em>no</em> per-record security), this variant secures the new flag with the restricted matrix: only
+     * Administrators / Systems / Applications / Plugins retain access, plus a <em>read</em> grant for
+     * {@code scopeToken}. Only identity tokens at the {@code scopeToken} node or below it may read the flag.
+     *
+     * <p><strong>Caveat:</strong> ActiveFlags gate visibility for every record referencing them and are normally
+     * enterprise-global. Restricting one is unusual — use only for tenant/branch-private flags.</p>
+     *
+     * @param session         The Mutiny session to use
+     * @param enterprise      The enterprise the flag belongs to
+     * @param name            The flag name
+     * @param description     The flag description
+     * @param system          The system used for the security fan-out
+     * @param scopeToken      The scope token granted read on the new flag
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting the created (scope-restricted) active flag
+     */
+    Uni<IActiveFlag<?,?>> createScopeRestricted(Mutiny.Session session, IEnterprise<?,?> enterprise, String name, String description,
+                                                com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems<?, ?> system,
+                                                com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+                                                UUID... identifyingToken);
+
+    /**
      * Gets a new, uninitialized active flag instance.
      *
      * @return A new active flag instance

@@ -86,6 +86,28 @@ public interface IProductService<J extends IProductService<J>>
 	Uni<IProduct<?, ?>> createProduct(Mutiny.Session session, String productType, UUID key, String name, String description, String code, ISystems<?, ?> system, UUID... identityToken);
 
 	/**
+	 * Creates a new product that is <strong>scope-restricted</strong> rather than world-readable. Identical to
+	 * {@link #createProduct(Mutiny.Session, String, UUID, String, String, String, ISystems, UUID...)} except the
+	 * product is secured with the restricted matrix: only Administrators / Systems / Applications / Plugins retain
+	 * access, plus a <em>read</em> grant for {@code scopeToken}. Because the applicable-token climb is
+	 * child&rarr;parent, only identity tokens located at the {@code scopeToken} node <em>or below it</em> may read.
+	 *
+	 * @param session        The Mutiny session to use
+	 * @param productType    The name of the product type
+	 * @param key            The UUID key for the product, or {@code null} to generate one
+	 * @param name           The name of the product
+	 * @param description    The description of the product
+	 * @param code           The code for the product
+	 * @param system         The system creating the product
+	 * @param scopeToken     The scope token granted read on the new product
+	 * @param identityToken  Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) product
+	 */
+	Uni<IProduct<?, ?>> createProductScopeRestricted(Mutiny.Session session, String productType, UUID key, String name, String description, String code, ISystems<?, ?> system,
+													 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+													 UUID... identityToken);
+
+	/**
 	 * Finds a product by name.
 	 *
 	 * @param session        The Mutiny session to use
@@ -133,6 +155,24 @@ public interface IProductService<J extends IProductService<J>>
 	 * @return A Uni emitting the created product type
 	 */
 	Uni<IProductType<?, ?>> createProductType(Mutiny.Session session, String productsType, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
+
+	/**
+	 * Creates a new product type that is <strong>scope-restricted</strong>. Same as
+	 * {@link #createProductType(Mutiny.Session, String, UUID, String, ISystems, UUID...)} but secured with the
+	 * restricted matrix plus a <em>read</em> grant for {@code scopeToken}.
+	 *
+	 * @param session        The Mutiny session to use
+	 * @param productsType   The name of the product type
+	 * @param key            The UUID key for the type, or {@code null} to generate one
+	 * @param description    The description
+	 * @param system         The system creating the type
+	 * @param scopeToken     The scope token granted read on the new product type
+	 * @param identityToken  Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) product type
+	 */
+	Uni<IProductType<?, ?>> createProductTypeScopeRestricted(Mutiny.Session session, String productsType, UUID key, String description, ISystems<?, ?> system,
+															 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+															 UUID... identityToken);
 
 	/**
 	 * Finds the product type for a specific product type name.

@@ -98,6 +98,24 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
     Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, String value, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
 
     /**
+     * Opt-in <strong>scope-restricted</strong> resource-item-type create. Same as
+     * {@link #createType(Mutiny.Session, String, UUID, String, ISystems, UUID...)} but secured with the restricted
+     * matrix plus a <em>read</em> grant for {@code scopeToken}.
+     *
+     * @param session        The Mutiny session to use
+     * @param value          The name of the type
+     * @param key            The UUID key for the type, or {@code null} to generate one
+     * @param description    The description
+     * @param system         The system creating the type
+     * @param scopeToken     The scope token granted read on the new resource item type
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the created (scope-restricted) resource item type
+     */
+    Uni<IResourceItemType<?, ?>> createTypeScopeRestricted(Mutiny.Session session, String value, UUID key, String description, ISystems<?, ?> system,
+                                                           com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+                                                           UUID... identityToken);
+
+    /**
      * Creates a new resource item.
      *
      * @param session               The Mutiny session to use
@@ -220,6 +238,32 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
     Uni<IResourceItem<?, ?>> create(Mutiny.Session session, String identityResourceType, UUID key, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
                                     LocalDateTime effectiveFromDate, byte[] data,
                                     ISystems<?, ?> system, UUID... identityToken);
+
+    /**
+     * Opt-in <strong>scope-restricted</strong> resource-item create. Identical to
+     * {@link #create(Mutiny.Session, String, UUID, String, UUID, LocalDateTime, byte[], ISystems, UUID...)} except
+     * the resource item's data row and its type relationship are secured with the restricted matrix: only
+     * Administrators / Systems / Applications / Plugins retain access, plus a <em>read</em> grant for
+     * {@code scopeToken}. Because the applicable-token climb is child&rarr;parent, only identity tokens located at
+     * the {@code scopeToken} node <em>or below it</em> may read.
+     *
+     * @param session                     The Mutiny session to use
+     * @param identityResourceType        The resource type identity
+     * @param key                         The UUID key for the resource item
+     * @param resourceItemDataValue       The resource item data value
+     * @param originalSourceSystemUniqueID The original source system unique ID
+     * @param effectiveFromDate           The effective-from date
+     * @param data                        The binary data
+     * @param system                      The system creating the item
+     * @param scopeToken                  The scope token granted read on the new resource item
+     * @param identityToken               Optional security identity tokens
+     * @return A Uni emitting the created (scope-restricted) resource item
+     */
+    Uni<IResourceItem<?, ?>> createScopeRestricted(Mutiny.Session session, String identityResourceType, UUID key, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
+                                                   LocalDateTime effectiveFromDate, byte[] data,
+                                                   ISystems<?, ?> system,
+                                                   com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+                                                   UUID... identityToken);
 
     /**
      * Direct method for updating only the binary data of a resource item.

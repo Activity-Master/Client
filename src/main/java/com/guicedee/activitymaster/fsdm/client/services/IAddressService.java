@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services;
 
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.address.IAddress;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.party.IInvolvedParty;
+import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
 import com.guicedee.activitymaster.fsdm.client.services.exceptions.AddressException;
 import io.smallrye.mutiny.Uni;
@@ -54,6 +55,26 @@ public interface IAddressService<J extends IAddressService<?>>
 	 * @return A Uni emitting the created address
 	 */
 	Uni<IAddress<?, ?>> create(Mutiny.Session session, String addressClassification, UUID key, ISystems<?, ?> system, String value, UUID... identifyingToken);
+
+	/**
+	 * Creates a new address that is <strong>scope-restricted</strong> rather than world-readable. Identical
+	 * to {@link #create(Mutiny.Session, String, UUID, ISystems, String, UUID...)} except the address is
+	 * secured with the restricted matrix: only Administrators / Systems / Applications / Plugins retain
+	 * access, plus a <em>read</em> grant for {@code scopeToken}. Because the applicable-token climb is
+	 * child&rarr;parent, only identity tokens located at the {@code scopeToken} node <em>or below it</em> may
+	 * read the address.
+	 *
+	 * @param session               The Mutiny session to use
+	 * @param addressClassification The classification of the address
+	 * @param key                   The UUID key for the address, or {@code null} to generate one
+	 * @param system                The system creating the address
+	 * @param value                 The address value
+	 * @param scopeToken            The scope token granted read on the new address
+	 * @param identifyingToken      Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) address
+	 */
+	Uni<IAddress<?, ?>> createScopeRestricted(Mutiny.Session session, String addressClassification, UUID key, ISystems<?, ?> system,
+											  String value, ISecurityToken<?, ?> scopeToken, UUID... identifyingToken);
 
 	/**
 	 * Adds or finds an IP address.

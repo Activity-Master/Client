@@ -259,6 +259,31 @@ public interface IClassificationService<J extends IClassificationService<J>>
 									 Integer sequenceNumber, IClassification<?,?> parent, UUID... identityToken);
 
 	/**
+	 * Creates a new classification that is <strong>scope-restricted</strong> rather than world-readable.
+	 * Identical to {@link #create(Mutiny.Session, String, String, EnterpriseClassificationDataConcepts, ISystems, Integer, IClassification, UUID...)}
+	 * except the classification is secured with the restricted matrix: only Administrators / Systems /
+	 * Applications / Plugins retain access, plus a <em>read</em> grant for {@code scopeToken}. Because the
+	 * applicable-token climb is child&rarr;parent, only identity tokens located at the {@code scopeToken}
+	 * node <em>or below it</em> may read the classification.
+	 *
+	 * @param session        The Mutiny session to use
+	 * @param name           The name of the classification
+	 * @param description    The description
+	 * @param conceptName    The data concept
+	 * @param system         The system creating the classification
+	 * @param sequenceNumber The sequence number for ordering
+	 * @param parent         The parent classification instance, or {@code null}
+	 * @param scopeToken     The scope token granted read on the new classification
+	 * @param identityToken  Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) classification
+	 */
+	Uni<IClassification<?,?>> createScopeRestricted(Mutiny.Session session, String name, String description,
+													EnterpriseClassificationDataConcepts conceptName, ISystems<?,?> system,
+													Integer sequenceNumber, IClassification<?,?> parent,
+													com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?,?> scopeToken,
+													UUID... identityToken);
+
+	/**
 	 * Finds a classification by enum name.
 	 *
 	 * @param session        The Mutiny session to use

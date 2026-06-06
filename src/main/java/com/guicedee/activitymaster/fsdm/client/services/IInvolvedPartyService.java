@@ -187,6 +187,27 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 									 boolean isOrganic, UUID... identityToken);
 
 	/**
+	 * Creates a new involved party that is <strong>scope-restricted</strong> rather than world-readable.
+	 * Identical to {@link #create(Mutiny.Session, ISystems, UUID, Pair, boolean, UUID...)} except the party
+	 * (and its organic/non-organic record) are secured with the restricted matrix: only Administrators /
+	 * Systems / Applications / Plugins retain access, plus a <em>read</em> grant for {@code scopeToken}.
+	 * Because the applicable-token climb is child&rarr;parent, only identity tokens located at the
+	 * {@code scopeToken} node <em>or below it</em> may read the party.
+	 *
+	 * @param session        The Mutiny session to use
+	 * @param system         The system creating the party
+	 * @param key            The UUID key for the party, or {@code null} to generate one
+	 * @param idTypes        Pairs of identification type names and values
+	 * @param isOrganic      Whether the party is an individual (true) or organization (false)
+	 * @param scopeToken     The scope token granted read on the new party
+	 * @param identityToken  Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) involved party
+	 */
+	Uni<IInvolvedParty<?, ?>> createScopeRestricted(Mutiny.Session session, ISystems<?, ?> system, UUID key,
+													Pair<String, String> idTypes, boolean isOrganic,
+													ISecurityToken<?, ?> scopeToken, UUID... identityToken);
+
+	/**
 	 * Finds an involved party type by name string.
 	 *
 	 * @param session        The Mutiny session to use

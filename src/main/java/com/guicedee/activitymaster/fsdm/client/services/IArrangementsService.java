@@ -5,6 +5,7 @@ import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.arran
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.party.IInvolvedParty;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.resourceitem.IResourceItem;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.rules.IRulesType;
+import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
 import io.smallrye.mutiny.Uni;
 import jakarta.validation.constraints.NotNull;
@@ -106,6 +107,31 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 								  String arrangementTypeValue,
 								  ISystems<?, ?> system,
 								  UUID... identityToken);
+
+	/**
+	 * Creates a new arrangement that is <strong>scope-restricted</strong> rather than world-readable.
+	 * Identical to {@link #create(Mutiny.Session, String, UUID, String, String, ISystems, UUID...)} except
+	 * the arrangement is secured with the restricted matrix: only Administrators / Systems / Applications /
+	 * Plugins retain access, plus a <em>read</em> grant for {@code scopeToken}. Because the applicable-token
+	 * climb is child&rarr;parent, only identity tokens located at the {@code scopeToken} node <em>or below
+	 * it</em> may read the arrangement.
+	 *
+	 * @param session                        The Mutiny session to use
+	 * @param type                           The arrangement type
+	 * @param key                            The UUID key for the arrangement, or {@code null} to generate one
+	 * @param arrangementTypeClassification  The classification for the arrangement type
+	 * @param arrangementTypeValue           The value for the arrangement type classification
+	 * @param system                         The system creating the arrangement
+	 * @param scopeToken                     The scope token granted read on the new arrangement
+	 * @param identityToken                  Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) arrangement
+	 */
+	Uni<IArrangement<?,?>> createScopeRestricted(Mutiny.Session session, String type, UUID key,
+												 String arrangementTypeClassification,
+												 String arrangementTypeValue,
+												 ISystems<?, ?> system,
+												 ISecurityToken<?, ?> scopeToken,
+												 UUID... identityToken);
 
 	/**
 	 * Creates a new arrangement type by name.

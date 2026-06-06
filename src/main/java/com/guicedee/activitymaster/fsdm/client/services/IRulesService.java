@@ -56,6 +56,27 @@ public interface IRulesService<J extends IRulesService<J>>
 	Uni<IRules<?, ?>> createRules(Mutiny.Session session, String rulesType, UUID key, String name, String description, ISystems<?, ?> system, UUID... identityToken);
 
 	/**
+	 * Creates a new rules instance that is <strong>scope-restricted</strong> rather than world-readable. Identical
+	 * to {@link #createRules(Mutiny.Session, String, UUID, String, String, ISystems, UUID...)} except the rules are
+	 * secured with the restricted matrix: only Administrators / Systems / Applications / Plugins retain access, plus
+	 * a <em>read</em> grant for {@code scopeToken}. Because the applicable-token climb is child&rarr;parent, only
+	 * identity tokens located at the {@code scopeToken} node <em>or below it</em> may read the rules.
+	 *
+	 * @param session       The Mutiny session to use
+	 * @param rulesType     The name of the rules type
+	 * @param key           The UUID key for the rules, or {@code null} to generate one
+	 * @param name          The name of the rules instance
+	 * @param description   The description
+	 * @param system        The system creating the rules
+	 * @param scopeToken    The scope token granted read on the new rules
+	 * @param identityToken Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) rules
+	 */
+	Uni<IRules<?, ?>> createRulesScopeRestricted(Mutiny.Session session, String rulesType, UUID key, String name, String description, ISystems<?, ?> system,
+												 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+												 UUID... identityToken);
+
+	/**
 	 * Finds a rules instance by its unique ID.
 	 *
 	 * @param session  The Mutiny session to use
@@ -145,6 +166,24 @@ public interface IRulesService<J extends IRulesService<J>>
 	 * @return A Uni emitting the created rules type
 	 */
 	Uni<IRulesType<?,?>> createRulesType(Mutiny.Session session, String rulesType, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
+
+	/**
+	 * Creates a new rules type that is <strong>scope-restricted</strong>. Same as
+	 * {@link #createRulesType(Mutiny.Session, String, UUID, String, ISystems, UUID...)} but secured with the
+	 * restricted matrix plus a <em>read</em> grant for {@code scopeToken}.
+	 *
+	 * @param session       The Mutiny session to use
+	 * @param rulesType     The name of the rules type
+	 * @param key           The UUID key for the type, or {@code null} to generate one
+	 * @param description   The description
+	 * @param system        The system creating the type
+	 * @param scopeToken    The scope token granted read on the new rules type
+	 * @param identityToken Optional security identity tokens
+	 * @return A Uni emitting the created (scope-restricted) rules type
+	 */
+	Uni<IRulesType<?,?>> createRulesTypeScopeRestricted(Mutiny.Session session, String rulesType, UUID key, String description, ISystems<?, ?> system,
+														com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+														UUID... identityToken);
 
 	/**
 	 * Finds rules types by name.

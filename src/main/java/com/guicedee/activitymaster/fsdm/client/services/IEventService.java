@@ -81,6 +81,25 @@ public interface IEventService<J extends IEventService<J>> {
     Uni<IEvent<?, ?>> createEvent(Mutiny.Session session, String eventType, UUID key, ISystems<?, ?> system, UUID... identityToken);
 
     /**
+     * Creates a new event that is <strong>scope-restricted</strong> rather than world-readable. Identical
+     * to {@link #createEvent(Mutiny.Session, String, UUID, ISystems, UUID...)} except the event is secured
+     * with the restricted matrix: only Administrators / Systems / Applications / Plugins retain access, plus
+     * a <em>read</em> grant for {@code scopeToken}. Because the applicable-token climb is child&rarr;parent,
+     * only identity tokens located at the {@code scopeToken} node <em>or below it</em> may read the event.
+     *
+     * @param session        The Mutiny session to use
+     * @param eventType      The type of event to create
+     * @param key            The UUID key for the event, or {@code null} to generate one
+     * @param scopeToken     The scope token granted read on the new event
+     * @param system         The system creating the event
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the created (scope-restricted) event
+     */
+    Uni<IEvent<?, ?>> createEventScopeRestricted(Mutiny.Session session, String eventType, UUID key,
+            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+            ISystems<?, ?> system, UUID... identityToken);
+
+    /**
      * Creates a new event type by name.
      *
      * @param session        The Mutiny session to use

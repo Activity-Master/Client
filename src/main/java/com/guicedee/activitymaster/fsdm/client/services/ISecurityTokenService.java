@@ -108,6 +108,31 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	Uni<Void> link(Mutiny.Session session, ISecurityToken<?,?> parent, ISecurityToken<?,?> child, IClassification<?,?> classification, String... identifyingToken);
 
 	/**
+	 * Moves a {@code child} token from one parent group/folder to another: the existing
+	 * {@code oldParent &rarr; child} membership edge is <strong>temporally closed</strong> (its
+	 * effective-to date is set to now, so {@link #getApplicableSecurityTokenIds} stops climbing through
+	 * it) and a new {@code newParent &rarr; child} edge is created. Other parent memberships of the child
+	 * are left untouched, so this is a precise "move from X to Y", not a wipe-and-reparent.
+	 * <p>
+	 * The same {@code link(...)} membership policy is enforced on the new parent — e.g. a {@code System}/
+	 * {@code Application}/{@code Plugin}-typed token may only move under its matching type folder, and a
+	 * group/user may not move into the locked type folders — raising
+	 * {@link com.guicedee.activitymaster.fsdm.client.services.exceptions.SecurityAccessException} on a
+	 * violation. Passing a {@code null} {@code oldParent} closes <em>all</em> current in-range parent edges
+	 * of the child before linking the new parent (a true exclusive reparent).
+	 *
+	 * @param session          The Mutiny session to use
+	 * @param oldParent        The current parent to detach from, or {@code null} to detach from all parents
+	 * @param newParent        The new parent group/folder
+	 * @param child            The token being moved
+	 * @param classification   The membership classification for the new link (the child's type)
+	 * @param identifyingToken Optional identity tokens for authorization
+	 * @return A Uni that completes when the move is applied
+	 */
+	Uni<Void> moveToken(Mutiny.Session session, ISecurityToken<?,?> oldParent, ISecurityToken<?,?> newParent,
+	                    ISecurityToken<?,?> child, IClassification<?,?> classification, String... identifyingToken);
+
+	/**
 	 * Gets the 'Everyone' group token.
 	 *
 	 * @param session        The Mutiny session to use
@@ -165,6 +190,30 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	 */
 	Uni<Void> applyDefaultSecurityToRows(Mutiny.Session session, java.util.Collection<? extends IWarehouseCoreTable<?,?,?,?>> rows,
 	                                     ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Applies the <strong>scope-restricted</strong> security matrix to an explicit set of records, each
+	 * paired with the scope token it should be readable under, in a single batched, stateless transaction.
+	 * Unlike {@link #applyDefaultSecurityToRows(Mutiny.Session, java.util.Collection, ISystems, UUID...)}
+	 * (which makes rows world-readable via {@code Everywhere}), this omits the
+	 * {@code Everyone}/{@code Everywhere}/{@code Guests} grants and instead grants <em>read</em> to each
+	 * record's own scope token — so only identity tokens at that scope node or below it may read it
+	 * (see {@link IWarehouseCoreTable#createScopeRestrictedSecurity}).
+	 * <p>
+	 * The canonical group/folder tokens are resolved <strong>once</strong> for the whole pass; the
+	 * per-record scope tokens are supplied by the caller. This is the multi-entity entry point: the same
+	 * call secures records of <em>any</em> warehouse type that opts into restriction.
+	 *
+	 * @param session       the live session (used to resolve the shared group/folder tokens)
+	 * @param recordScopes  map of just-created record &rarr; the scope token it must be readable under;
+	 *                      {@code null}/empty is a no-op, and entries with a {@code null} scope token are skipped
+	 * @param system        the owning system
+	 * @param identityToken optional security identity tokens
+	 * @return a Uni that completes when all rows have been secured
+	 */
+	Uni<Void> applyScopeRestrictedSecurity(Mutiny.Session session,
+	                                       java.util.Map<? extends IWarehouseCoreTable<?,?,?,?>, ? extends ISecurityToken<?,?>> recordScopes,
+	                                       ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Gets the 'Guests' folder token.
@@ -246,6 +295,21 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	 * @return A Uni emitting the found security token
 	 */
 	Uni<ISecurityToken<?,?>> getSecurityToken(Mutiny.Session session, UUID identifyingToken, ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Finds a security token by its (enterprise-unique) <em>name</em>, or emits {@code null} when no such
+	 * token exists. Unlike {@link #getSecurityToken(Mutiny.Session, UUID, ISystems, UUID...)} (which keys on
+	 * the {@code SecurityToken} varchar identity), this keys on the human/structural {@code name} — the
+	 * lookup used to resolve named scope/group tokens (e.g. a geography scope token) so an identity token can
+	 * be linked under them.
+	 *
+	 * @param session       The Mutiny session to use
+	 * @param name          The name of the security token to find
+	 * @param system        The system searching for the token
+	 * @param identityToken Optional security identity tokens for authorization
+	 * @return A Uni emitting the found security token, or {@code null} when absent
+	 */
+	Uni<ISecurityToken<?,?>> getSecurityTokenByName(Mutiny.Session session, String name, ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Gets a security token by its identifying UUID, with an option to override the active flag.

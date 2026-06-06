@@ -86,6 +86,83 @@ public interface IWarehouseCoreTable<
 	                                IActiveFlag<?,?> activeFlag, Map<String, ISecurityToken<?,?>> groupFolderTokens, UUID... identityToken);
 
 	/**
+	 * Writes a <strong>single</strong> security grant row for this entity, pairing it with an
+	 * <em>arbitrary</em> security token and explicit {create, update, delete, read} flags, on a
+	 * {@link Mutiny.StatelessSession}. This is the building block for <em>scoped</em> or custom grants
+	 * that fall outside the canonical seven-token default matrix — e.g. granting a geography
+	 * <em>scope</em> token (or a bespoke user-group token) read on a record so that only identity tokens
+	 * under that scope/branch may see it.
+	 * <p>
+	 * Like {@link #createDefaultSecurity(Mutiny.StatelessSession, ISystems, IEnterprise, IActiveFlag, Map, UUID...)},
+	 * all shared references are supplied pre-resolved so this performs a pure insert; the owning entity
+	 * must already be persisted (its id is the security row's back-reference FK). A {@code null}
+	 * {@code token} is a no-op (returns {@code 0}).
+	 *
+	 * @param session       The reactive <strong>stateless</strong> session used for the insert
+	 * @param system        The owning system (referenced by id)
+	 * @param enterprise    The owning enterprise (referenced by id)
+	 * @param activeFlag    The active flag to stamp on the security row
+	 * @param token         The security token to grant on this record
+	 * @param create        Whether create access is granted
+	 * @param update        Whether update access is granted
+	 * @param delete        Whether delete access is granted
+	 * @param read          Whether read access is granted
+	 * @param identityToken Optional security identity tokens
+	 * @return A Uni emitting the number of rows inserted (0 or 1)
+	 */
+	Uni<Long> createSecurityGrant(Mutiny.StatelessSession session, ISystems<?,?> system, IEnterprise<?,?> enterprise,
+	                              IActiveFlag<?,?> activeFlag, ISecurityToken<?,?> token,
+	                              boolean create, boolean update, boolean delete, boolean read, UUID... identityToken);
+
+	/**
+	 * Writes a <strong>scope-restricted</strong> default-security fan-out for this record on a
+	 * {@link Mutiny.StatelessSession}: the canonical {@link #SECURITY_ADMINISTRATORS}/{@link #SECURITY_SYSTEMS}/
+	 * {@link #SECURITY_APPLICATIONS}/{@link #SECURITY_PLUGINS} grants are written, the
+	 * {@link #SECURITY_EVERYONE}/{@link #SECURITY_EVERYWHERE}/{@link #SECURITY_GUESTS} grants are
+	 * <strong>omitted</strong> (so the record is <em>not</em> world-readable), and a single
+	 * <em>read</em> grant is added for the supplied {@code scopeToken}.
+	 * <p>
+	 * This is the opt-in counterpart of the public default matrix
+	 * ({@link #createDefaultSecurity(Mutiny.StatelessSession, ISystems, IEnterprise, IActiveFlag, Map, UUID...)}):
+	 * use it for record types that must be <strong>location/branch restricted</strong> rather than public.
+	 * Because the applicable-token climb is <em>child &rarr; parent</em>, a record scoped to token {@code T}
+	 * is readable by any identity token located at {@code T} or <strong>below</strong> it (whose ancestors
+	 * include {@code T}); identities shallower than {@code T} cannot read it, and identities in unrelated
+	 * branches cannot read it at all — that is the restriction.
+	 * <p>
+	 * The mechanism is intentionally generic (declared on the base table), so it applies uniformly across
+	 * <strong>every</strong> warehouse entity type that opts in.
+	 *
+	 * @param session           The reactive <strong>stateless</strong> session used for the inserts
+	 * @param system            The owning system (referenced by id)
+	 * @param enterprise        The owning enterprise (referenced by id)
+	 * @param activeFlag        The active flag to stamp on each security row
+	 * @param groupFolderTokens The pre-resolved group/folder tokens keyed by the {@code SECURITY_*} constants
+	 * @param scopeToken        The scope token granted <em>read</em> on this record (e.g. a geography scope token)
+	 * @param identityToken     Optional security identity tokens
+	 * @return A Uni emitting the number of security rows inserted for this entity
+	 */
+	Uni<Long> createScopeRestrictedSecurity(Mutiny.StatelessSession session, ISystems<?,?> system, IEnterprise<?,?> enterprise,
+	                                        IActiveFlag<?,?> activeFlag, Map<String, ISecurityToken<?,?>> groupFolderTokens,
+	                                        ISecurityToken<?,?> scopeToken, UUID... identityToken);
+
+	/**
+	 * <strong>Live-session</strong> overload of the scope-restricted matrix, for a single just-created
+	 * record on the caller's session (the stateless batch variant cannot see an uncommitted row). Writes
+	 * Administrators=CRUD, Systems/Applications/Plugins=create/update/read, <strong>no</strong>
+	 * Everyone/Everywhere/Guests grants (→ not world-readable), and {@code scopeToken}=read. Find-or-create
+	 * per grant row, so it is idempotent.
+	 *
+	 * @param session    The reactive (live) session
+	 * @param system     The system the entity belongs to
+	 * @param scopeToken The scope token granted <em>read</em> on this record
+	 * @param identity   Optional security identity tokens
+	 * @return A Uni that completes when the restricted security rows exist
+	 */
+	Uni<Void> createScopeRestrictedSecurity(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system,
+	                                        ISecurityToken<?,?> scopeToken, UUID... identity);
+
+	/**
 	 * Counts the in-date-range security rows currently linked to this entity. Primarily a verification
 	 * hook for the batch security-creation paths.
 	 *
