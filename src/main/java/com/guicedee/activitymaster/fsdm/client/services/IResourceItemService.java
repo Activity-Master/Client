@@ -393,19 +393,6 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
     Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.Session session, String type, String value, ISystems<?, ?> systems, UUID... identityToken);
 
     /**
-     * Creates a new resource item and then attempts to find it (idempotent creation).
-     *
-     * @param session               The Mutiny session to use
-     * @param identityResourceType  The name of the resource item type
-     * @param resourceItemDataValue The text value
-     * @param system                The system performing the operation
-     * @param identityToken         Optional security identity tokens
-     * @return A Uni emitting the resource item
-     */
-    Uni<IResourceItem<?, ?>> createAndFind(Mutiny.Session session, String identityResourceType, String resourceItemDataValue,
-                                           ISystems<?, ?> system, UUID... identityToken);
-
-    /**
      * Resolve ResourceItemType ID (UUID) by enterprise and name, using cache and ActiveFlag visible range with SCD window.
      * Contract: never returns null; lets NoResultException propagate on misses.
      */
