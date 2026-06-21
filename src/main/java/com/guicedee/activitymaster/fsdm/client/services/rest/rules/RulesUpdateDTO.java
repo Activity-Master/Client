@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services.rest.rules;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.guicedee.activitymaster.fsdm.client.services.rest.EventActionRequest;
 import com.guicedee.activitymaster.fsdm.client.services.rest.RelationshipUpdateEntry;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -32,5 +33,10 @@ public class RulesUpdateDTO {
     public RelationshipUpdateEntry ruleTypes;
     /** Child rule name → hierarchy value operations. */
     public RelationshipUpdateEntry children;
+    /**
+     * Optional event association — when {@code eventId} is set, this update is linked to the event
+     * with a change summary (see {@link EventActionRequest}).
+     */
+    public EventActionRequest event;
 }
 

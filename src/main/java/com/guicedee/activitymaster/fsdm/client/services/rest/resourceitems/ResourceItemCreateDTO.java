@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services.rest.resourceitems;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.guicedee.activitymaster.fsdm.client.services.rest.EventActionRequest;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -48,5 +49,10 @@ public class ResourceItemCreateDTO {
      * Key = classification name (mandatory), Value = child resource item UUID (as string).
      */
     public Map<String, String> children;
+    /**
+     * Optional event association — when {@code eventId} is set, this create is linked to the event
+     * with a change summary (see {@link EventActionRequest}).
+     */
+    public EventActionRequest event;
 }
 

@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services.rest.rules;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.guicedee.activitymaster.fsdm.client.services.rest.EventActionRequest;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,5 +40,10 @@ public class RulesCreateDTO {
      * Optional child rules (rule-to-rule composition). Key = existing child rule name, Value = hierarchy value.
      */
     public Map<String, String> children;
+    /**
+     * Optional event association — when {@code eventId} is set, this create is linked to the event
+     * with a change summary (see {@link EventActionRequest}).
+     */
+    public EventActionRequest event;
 }
 

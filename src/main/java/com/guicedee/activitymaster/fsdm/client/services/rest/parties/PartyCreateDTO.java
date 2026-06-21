@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services.rest.parties;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.guicedee.activitymaster.fsdm.client.services.rest.EventActionRequest;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -60,5 +61,10 @@ public class PartyCreateDTO {
      * Optional child involved party IDs. Key = child party UUID string, Value = relationship value.
      */
     public Map<String, String> children;
+    /**
+     * Optional event association — when {@code eventId} is set, this create is linked to the event
+     * with a change summary (see {@link EventActionRequest}).
+     */
+    public EventActionRequest event;
 }
 

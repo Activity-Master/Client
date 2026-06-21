@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services.rest.arrangements;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.guicedee.activitymaster.fsdm.client.services.rest.EventActionRequest;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -46,5 +47,10 @@ public class ArrangementCreateDTO {
 
     /** Optional child arrangements. Key = classification name (mandatory), Value = child arrangement UUID (optionally suffixed with {@code _hierarchyValue}). */
     public Map<String, String> childArrangements;
+    /**
+     * Optional event association — when {@code eventId} is set, this create is linked to the event
+     * with a change summary (see {@link EventActionRequest}).
+     */
+    public EventActionRequest event;
 }
 

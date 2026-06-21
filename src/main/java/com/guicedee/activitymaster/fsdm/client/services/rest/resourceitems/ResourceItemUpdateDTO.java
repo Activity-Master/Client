@@ -2,6 +2,7 @@ package com.guicedee.activitymaster.fsdm.client.services.rest.resourceitems;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.guicedee.activitymaster.fsdm.client.services.rest.EventActionRequest;
 import com.guicedee.activitymaster.fsdm.client.services.rest.RelationshipUpdateEntry;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -22,5 +23,10 @@ public class ResourceItemUpdateDTO {
     public RelationshipUpdateEntry types;
     /** Child resource item: Key = classification name (mandatory), Value = child UUID string operations */
     public RelationshipUpdateEntry children;
+    /**
+     * Optional event association — when {@code eventId} is set, this update is linked to the event
+     * with a change summary (see {@link EventActionRequest}).
+     */
+    public EventActionRequest event;
 }
 
