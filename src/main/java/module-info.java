@@ -69,7 +69,7 @@ module com.guicedee.activitymaster.fsdm.client {
     provides IGuiceScanModuleInclusions with com.guicedee.activitymaster.fsdm.client.implementations.ActivityMasterClientModuleInclusion;
 
     opens com.guicedee.activitymaster.fsdm.client.services.administration to com.google.guice;
-    opens com.guicedee.activitymaster.fsdm.client.services.deserializers to com.google.guice, com.fasterxml.jackson.databind;
+    opens com.guicedee.activitymaster.fsdm.client.services.deserializers to com.google.guice, tools.jackson.databind;
     exports com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base;
     opens com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base to com.guicedee.activitymaster.fsdm;
     exports com.guicedee.activitymaster.fsdm.client.services.rest;
@@ -83,13 +83,13 @@ module com.guicedee.activitymaster.fsdm.client {
     exports com.guicedee.activitymaster.fsdm.client.services.rest.security;
 
 
-    opens com.guicedee.activitymaster.fsdm.client.services.rest to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
-    opens com.guicedee.activitymaster.fsdm.client.services.rest.events to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
-    opens com.guicedee.activitymaster.fsdm.client.services.rest.arrangements to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
-    opens com.guicedee.activitymaster.fsdm.client.services.rest.resourceitems to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
-    opens com.guicedee.activitymaster.fsdm.client.services.rest.rules to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
-    opens com.guicedee.activitymaster.fsdm.client.services.rest.classifications to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
-    opens com.guicedee.activitymaster.fsdm.client.services.rest.security to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, com.fasterxml.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, tools.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.events to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, tools.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.arrangements to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, tools.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.resourceitems to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, tools.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.rules to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, tools.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.classifications to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, tools.jackson.databind, net.bytebuddy, com.guicedee.rest;
+    opens com.guicedee.activitymaster.fsdm.client.services.rest.security to com.google.guice, org.hibernate.orm.core, org.hibernate.reactive, com.entityassist, tools.jackson.databind, net.bytebuddy, com.guicedee.rest;
     exports com.guicedee.activitymaster.fsdm.client.services.cache;
 }
 

@@ -17,6 +17,11 @@
     <description>Client library for the Activity Master FSDM — GuicedEE-based client APIs and helpers.</description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-sql-client</artifactId>
+        </dependency>
+
 
         <dependency>
             <groupId>com.guicedee</groupId>

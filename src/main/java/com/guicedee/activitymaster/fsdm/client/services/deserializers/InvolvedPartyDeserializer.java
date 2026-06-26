@@ -1,9 +1,9 @@
 package com.guicedee.activitymaster.fsdm.client.services.deserializers;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ObjectMapper;
 import com.guicedee.activitymaster.fsdm.client.services.IInvolvedPartyService;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.party.IInvolvedParty;
 import lombok.extern.log4j.Log4j2;
@@ -14,10 +14,10 @@ import com.guicedee.client.IGuiceContext;
 import org.hibernate.reactive.mutiny.Mutiny;
 
 @Log4j2
-public class InvolvedPartyDeserializer extends JsonDeserializer<IInvolvedParty<?, ?>>
+public class InvolvedPartyDeserializer extends ValueDeserializer<IInvolvedParty<?, ?>>
 {
     @Override
-    public IInvolvedParty<?, ?> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException
+    public IInvolvedParty<?, ?> deserialize(JsonParser p, DeserializationContext ctxt) throws JacksonException
     {
         String value = p.getValueAsString();
 
@@ -48,7 +48,7 @@ public class InvolvedPartyDeserializer extends JsonDeserializer<IInvolvedParty<?
             catch (Exception e)
             {
                 log.error("InvolvedPartyDeserializer: Error retrieving IInvolvedParty for UUID {}", uuid, e);
-                throw new IOException("Failed to fetch IInvolvedParty from DB", e);
+                throw new RuntimeException("Failed to fetch IInvolvedParty from DB", e);
             }
         }
         else
@@ -63,7 +63,7 @@ public class InvolvedPartyDeserializer extends JsonDeserializer<IInvolvedParty<?
             catch (Exception e)
             {
                 log.error("InvolvedPartyDeserializer: Failed to deserialize embedded JSON object", e);
-                throw new IOException("Failed to deserialize embedded IInvolvedParty JSON", e);
+                throw new RuntimeException("Failed to deserialize embedded IInvolvedParty JSON", e);
             }
         }
     }

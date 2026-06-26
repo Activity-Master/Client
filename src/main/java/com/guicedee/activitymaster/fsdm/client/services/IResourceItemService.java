@@ -393,6 +393,92 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
     Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.Session session, String type, String value, ISystems<?, ?> systems, UUID... identityToken);
 
     /**
+     * Finds JSON resource-item data documents in MongoDB using native query criteria.
+     * <p>
+     * Resource items whose type is a JSON type (e.g. {@code JsonPacket}) store their payload as a MongoDB
+     * document keyed by the resource item id (see the core {@code ResourceItemJsonStore}). This method runs a
+     * lookup over those documents. Returns an empty list when MongoDB is not configured for the deployment.
+     *
+     * @param query the MongoDB query criteria (a {@code null}/empty object matches all documents)
+     * @return a Uni emitting the matching JSON documents
+     */
+    default Uni<List<io.vertx.core.json.JsonObject>> findJsonResourceData(io.vertx.core.json.JsonObject query) {
+        return Uni.createFrom().item(java.util.Collections.emptyList());
+    }
+
+    /**
+     * Fetches the JSON payload stored in MongoDB for a resource item.
+     *
+     * @param resourceItemId the resource item id
+     * @return a Uni emitting the JSON payload, or {@code null} when absent / MongoDB is not configured
+     */
+    default Uni<io.vertx.core.json.JsonObject> getJsonResourceData(UUID resourceItemId) {
+        return Uni.createFrom().nullItem();
+    }
+
+    /**
+     * Finds JSON resource-item documents in a <strong>named</strong> MongoDB collection using native criteria.
+     * Different JSON resource types can be routed to their own collections (see the core
+     * {@code ResourceItemJsonStore} / {@code RESOURCE_ITEM_JSON_COLLECTIONS}).
+     *
+     * @param collection the MongoDB collection name
+     * @param query      the MongoDB query criteria (a {@code null}/empty object matches all documents)
+     * @return a Uni emitting the matching documents
+     */
+    default Uni<List<io.vertx.core.json.JsonObject>> findJsonResourceData(String collection, io.vertx.core.json.JsonObject query) {
+        return Uni.createFrom().item(java.util.Collections.emptyList());
+    }
+
+    /**
+     * Sets a single field on a resource item's JSON document ({@code $set}); the field path may use
+     * dot-notation to reach nested children (e.g. {@code "address.city"}).
+     *
+     * @param resourceItemId the resource item id
+     * @param fieldPath      the (possibly nested) field path
+     * @param value          the value to set
+     * @return a Uni completing when the field has been updated (no-op when MongoDB is not configured)
+     */
+    default Uni<Void> updateJsonResourceField(UUID resourceItemId, String fieldPath, Object value) {
+        return Uni.createFrom().voidItem();
+    }
+
+    /**
+     * Removes a field (or nested child) from a resource item's JSON document ({@code $unset}).
+     *
+     * @param resourceItemId the resource item id
+     * @param fieldPath      the (possibly nested) field path to remove
+     * @return a Uni completing when the field has been removed (no-op when MongoDB is not configured)
+     */
+    default Uni<Void> removeJsonResourceField(UUID resourceItemId, String fieldPath) {
+        return Uni.createFrom().voidItem();
+    }
+
+    /**
+     * Appends a child to an array field on a resource item's JSON document ({@code $push}).
+     *
+     * @param resourceItemId the resource item id
+     * @param arrayPath      the (possibly nested) array field path
+     * @param child          the child document to append
+     * @return a Uni completing when the child has been appended (no-op when MongoDB is not configured)
+     */
+    default Uni<Void> addJsonResourceChild(UUID resourceItemId, String arrayPath, io.vertx.core.json.JsonObject child) {
+        return Uni.createFrom().voidItem();
+    }
+
+    /**
+     * Removes every child matching the criterion from an array field on a resource item's JSON document
+     * ({@code $pull}).
+     *
+     * @param resourceItemId the resource item id
+     * @param arrayPath      the (possibly nested) array field path
+     * @param match          the value/criterion identifying the children to remove
+     * @return a Uni completing when matching children have been removed (no-op when MongoDB is not configured)
+     */
+    default Uni<Void> removeJsonResourceChild(UUID resourceItemId, String arrayPath, Object match) {
+        return Uni.createFrom().voidItem();
+    }
+
+    /**
      * Resolve ResourceItemType ID (UUID) by enterprise and name, using cache and ActiveFlag visible range with SCD window.
      * Contract: never returns null; lets NoResultException propagate on misses.
      */

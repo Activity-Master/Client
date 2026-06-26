@@ -1,9 +1,9 @@
 package com.guicedee.activitymaster.fsdm.client.services.deserializers;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ObjectMapper;
 import com.guicedee.activitymaster.fsdm.client.services.IEnterpriseService;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
 import com.guicedee.client.IGuiceContext;
@@ -14,10 +14,10 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Log4j2
-public class EnterpriseDeserializer extends JsonDeserializer<IEnterprise<?, ?>>
+public class EnterpriseDeserializer extends ValueDeserializer<IEnterprise<?, ?>>
 {
     @Override
-    public IEnterprise<?, ?> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException
+    public IEnterprise<?, ?> deserialize(JsonParser p, DeserializationContext ctxt) throws JacksonException
     {
         String value = p.getValueAsString();
         
@@ -44,7 +44,7 @@ public class EnterpriseDeserializer extends JsonDeserializer<IEnterprise<?, ?>>
             catch (IllegalArgumentException e)
             {
                 log.error("❌ Invalid UUID format for Enterprise deserialization: '{}'", value, e);
-                throw new IOException("Invalid UUID format: " + value, e);
+                throw new RuntimeException("Invalid UUID format: " + value, e);
             }
 
             try
@@ -75,7 +75,7 @@ public class EnterpriseDeserializer extends JsonDeserializer<IEnterprise<?, ?>>
             catch (Exception e)
             {
                 log.error("💥 Critical error retrieving Enterprise for UUID {}: {}", uuid, e.getMessage(), e);
-                throw new IOException("Failed to fetch Enterprise from database for UUID: " + uuid, e);
+                throw new RuntimeException("Failed to fetch Enterprise from database for UUID: " + uuid, e);
             }
         }
         else
@@ -99,7 +99,7 @@ public class EnterpriseDeserializer extends JsonDeserializer<IEnterprise<?, ?>>
             {
                 log.error("💥 Failed to deserialize embedded Enterprise JSON: {}", e.getMessage(), e);
                 log.debug("🔍 Failed JSON content: {}", value);
-                throw new IOException("Failed to deserialize embedded Enterprise JSON", e);
+                throw new RuntimeException("Failed to deserialize embedded Enterprise JSON", e);
             }
         }
     }

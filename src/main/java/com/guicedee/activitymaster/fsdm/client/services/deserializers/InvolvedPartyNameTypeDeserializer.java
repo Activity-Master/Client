@@ -1,10 +1,10 @@
 package com.guicedee.activitymaster.fsdm.client.services.deserializers;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
+import tools.jackson.databind.ObjectMapper;
 import com.guicedee.activitymaster.fsdm.client.services.IInvolvedPartyService;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.party.IInvolvedPartyNameType;
 import com.guicedee.client.IGuiceContext;
@@ -15,10 +15,10 @@ import java.io.IOException;
 import java.util.UUID;
 
 @Log4j2
-public class InvolvedPartyNameTypeDeserializer extends JsonDeserializer<IInvolvedPartyNameType<?, ?>>
+public class InvolvedPartyNameTypeDeserializer extends ValueDeserializer<IInvolvedPartyNameType<?, ?>>
 {
     @Override
-    public IInvolvedPartyNameType<?, ?> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException
+    public IInvolvedPartyNameType<?, ?> deserialize(JsonParser p, DeserializationContext ctxt) throws JacksonException
     {
         String value = p.getValueAsString();
 
@@ -49,7 +49,7 @@ public class InvolvedPartyNameTypeDeserializer extends JsonDeserializer<IInvolve
             catch (Exception e)
             {
                 log.error("InvolvedPartyNameTypeDeserializer: Failed to fetch entity for UUID {}", uuid, e);
-                throw new IOException("Failed to fetch IInvolvedPartyNameType from DB", e);
+                throw new RuntimeException("Failed to fetch IInvolvedPartyNameType from DB", e);
             }
         }
         else
@@ -64,7 +64,7 @@ public class InvolvedPartyNameTypeDeserializer extends JsonDeserializer<IInvolve
             catch (Exception e)
             {
                 log.error("InvolvedPartyNameTypeDeserializer: Failed to deserialize embedded JSON", e);
-                throw new IOException("Failed to deserialize embedded IInvolvedPartyNameType JSON", e);
+                throw new RuntimeException("Failed to deserialize embedded IInvolvedPartyNameType JSON", e);
             }
         }
     }
