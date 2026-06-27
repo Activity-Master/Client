@@ -212,6 +212,116 @@ public interface IClassificationService<J extends IClassificationService<J>>
 									 ISystems<?,?> system, UUID... identityToken);
 
 	/**
+	 * Stateless, end-to-end classification create — the write counterpart of the prepped stateless reads.
+	 * Lets a system's {@code createDefaults} run entirely on a {@link Mutiny.StatelessSession}: idempotent
+	 * (returns the existing prepped classification if present), otherwise inserts the lean row and provisions
+	 * its default-security matrix, composing the prepped data-concept / active-flag references, a stateless
+	 * insert, and the stateless {@code resolveDefaultGroupFolderTokens} + {@code createDefaultSecurity} path.
+	 *
+	 * @param session        The stateless session to use
+	 * @param name           The name of the classification
+	 * @param description    The description
+	 * @param system         The system creating the classification
+	 * @param identityToken  Optional security identity tokens
+	 * @return A Uni emitting the created (or existing) classification
+	 */
+	Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, String name, String description,
+									 ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Parent-aware stateless create: inserts (or finds) the classification and, when {@code parent} is
+	 * supplied, links it under the parent in the hierarchy via the stateless {@code addChild} — all on the
+	 * {@link Mutiny.StatelessSession}. Idempotent in both the create and the link step.
+	 */
+	Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, String name, String description,
+									 ISystems<?,?> system, IClassification<?,?> parent, UUID... identityToken);
+
+	/** Concept-aware stateless create (no parent). */
+	Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, String name, String description,
+									 EnterpriseClassificationDataConcepts concept, ISystems<?,?> system, UUID... identityToken);
+
+	/** Concept-aware, parent-aware stateless create — the most general stateless create. */
+	Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, String name, String description,
+									 EnterpriseClassificationDataConcepts concept, ISystems<?,?> system,
+									 IClassification<?,?> parent, UUID... identityToken);
+
+	/** Concept-, sequence- and parent-aware stateless create (the fully-general overload). */
+	Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, String name, String description,
+									 EnterpriseClassificationDataConcepts concept, ISystems<?,?> system,
+									 Integer sequenceNumber, IClassification<?,?> parent, UUID... identityToken);
+
+	/** Concept- + sequence-aware stateless create (no parent). */
+	default Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, String name, String description,
+											 EnterpriseClassificationDataConcepts concept, ISystems<?,?> system,
+											 Integer sequenceNumber, UUID... identityToken)
+	{
+		return create(session, name, description, concept, system, sequenceNumber, (IClassification<?,?>) null, identityToken);
+	}
+
+	/** Enum-name + data-concept stateless create (no parent). */
+	default Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, Enum<?> name,
+											 EnterpriseClassificationDataConcepts concept, ISystems<?,?> system, UUID... identityToken)
+	{
+		return create(session, name.toString(), name.toString(), concept, system, identityToken);
+	}
+
+	/**
+	 * Enum-name stateless create with a parent <em>name</em> (the parent is found/created by that name,
+	 * then the child is linked beneath it) — mirrors the managed {@code create(Mutiny.Session, Enum,
+	 * ISystems, String, …)}.
+	 */
+	default Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, Enum<?> name,
+											 ISystems<?,?> system, String parent, UUID... identityToken)
+	{
+		if (parent == null || parent.isBlank())
+		{
+			return create(session, name.toString(), name.toString(), system, identityToken);
+		}
+		return create(session, parent, parent, system, identityToken)
+				.chain(parentClassification -> create(session, name.toString(), name.toString(), system,
+						parentClassification, identityToken));
+	}
+
+	/**
+	 * Enum-name + data-concept stateless create with a parent <em>name</em>.
+	 */
+	default Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, String name, String description,
+											 EnterpriseClassificationDataConcepts concept, ISystems<?,?> system,
+											 String parent, UUID... identityToken)
+	{
+		if (parent == null || parent.isBlank())
+		{
+			return create(session, name, description, concept, system, identityToken);
+		}
+		return create(session, parent, parent, system, identityToken)
+				.chain(parentClassification -> create(session, name, description, concept, system,
+						parentClassification, identityToken));
+	}
+
+	/** Enum-name stateless create (no parent). */
+	default Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, Enum<?> name,
+											 ISystems<?,?> system, UUID... identityToken)
+	{
+		return create(session, name.toString(), name.toString(), system, identityToken);
+	}
+
+	/**
+	 * Enum-name stateless create with an enum parent — resolves/creates the parent first, then creates the
+	 * child linked beneath it (mirrors the managed {@code create(Mutiny.Session, Enum, ISystems, Enum, …)}).
+	 */
+	default Uni<IClassification<?,?>> create(Mutiny.StatelessSession session, Enum<?> name,
+											 ISystems<?,?> system, Enum<?> parent, UUID... identityToken)
+	{
+		if (parent == null)
+		{
+			return create(session, name.toString(), name.toString(), system, identityToken);
+		}
+		return create(session, parent.toString(), parent.toString(), system, identityToken)
+				.chain(parentClassification -> create(session, name.toString(), name.toString(), system,
+						parentClassification, identityToken));
+	}
+
+	/**
 	 * Creates a new classification by name, description, and concept.
 	 *
 	 * @param session        The Mutiny session to use
@@ -364,6 +474,40 @@ public interface IClassificationService<J extends IClassificationService<J>>
 	 * @return A Uni emitting the identity type classification
 	 */
 	Uni<IClassification<?,?>> getIdentityType(Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Stateless "fetch ids/scalars + prep" variant of {@link #find(Mutiny.Session, String, ISystems, UUID...)}.
+	 * <p>
+	 * {@code Classification} is {@code @Cacheable} with an eager {@code @ManyToOne concept}, so it cannot be
+	 * hydrated as a managed entity on a {@link Mutiny.StatelessSession}. Instead this projects the row's own
+	 * scalar columns ({@code id, name, description, classificationSequenceNumber}) and preps a fresh detached
+	 * instance, wiring the {@code enterprise} reference from {@code system.getEnterprise()} (already in hand).
+	 * The eager {@code concept} association is left {@code null}; callers needing it must use a managed session.
+	 *
+	 * @param session        The stateless session to use
+	 * @param name           The name of the classification
+	 * @param system         The system searching for the classification
+	 * @param identityToken  Optional security identity tokens
+	 * @return A Uni emitting the prepped, detached classification
+	 */
+	Uni<IClassification<?,?>> find(Mutiny.StatelessSession session, String name, ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Enum-name convenience over {@link #find(Mutiny.StatelessSession, String, ISystems, UUID...)}.
+	 */
+	default Uni<IClassification<?,?>> find(Mutiny.StatelessSession session, Enum<?> name, ISystems<?,?> system, UUID... identityToken) {
+		return find(session, name.toString(), system, identityToken);
+	}
+
+	/** Stateless prepped variant of {@link #getHierarchyType(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<IClassification<?,?>> getHierarchyType(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getNoClassification(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<IClassification<?,?>> getNoClassification(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getIdentityType(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<IClassification<?,?>> getIdentityType(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
 
     /**
      * Resolves a Classification ID (UUID) by its unique name using a lightweight native SQL lookup

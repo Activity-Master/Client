@@ -137,6 +137,23 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
     Uni<IActiveFlag<?,?>> getActiveFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
 
     /**
+     * Stateless "fetch ids/scalars + prep" variant of {@link #getActiveFlag(Mutiny.Session, IEnterprise, UUID...)}.
+     * <p>
+     * {@code ActiveFlag} is {@code @Cacheable} but its {@code @ManyToOne enterpriseID} is {@code LAZY}, so the
+     * only eager members are scalar columns. This projects the flag's own scalars
+     * ({@code id, name, description, allowAccess}) and preps a fresh detached {@code ActiveFlag}, wiring the
+     * enterprise reference from the supplied parameter. Returns the 'Active' flag — exactly the FK reference the
+     * stateless default-security insert API needs.
+     *
+     * @param session          The stateless session to use
+     * @param enterprise       The enterprise to search within
+     * @param identifyingToken Optional security identity tokens
+     * @return A Uni emitting the prepped, detached 'Active' flag
+     */
+    Uni<IActiveFlag<?,?>> getActiveFlag(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
+
+
+    /**
      * Gets the 'Archived' flag for the given enterprise.
      *
      * @param session         The Mutiny session to use

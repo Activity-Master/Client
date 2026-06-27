@@ -171,6 +171,29 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	 */
 	Uni<Void> applyDefaultSecurityToTable(Mutiny.Session session, IWarehouseCoreTable<?,?,?,?> table, ISystems<?,?> system, UUID... identityToken);
 
+	// ============================================================================================
+	// Stateless security-bootstrap write primitives (token create / grant / link / apply-defaults).
+	// These let the Security Token System provision the entire security structure on a stateless
+	// session: scalar existence checks (getCount) + session.insert, with prepped reference reads.
+	// ============================================================================================
+
+	/** Stateless variant of {@link #grantAccessToToken(Mutiny.Session, ISecurityToken, ISecurityToken, boolean, boolean, boolean, boolean, ISystems)}. */
+	Uni<Void> grantAccessToToken(Mutiny.StatelessSession session, ISecurityToken<?,?> fromToken, ISecurityToken<?,?> toToken,
+								 boolean create, boolean update, boolean delete, boolean read, ISystems<?,?> system);
+
+	/** Stateless variant of {@link #create(Mutiny.Session, String, String, String, ISystems)}. */
+	Uni<ISecurityToken<?,?>> create(Mutiny.StatelessSession session, String classificationValue, String name, String description, ISystems<?,?> system);
+
+	/** Stateless variant of {@link #create(Mutiny.Session, String, String, String, ISystems, ISecurityToken, UUID...)}. */
+	Uni<ISecurityToken<?,?>> create(Mutiny.StatelessSession session, String classificationValue, String name, String description, ISystems<?,?> system, ISecurityToken<?,?> parent, UUID... identityToken);
+
+	/** Stateless variant of {@link #link(Mutiny.Session, ISecurityToken, ISecurityToken, IClassification, String...)}. */
+	Uni<Void> link(Mutiny.StatelessSession session, ISecurityToken<?,?> parent, ISecurityToken<?,?> child, IClassification<?,?> classification, String... identifyingToken);
+
+	/** Stateless variant of {@link #applyDefaultSecurityToTable(Mutiny.Session, IWarehouseCoreTable, ISystems, UUID...)} — projects row ids (no entity hydration). */
+	Uni<Void> applyDefaultSecurityToTable(Mutiny.StatelessSession session, IWarehouseCoreTable<?,?,?,?> table, ISystems<?,?> system, UUID... identityToken);
+
+
 	/**
 	 * Applies default security to an explicit set of <strong>just-created</strong> rows in a single
 	 * batched, stateless transaction. Unlike {@link #applyDefaultSecurityToTable(Mutiny.Session, IWarehouseCoreTable, ISystems, UUID...)}
@@ -284,6 +307,76 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	 * @return A Uni emitting the 'Applications' folder token
 	 */
 	Uni<ISecurityToken<?,?>> getApplicationsFolder(Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
+
+	// ---------------------------------------------------------------------------------------------
+	// Stateless "fetch ids/scalars + prep" folder/group resolvers. SecurityToken has no eager
+	// @ManyToOne associations (its concept FK is LAZY) and is not @Cacheable, but to stay consistent
+	// and avoid stateless lazy-proxy pitfalls these project the token's OWN scalar columns
+	// (id, securityToken, name, description) through the same folder/name/enterprise filters and prep
+	// a fresh DETACHED SecurityToken. These return exactly the pre-resolved tokens that the stateless
+	// default-security insert API (createDefaultSecurity(Mutiny.StatelessSession, …, groupFolderTokens,
+	// …)) consumes, so the canonical seven-grant matrix can be resolved + written on one stateless unit.
+	// ---------------------------------------------------------------------------------------------
+
+	/** Stateless prepped variant of {@link #getEveryoneGroup(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getEveryoneGroup(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getEverywhereGroup(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getEverywhereGroup(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getGuestsFolder(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getGuestsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getAdministratorsFolder(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getAdministratorsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getSystemsFolder(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getSystemsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getPluginsFolder(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getPluginsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getApplicationsFolder(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getApplicationsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/**
+	 * Resolves the canonical seven group/folder tokens on a {@link Mutiny.StatelessSession} and returns
+	 * them keyed by the {@code IWarehouseCoreTable.SECURITY_*} constants — ready to hand straight to
+	 * {@link IWarehouseCoreTable#createDefaultSecurity(Mutiny.StatelessSession, ISystems,
+	 * com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise,
+	 * com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag.IActiveFlag,
+	 * java.util.Map, UUID...)}.
+	 * <p>
+	 * This is the previously-missing stateless half of the default-security flow: with it, both the token
+	 * resolution AND the per-row inserts run on a stateless session, so an entity's full default-security
+	 * matrix can be provisioned end-to-end without a managed persistence context. Each token is resolved
+	 * via the stateless prepped folder getters (scalar projection — no eager-association hydration).
+	 *
+	 * @param session        The stateless session to use
+	 * @param system         The system the tokens belong to
+	 * @param identityToken  Optional security identity tokens
+	 * @return A Uni emitting the seven canonical tokens keyed by the {@code SECURITY_*} constants
+	 */
+	default Uni<java.util.Map<String, ISecurityToken<?,?>>> resolveDefaultGroupFolderTokens(
+			Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken) {
+		java.util.Map<String, ISecurityToken<?,?>> tokens = new java.util.LinkedHashMap<>();
+		return getAdministratorsFolder(session, system, identityToken)
+				.invoke(t -> tokens.put(IWarehouseCoreTable.SECURITY_ADMINISTRATORS, t))
+				.chain(() -> getEveryoneGroup(session, system, identityToken)
+						.invoke(t -> tokens.put(IWarehouseCoreTable.SECURITY_EVERYONE, t)))
+				.chain(() -> getEverywhereGroup(session, system, identityToken)
+						.invoke(t -> tokens.put(IWarehouseCoreTable.SECURITY_EVERYWHERE, t)))
+				.chain(() -> getSystemsFolder(session, system, identityToken)
+						.invoke(t -> tokens.put(IWarehouseCoreTable.SECURITY_SYSTEMS, t)))
+				.chain(() -> getApplicationsFolder(session, system, identityToken)
+						.invoke(t -> tokens.put(IWarehouseCoreTable.SECURITY_APPLICATIONS, t)))
+				.chain(() -> getPluginsFolder(session, system, identityToken)
+						.invoke(t -> tokens.put(IWarehouseCoreTable.SECURITY_PLUGINS, t)))
+				.chain(() -> getGuestsFolder(session, system, identityToken)
+						.invoke(t -> tokens.put(IWarehouseCoreTable.SECURITY_GUESTS, t)))
+				.replaceWith(tokens);
+	}
+
 
 	/**
 	 * Gets a security token by its identifying UUID.

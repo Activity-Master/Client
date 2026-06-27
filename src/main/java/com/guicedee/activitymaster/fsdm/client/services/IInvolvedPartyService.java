@@ -121,6 +121,33 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedPartyType<?,?>> createType(Mutiny.Session session, ISystems<?,?> system, String name, String description, UUID... identityToken);
 
+	// ---- Stateless "fetch ids/scalars + prep" creates (find-or-create + stateless default security) ----
+
+	/** Stateless variant of {@link #createNameType(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	Uni<IInvolvedPartyNameType<?,?>> createNameType(Mutiny.StatelessSession session, String name, String description, ISystems<?,?> system, UUID... identityToken);
+
+	/** Enum-name stateless variant of {@link #createNameType(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
+	default Uni<IInvolvedPartyNameType<?,?>> createNameType(Mutiny.StatelessSession session, Enum<?> name, String description, ISystems<?,?> system, UUID... identityToken){
+		return createNameType(session, name.toString(), description, system, identityToken);
+	}
+
+	/** Stateless variant of {@link #createIdentificationType(Mutiny.Session, ISystems, String, String, UUID...)}. */
+	Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationType(Mutiny.StatelessSession session, ISystems<?,?> system, String name, String description, UUID... identityToken);
+
+	/** Enum-name stateless variant of {@link #createIdentificationType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
+	default Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationType(Mutiny.StatelessSession session, ISystems<?,?> system, Enum<?> name, String description, UUID... identityToken){
+		return createIdentificationType(session, system, name.toString(), description, identityToken);
+	}
+
+	/** Stateless variant of {@link #createType(Mutiny.Session, ISystems, String, String, UUID...)}. */
+	Uni<IInvolvedPartyType<?,?>> createType(Mutiny.StatelessSession session, ISystems<?,?> system, String name, String description, UUID... identityToken);
+
+	/** Enum-name stateless variant of {@link #createType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
+	default Uni<IInvolvedPartyType<?,?>> createType(Mutiny.StatelessSession session, ISystems<?,?> system, Enum<?> name, String description, UUID... identityToken){
+		return createType(session, system, name.toString(), description, identityToken);
+	}
+
+
 
 	/**
 	 * Finds an identification type by enum.
@@ -184,6 +211,20 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 * @return A Uni emitting the created involved party
 	 */
 	Uni<IInvolvedParty<?, ?>> create(Mutiny.Session session, ISystems<?, ?> system, UUID key, Pair<String, String> idTypes,
+									 boolean isOrganic, UUID... identityToken);
+
+	/**
+	 * Stateless variant of {@link #create(Mutiny.Session, ISystems, Pair, boolean, UUID...)} — provisions the
+	 * involved party (and its organic/non-organic record + the supplied identification-type link) entirely on a
+	 * {@link Mutiny.StatelessSession} via {@code session.insert} + the stateless default-security path.
+	 */
+	Uni<IInvolvedParty<?, ?>> create(Mutiny.StatelessSession session, ISystems<?, ?> system, Pair<String, String> idTypes,
+									 boolean isOrganic, UUID... identityToken);
+
+	/**
+	 * Stateless variant of {@link #create(Mutiny.Session, ISystems, UUID, Pair, boolean, UUID...)} (explicit key).
+	 */
+	Uni<IInvolvedParty<?, ?>> create(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID key, Pair<String, String> idTypes,
 									 boolean isOrganic, UUID... identityToken);
 
 	/**

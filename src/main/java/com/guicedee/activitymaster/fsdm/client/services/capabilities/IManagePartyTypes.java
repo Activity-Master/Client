@@ -353,5 +353,54 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 					return Uni.createFrom().item((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) result);
 				});
 	}
+
+	// ---- Stateless find-or-insert (Uni<Void>): scalar getCount existence gate + session.insert + stateless default security ----
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<Void> addOrReuseInvolvedPartyType(Mutiny.StatelessSession session, String classificationValue,
+												  IInvolvedPartyType<?, ?> secondary,
+												  String searchValue, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> tableForClassification = get(getInvolvedPartyTypeRelationshipClass());
+		IClassificationService<?> classificationService = get(IClassificationService.class);
+		final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+		return tableForClassification.builder(session)
+				.findLink((J) this, secondary, null)
+				.withValue(searchValue)
+				.inActiveRange()
+				.inDateRange()
+				.withClassification(classificationValue, system)
+				.getCount()
+				.chain(count -> {
+					if (count != null && count > 0)
+					{
+						return Uni.createFrom().voidItem();
+					}
+					return classificationService.find(session, classificationValue, system, identityToken)
+							.chain(classification -> {
+								IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);
+								return activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
+										.chain(activeFlag -> {
+											tableForClassification.setValue(Strings.nullToEmpty(searchValue));
+											tableForClassification.setSystemID(system);
+											tableForClassification.setOriginalSourceSystemID(system.getId());
+											tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+											tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+											tableForClassification.setActiveFlagID(activeFlag);
+											tableForClassification.setClassificationID(classification);
+											tableForClassification.setEnterpriseID(enterprise);
+											configureInvolvedPartyTypeAddable(tableForClassification, (J) this, secondary, classification, searchValue, system);
+											com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+													(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+											ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+											return session.insert(tableForClassification)
+													.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+															.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+															.onFailure().recoverWithItem(0L)
+															.replaceWithVoid());
+										});
+							});
+				});
+	}
 }
 

@@ -74,6 +74,24 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
         return numberOfClassifications(session, classificationName.toString(), value, system, identityToken);
     }
 
+    /**
+     * Stateless count of active, in-date classification links for this entity matching the given name and
+     * value. Uses a scalar {@code getCount()} (never hydrating the @Cacheable link entity) and the
+     * enterprise from {@code system.getEnterprise()}; no {@code canRead} gating (counts the raw rows).
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default Uni<Long> numberOfClassifications(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> relationshipTable.builder(session)
+                        .findLink((J) this, classification, value)
+                        .inActiveRange()
+                        .inDateRange()
+                        .withEnterprise(system.getEnterprise())
+                        .getCount());
+    }
+
     default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName, ISystems<?, ?> system, UUID... identityToken) {
         IClassificationService<?> classificationService = get(IClassificationService.class);
         IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
@@ -396,6 +414,95 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                                 });
                                     }));
                 });
+    }
+
+    // =============================================================================================
+    // Stateless relationship-classification adds. These mirror addOrReuse/addOrUpdateClassification but
+    // run entirely on a {@link Mutiny.StatelessSession}: existence is a scalar getCount() (never hydrating
+    // the @Cacheable link entity), the link row is written with session.insert, and its default security is
+    // provisioned via the stateless resolveDefaultGroupFolderTokens + createDefaultSecurity path (tolerant:
+    // it is re-applied by the security bootstrap's batch apply-defaults phase). The enterprise reference is
+    // taken from system.getEnterprise() (the prepped/created system carries it), so no managed lazy fetch is
+    // needed. Both variants are find-or-insert (idempotent) and return Void — the install-chain callers
+    // discard the link instance.
+    // =============================================================================================
+
+    /**
+     * Stateless wiring of the link's owning back-reference (the stateful counterpart of the synchronous
+     * {@code configureForClassification(...)} overloads). The default is a migration seam: an entity that
+     * has not yet been taught to link classifications statelessly fails — the install chain prefers the
+     * stateless overload where present and stays on the managed path otherwise.
+     */
+    default Uni<Void> configureForClassification(Mutiny.StatelessSession session, IWarehouseRelationshipClassificationTable linkTable, IClassification<?, ?> classificationValue, ISystems<?, ?> system) {
+        return Uni.createFrom().failure(new UnsupportedOperationException(
+                getClass().getSimpleName() + " does not support stateless classification linking yet"));
+    }
+
+    /** Stateless find-or-insert classification link (Enum name). */
+    default Uni<Void> addOrReuseClassification(Mutiny.StatelessSession session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrInsertClassificationStateless(session, classificationName.toString(), value, system, identityToken);
+    }
+
+    /** Stateless find-or-insert classification link (String name). */
+    default Uni<Void> addOrReuseClassification(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrInsertClassificationStateless(session, classificationName, value, system, identityToken);
+    }
+
+    /** Stateless add-or-update classification link (Enum name) — find-or-insert, idempotent on re-install. */
+    default Uni<Void> addOrUpdateClassification(Mutiny.StatelessSession session, Enum<?> classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrInsertClassificationStateless(session, classificationName.toString(), value, system, identityToken);
+    }
+
+    /** Stateless add-or-update classification link (String name) — find-or-insert, idempotent on re-install. */
+    default Uni<Void> addOrUpdateClassification(Mutiny.StatelessSession session, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrInsertClassificationStateless(session, classificationName, value, system, identityToken);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Uni<Void> addOrInsertClassificationStateless(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> tableForClassification.builder(session)
+                        .findLink((J) this, classification, null)
+                        .inActiveRange()
+                        .inDateRange()
+                        .withEnterprise(enterprise)
+                        .getCount()
+                        .chain(count -> {
+                            if (count != null && count > 0) {
+                                return Uni.createFrom().voidItem();
+                            }
+                            IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);
+                            return activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
+                                    .chain(activeFlag -> {
+                                        tableForClassification.setEnterpriseID(enterprise);
+                                        tableForClassification.setActiveFlagID(activeFlag);
+                                        tableForClassification.setSystemID(system);
+                                        tableForClassification.setOriginalSourceSystemID(system.getId());
+                                        tableForClassification.setOriginalSourceSystemUniqueID(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+                                        tableForClassification.setClassificationID(classification);
+                                        if (!Strings.isNullOrEmpty(value) && value.length() > 254) {
+                                            return Uni.createFrom().<Void>failure(new ClassificationException("Message value too long - " + value));
+                                        }
+                                        tableForClassification.setValue(Strings.nullToEmpty(value));
+                                        return configureForClassification(session, tableForClassification, classification, system)
+                                                .chain(() -> session.insert(tableForClassification))
+                                                .chain(() -> {
+                                                    com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService<?> sts =
+                                                            get(com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService.class);
+                                                    com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+                                                            (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+                                                    return sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+                                                            .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+                                                            .onFailure().recoverWithItem(0L)
+                                                            .replaceWithVoid();
+                                                });
+                                    });
+                        }));
     }
 
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> updateClassification(Mutiny.Session session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {

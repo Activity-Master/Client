@@ -35,6 +35,20 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
     IEnterprise<?, ?> get();
 
     /**
+     * Find-or-create the lean enterprise record on a {@link Mutiny.StatelessSession}.
+     * <p>
+     * A stateless session has no persistence context, so the insert is a pure JDBC write (batchable,
+     * no dirty-checking). Idempotent: an existing in-date-range enterprise with the same name is
+     * returned instead of inserting a duplicate.
+     *
+     * @param session     The stateless session to use
+     * @param name        The enterprise name
+     * @param description The enterprise description
+     * @return A Uni emitting the found or newly-created enterprise
+     */
+    Uni<IEnterprise<?, ?>> create(Mutiny.StatelessSession session, String name, String description);
+
+    /**
      * Loads system updates for the specified enterprise.
      *
      * @param session    The Mutiny session to use
@@ -94,6 +108,15 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @return A Uni emitting the found enterprise
      */
     Uni<IEnterprise<?, ?>> getEnterprise(Mutiny.Session session, UUID uuid);
+
+    /**
+     * Retrieves an enterprise by its unique ID using a stateless session.
+     *
+     * @param session The stateless session to use
+     * @param uuid    The UUID of the enterprise
+     * @return A Uni emitting the found enterprise
+     */
+    Uni<IEnterprise<?, ?>> getEnterprise(Mutiny.StatelessSession session, UUID uuid);
 
     /**
      * Performs post-startup operations for an enterprise.
@@ -199,6 +222,39 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
                                               @NotNull String adminUserName, @NotNull String adminPassword, UUID uuidIdentifier);
 
     /**
+     * Starts a new enterprise driven from a stateless session.
+     * <p>
+     * The lean enterprise record is seeded through the supplied {@link Mutiny.StatelessSession}
+     * (no persistence context, JDBC-batchable insert); the deeper system install — which needs a
+     * managed persistence context — is orchestrated on internally-managed stateful sessions.
+     * <p>
+     * <strong>Top-level entry point:</strong> this method opens and manages its own sessions, so do
+     * <em>not</em> invoke it from within another already-open transaction.
+     *
+     * @param session        The stateless session to use to seed the enterprise record
+     * @param enterpriseName The name of the new enterprise
+     * @param adminUserName  The administrator username
+     * @param adminPassword  The administrator password
+     * @return A Uni emitting the created enterprise
+     */
+    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.StatelessSession session, String enterpriseName,
+                                              @NotNull String adminUserName, @NotNull String adminPassword);
+
+    /**
+     * Starts a new enterprise with a specific ID, driven from a stateless session.
+     *
+     * @param session        The stateless session to use to seed the enterprise record
+     * @param enterpriseName The name of the new enterprise
+     * @param adminUserName  The administrator username
+     * @param adminPassword  The administrator password
+     * @param uuidIdentifier The specific UUID to use for the enterprise
+     * @return A Uni emitting the created enterprise
+     * @see #startNewEnterprise(Mutiny.StatelessSession, String, String, String)
+     */
+    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.StatelessSession session, String enterpriseName,
+                                              @NotNull String adminUserName, @NotNull String adminPassword, UUID uuidIdentifier);
+
+    /**
      * Creates a new enterprise from an existing enterprise object.
      *
      * @param session    The Mutiny session to use
@@ -206,6 +262,18 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @return A Uni emitting the created enterprise
      */
     Uni<IEnterprise<?,?>> createNewEnterprise(Mutiny.Session session, @NotNull IEnterprise<?, ?> enterprise);
+
+    /**
+     * Creates a new enterprise from an existing enterprise object, driven from a stateless session.
+     * <p>
+     * Enterprise creation self-manages its own sessions/transactions internally, so the lifecycle is
+     * identical regardless of the caller's session kind. Call as a top-level entry point.
+     *
+     * @param session    The stateless session to use
+     * @param enterprise The enterprise object to create
+     * @return A Uni emitting the created enterprise
+     */
+    Uni<IEnterprise<?,?>> createNewEnterprise(Mutiny.StatelessSession session, @NotNull IEnterprise<?, ?> enterprise);
 
     /**
      * Checks if the enterprise is ready.

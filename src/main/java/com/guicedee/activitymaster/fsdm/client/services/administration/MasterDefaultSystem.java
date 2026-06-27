@@ -98,6 +98,46 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
         return Uni.createFrom().nullItem();
     }
 
+    /**
+     * Stateless variant of {@link #getSystem(Mutiny.Session, IEnterprise)} — resolves this system as a
+     * prepped detached {@code Systems} via the {@link ISystemsService} stateless reader.
+     */
+    public Uni<ISystems<?, ?>> getSystem(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
+    {
+        for (IMasterSystem<?> allSystem : IMasterSystem.allSystems())
+        {
+            if (allSystem.getSystemName()
+                        .equals(getSystemName()))
+            {
+                return systemsService.findSystem(session, enterprise, getSystemName());
+            }
+        }
+        return Uni.createFrom().nullItem();
+    }
+
+    /**
+     * Stateless variant of {@link #getSystemToken(Mutiny.Session, IEnterprise)} — resolves this system's
+     * identity-token UUID via the stateless scalar projection (no link-entity hydration).
+     */
+    public Uni<UUID> getSystemToken(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
+    {
+        for (IMasterSystem<?> allSystem : IMasterSystem.allSystems())
+        {
+            if (allSystem.getSystemName()
+                        .equals(getSystemName()))
+            {
+                return getSystem(session, enterprise).chain(system -> {
+                    if (system != null) {
+                        return systemsService.getSecurityIdentityToken(session, system);
+                    } else {
+                        return Uni.createFrom().nullItem();
+                    }
+                });
+            }
+        }
+        return Uni.createFrom().nullItem();
+    }
+
     public abstract String getSystemName();
 
     public abstract String getSystemDescription();

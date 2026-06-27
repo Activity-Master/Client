@@ -85,6 +85,13 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
     Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, String value, String description, ISystems<?, ?> system, UUID... identityToken);
 
     /**
+     * Stateless variant of {@link #createType(Mutiny.Session, String, String, ISystems, UUID...)} — a
+     * find-or-create resource-item type provisioned entirely on a {@link Mutiny.StatelessSession}
+     * (scalar existence/prep + stateless insert + stateless default security).
+     */
+    Uni<IResourceItemType<?, ?>> createType(Mutiny.StatelessSession session, String value, String description, ISystems<?, ?> system, UUID... identityToken);
+
+    /**
      * Creates a new resource item type with a specific key.
      *
      * @param session        The Mutiny session to use

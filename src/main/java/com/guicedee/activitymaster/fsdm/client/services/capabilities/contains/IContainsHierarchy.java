@@ -2,11 +2,15 @@ package com.guicedee.activitymaster.fsdm.client.services.capabilities.contains;
 
 import com.entityassist.RootEntity;
 import com.google.common.base.Strings;
+import com.guicedee.activitymaster.fsdm.client.services.IActiveFlagService;
 import com.guicedee.activitymaster.fsdm.client.services.IClassificationService;
 import com.guicedee.activitymaster.fsdm.client.services.IRelationshipValue;
+import com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.IWarehouseRelationshipClassificationTable;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.IWarehouseTable;
+import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag.IActiveFlag;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseBaseTable;
+import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems;
 import io.smallrye.mutiny.Uni;
@@ -164,6 +168,65 @@ public interface IContainsHierarchy<J extends IWarehouseBaseTable<J, ?, I>, I ex
                                       });
                             });
                });
+  }
+
+  /**
+   * Stateless variant of {@link #addChild(Mutiny.Session, IWarehouseTable, String, String, ISystems, UUID...)}.
+   * <p>
+   * Existence is checked with a scalar {@code getCount()} (never hydrating the {@code @Cacheable} link
+   * entity, which a stateless session cannot assemble). The active flag is resolved explicitly (the prepped
+   * stateless {@code system} carries a {@code null} eager active-flag association), the link row is written
+   * with {@code session.insert(...)}, and its default-security matrix is provisioned through the stateless
+   * {@code resolveDefaultGroupFolderTokens} + {@code createDefaultSecurity} path.
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  @NotNull
+  default Uni<J> addChild(Mutiny.StatelessSession session, IWarehouseTable<?, ?, ? extends Serializable, ?> child, String classificationName, String hierarchyValue, ISystems<?, ?> system, UUID... identifyingToken)
+  {
+    J me = (J) this;
+    Class<? extends IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>> hierarchyTable = getHierarchyRelationshipTableClass();
+    IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> linkTable = get(hierarchyTable);
+
+    IClassificationService<?> service = get(IClassificationService.class);
+    if (Strings.isNullOrEmpty(classificationName))
+    {
+      classificationName = HierarchyTypeClassification.toString();
+    }
+    final String finalClassificationName = classificationName;
+    IEnterprise<?, ?> ent = system.getEnterprise();
+
+    return service.find(session, finalClassificationName, system, identifyingToken)
+               .chain(classification -> linkTable.builder(session)
+                          .findLink(me, (J) child, hierarchyValue)
+                          .inActiveRange()
+                          .inDateRange()
+                          .withClassification(finalClassificationName, system)
+                          .withEnterprise(ent)
+                          .getCount()
+                          .chain(existing -> {
+                            if (existing != null && existing > 0)
+                            {
+                              return Uni.createFrom().item(me);
+                            }
+                            IActiveFlagService<?> afs = get(IActiveFlagService.class);
+                            ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+                            return afs.getActiveFlag(session, ent, identifyingToken)
+                                       .chain(af -> {
+                                         linkTable.setSystemID(system);
+                                         linkTable.setActiveFlagID((IActiveFlag<?, ?>) af);
+                                         linkTable.setOriginalSourceSystemID(system.getId());
+                                         linkTable.setEnterpriseID(ent);
+                                         linkTable.setClassificationID(classification);
+                                         linkTable.setValue(Strings.nullToEmpty(hierarchyValue));
+                                         configureNewHierarchyItem(linkTable, me, (J) child, hierarchyValue);
+                                         return session.insert(linkTable)
+                                                    .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identifyingToken)
+                                                               .chain(tokens -> ((IWarehouseCoreTable) linkTable)
+                                                                          .createDefaultSecurity(session, system, ent, af, tokens))
+                                                               .onFailure().recoverWithItem(0L))
+                                                    .replaceWith(me);
+                                       });
+                          }));
   }
 
   /**
