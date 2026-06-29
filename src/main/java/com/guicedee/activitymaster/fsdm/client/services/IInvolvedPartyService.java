@@ -174,6 +174,15 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedPartyIdentificationType<?,?>> findInvolvedPartyIdentificationType(Mutiny.Session session, String idType, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless prepped variant of {@link #findInvolvedPartyIdentificationType(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IInvolvedPartyIdentificationType<?,?>> findInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String idType, ISystems<?,?> system, UUID... identityToken);
+
+	/** Enum-name stateless variant of {@link #findInvolvedPartyIdentificationType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
+	default Uni<IInvolvedPartyIdentificationType<?,?>> findInvolvedPartyIdentificationType(Mutiny.StatelessSession session, Enum<?> idType, ISystems<?,?> system, UUID... identityToken)
+	{
+		return findInvolvedPartyIdentificationType(session, idType.toString(), system, identityToken);
+	}
+
 	/**
 	 * Finds an involved party by resource item and value.
 	 *
@@ -259,6 +268,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedPartyType<?,?>> findType(Mutiny.Session session, String type, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless prepped variant of {@link #findType(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IInvolvedPartyType<?,?>> findType(Mutiny.StatelessSession session, String type, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds a name type by name string.
 	 *
@@ -269,6 +281,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 * @return A Uni emitting the found name type
 	 */
 	Uni<IInvolvedPartyNameType<?,?>> findInvolvedPartyNameType(Mutiny.Session session, String nameType, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #findInvolvedPartyNameType(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IInvolvedPartyNameType<?,?>> findInvolvedPartyNameType(Mutiny.StatelessSession session, String nameType, ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Finds an involved party by security token.

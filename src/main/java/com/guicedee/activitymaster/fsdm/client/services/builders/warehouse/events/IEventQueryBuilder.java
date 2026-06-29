@@ -98,4 +98,37 @@ public interface IEventQueryBuilder<J extends IEventQueryBuilder<J, E>, E extend
 		return Uni.createFrom().item((J) this);
 	}
 
+	// ---- Stateless (Mutiny.StatelessSession) twins. The relationship builder is session-polymorphic; the
+	// join wiring carries no session, so these mirror the managed convenience filters verbatim. ----
+
+	default Uni<J> hasEventType(Mutiny.StatelessSession session, IClassification<?,?> classification, String value, UUID... identityToken)
+	{
+		ISystems<?,?> systemID = classification.getSystemID();
+		return hasEventType(session, classification.getName(), value, systemID, identityToken);
+	}
+
+	default Uni<J> hasEventType(Mutiny.StatelessSession session, String classification, ISystems<?,?> system, UUID... identityToken)
+	{
+		return hasEventType(session, classification, null, system, identityToken);
+	}
+
+	default Uni<J> hasEventType(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?,?> system, UUID... identityToken)
+	{
+		Class<? extends IWarehouseRelationshipTable<?, ?, E, IEventType<?, ?>, java.util.UUID, ?>> relationshipTable = getEventTypeRelationshipClass();
+		IWarehouseRelationshipTable<?, ?, E, IEventType<?, ?>, java.util.UUID, ?> instance = com.guicedee.client.IGuiceContext.get(relationshipTable);
+		IQueryBuilderRelationships qbr
+				= instance.builder(session);
+
+		qbr.withClassification(classificationName, system);
+		qbr.inActiveRange();
+		qbr.inDateRange();
+		qbr.withValue(value);
+
+		Attribute<E,IQueryBuilderRelationships> joinColumn = getAttribute("eventTypes");
+		join(joinColumn, (QueryBuilder) qbr);
+
+		//noinspection unchecked
+		return Uni.createFrom().item((J) this);
+	}
+
 }

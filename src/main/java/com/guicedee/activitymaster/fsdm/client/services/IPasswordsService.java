@@ -65,6 +65,9 @@ public interface IPasswordsService<J extends IPasswordsService<J>> extends IProg
 	 */
 	Uni<IInvolvedParty<?, ?>> addUpdateUsernamePassword(Mutiny.Session session, String username, String password, IInvolvedParty<?, ?> involvedParty, ISystems<?, ?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #addUpdateUsernamePassword(Mutiny.Session, String, String, IInvolvedParty, ISystems, UUID...)}. */
+	Uni<IInvolvedParty<?, ?>> addUpdateUsernamePassword(Mutiny.StatelessSession session, String username, String password, IInvolvedParty<?, ?> involvedParty, ISystems<?, ?> system, UUID... identityToken);
+
 	/**
 	 * Checks if a username already exists.
 	 *
@@ -87,5 +90,14 @@ public interface IPasswordsService<J extends IPasswordsService<J>> extends IProg
 	 * @return A Uni emitting the created administrator user
 	 */
 	Uni<IInvolvedParty<?, ?>> createAdminAndCreatorUserForEnterprise(Mutiny.Session session, ISystems<?, ?> system, String adminUserName,
+																	 @NotNull String adminPassword, UUID existingLocalKey);
+
+	/**
+	 * Stateless variant of {@link #createAdminAndCreatorUserForEnterprise(Mutiny.Session, ISystems, String, String, UUID)}
+	 * — provisions the enterprise creator/administrator involved party, its identification/name/party types,
+	 * identity security token, username + password credential, and default security entirely on a
+	 * {@link Mutiny.StatelessSession}. Idempotent: when the creator user already exists it is a no-op.
+	 */
+	Uni<IInvolvedParty<?, ?>> createAdminAndCreatorUserForEnterprise(Mutiny.StatelessSession session, ISystems<?, ?> system, String adminUserName,
 																	 @NotNull String adminPassword, UUID existingLocalKey);
 }

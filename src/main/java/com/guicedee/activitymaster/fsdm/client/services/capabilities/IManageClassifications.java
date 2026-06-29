@@ -302,6 +302,48 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                 });
     }
 
+    // ---- Stateless add (always-insert) classification link ----
+
+    /** Stateless variant of {@link #addClassification(Mutiny.Session, String, String, ISystems, UUID...)} — always inserts a fresh link. */
+    default Uni<Void> addClassification(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, value, system, identityToken);
+    }
+
+    /** Stateless variant of {@link #addClassification(Mutiny.Session, String, EnterpriseClassificationDataConcepts, String, ISystems, UUID...)}. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default Uni<Void> addClassification(Mutiny.StatelessSession session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);
+        com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService<?> sts =
+                get(com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService.class);
+        final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+        // The stateless prepped find resolves by name (concept-narrowing is a managed-only feature); name is the key.
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
+                        .chain(activeFlag -> {
+                            tableForClassification.setEnterpriseID(enterprise);
+                            tableForClassification.setActiveFlagID(activeFlag);
+                            tableForClassification.setSystemID(system);
+                            tableForClassification.setOriginalSourceSystemID(system.getId());
+                            tableForClassification.setOriginalSourceSystemUniqueID(UUID.fromString("00000000-0000-0000-0000-000000000000"));
+                            tableForClassification.setClassificationID(classification);
+                            if (!Strings.isNullOrEmpty(value) && value.length() > 254) {
+                                return Uni.createFrom().<Void>failure(new ClassificationException("Message value too long - " + value));
+                            }
+                            tableForClassification.setValue(value);
+                            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+                                    (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+                            return configureForClassification(session, tableForClassification, classification, system)
+                                    .chain(() -> session.insert(tableForClassification))
+                                    .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+                                            .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+                                            .onFailure().recoverWithItem(0L)
+                                            .replaceWithVoid());
+                        }));
+    }
+
     default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>> addOrUpdateClassification(Mutiny.Session session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
         return addOrUpdateClassification(session, classificationName.toString(), EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, null, value, system, identityToken);
     }
@@ -694,5 +736,134 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
      * {@code await().atMost(...)}.
      */
     Uni<Void> configureForClassification(Mutiny.Session session, IWarehouseRelationshipClassificationTable linkTable, IClassification<?, ?> classificationValue, ISystems<?, ?> system);
+
+    // ---- Stateless SCD close mutations (archive / remove): bulk-UPDATE retire of the active link row ----
+
+    /**
+     * Stateless variant of {@link #archiveClassification(Mutiny.Session, String, String, ISystems, UUID...)} —
+     * closes the active classification link by stamping the <em>archived</em> active-flag + effective-to date
+     * via a bulk HQL {@code UPDATE} ({@link SCDLinkMaintenance#retireActiveRow(Mutiny.StatelessSession, Object, UUID, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag.IActiveFlag, java.time.OffsetDateTime)}),
+     * so it never hydrates a managed entity. No-op when the link is absent or its value differs.
+     */
+    default Uni<Void> archiveClassification(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return closeClassificationStateless(session, classificationName, value, true, system, identityToken);
+    }
+
+    /**
+     * Stateless variant of {@link #removeClassification(Mutiny.Session, String, String, ISystems, UUID...)} —
+     * closes the active classification link by stamping the <em>deleted</em> active-flag + effective-to date
+     * via the same stateless bulk {@code UPDATE}. No-op when the link is absent or its value differs.
+     */
+    default Uni<Void> removeClassification(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return closeClassificationStateless(session, classificationName, value, false, system, identityToken);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Uni<Void> closeClassificationStateless(Mutiny.StatelessSession session, String classificationName, String value, boolean archive, ISystems<?, ?> system, UUID... identityToken) {
+        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> tableForClassification =
+                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+        final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> tableForClassification.builder(session)
+                        .findLink((J) this, classification, null)
+                        .inActiveRange()
+                        .inDateRange()
+                        .withEnterprise(enterprise)
+                        .get()
+                        .map(r -> (Object) r)
+                        .onFailure(NoResultException.class)
+                        .recoverWithItem((Object) null)
+                        .chain(existingObj -> {
+                            IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> existing =
+                                    (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) existingObj;
+                            if (existing == null || !Strings.nullToEmpty(value).equals(existing.getValue())) {
+                                return Uni.createFrom().voidItem();
+                            }
+                            Uni<? extends com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag.IActiveFlag<?, ?>> flagUni =
+                                    archive ? flagService.getArchivedFlag(session, enterprise, identityToken)
+                                            : flagService.getDeletedFlag(session, enterprise, identityToken);
+                            // Close the row with a stateless full-row UPDATE by id (session.update) rather than a
+                            // bulk HQL mutation: on a Mutiny.StatelessSession createMutationQuery(HQL) trips a JPMS
+                            // access error (org.hibernate.orm.core does not export query.hql.spi to the reactive
+                            // module). A stateless update writes every column (no dirty tracking), so the lazy
+                            // effectiveToDate is persisted reliably.
+                            return flagUni.chain(flag -> {
+                                existing.setActiveFlagID(flag);
+                                existing.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                return session.update(existing).replaceWithVoid();
+                            });
+                        }));
+    }
+
+    // ---- Stateless SCD update (retire + reinsert only when present) ----
+
+    /**
+     * Stateless variant of {@link #updateClassification(Mutiny.Session, String, String, ISystems, UUID...)} —
+     * SCD retire+reinsert only when the classification link already exists (no-op if absent or unchanged).
+     */
+    default Uni<Void> updateClassification(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return updateClassificationStateless(session, classificationName, value, system, identityToken);
+    }
+
+    /**
+     * Concept-narrowed stateless variant. The stateless prepped {@code find} resolves by name (unique within a
+     * system), so the {@code concept} narrows nothing extra here and is accepted only for API parity.
+     */
+    default Uni<Void> updateClassification(Mutiny.StatelessSession session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return updateClassificationStateless(session, classificationName, value, system, identityToken);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Uni<Void> updateClassificationStateless(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+        com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService<?> sts =
+                get(com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService.class);
+        final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+
+        return classificationService.find(session, classificationName, system, identityToken)
+                .chain(classification -> get(getClassificationsRelationshipClass()).builder(session)
+                        .findLink((J) this, classification, null)
+                        .inActiveRange()
+                        .inDateRange()
+                        .withEnterprise(enterprise)
+                        .get()
+                        .map(r -> (Object) r)
+                        .onFailure(NoResultException.class)
+                        .recoverWithItem((Object) null)
+                        .chain(resultObj -> {
+                            IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> existing =
+                                    (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) resultObj;
+                            if (existing == null || Strings.nullToEmpty(value).equals(existing.getValue())) {
+                                return Uni.createFrom().voidItem();
+                            }
+                            return flagService.getArchivedFlag(session, enterprise, identityToken)
+                                    .chain(archivedFlag -> SCDLinkMaintenance.retireActiveRow(session, (IWarehouseRelationshipTable) existing, existing.getId(), archivedFlag, convertToUTCDateTime(com.entityassist.RootEntity.getNow())))
+                                    .chain(() -> flagService.getActiveFlag(session, enterprise, identityToken).chain(activeFlag -> {
+                                        IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> newRow =
+                                                (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) get(getClassificationsRelationshipClass());
+                                        newRow.setEnterpriseID(enterprise);
+                                        newRow.setActiveFlagID(activeFlag);
+                                        newRow.setSystemID(system);
+                                        newRow.setOriginalSourceSystemID(system.getId());
+                                        newRow.setOriginalSourceSystemUniqueID(existing.getId());
+                                        newRow.setClassificationID(classification);
+                                        newRow.setValue(Strings.nullToEmpty(value));
+                                        newRow.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                        newRow.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+                                        com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+                                                (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newRow;
+                                        return configureForClassification(session, newRow, classification, system)
+                                                .chain(() -> session.insert(newRow))
+                                                .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+                                                        .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+                                                        .onFailure().recoverWithItem(0L))
+                                                .replaceWithVoid();
+                                    }));
+                        }));
+    }
 }
 

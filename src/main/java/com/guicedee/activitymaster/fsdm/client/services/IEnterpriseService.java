@@ -156,6 +156,29 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
     }
 
     /**
+     * Stateless variant of {@link #performPostStartup(Mutiny.Session, IEnterprise)} — runs each registered
+     * system's {@link IMasterSystem#postStartup(Mutiny.StatelessSession, IEnterprise)} sequentially on the
+     * supplied {@link Mutiny.StatelessSession} (no blocking {@code await}, one operation at a time).
+     */
+    default Uni<Void> performPostStartup(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
+    {
+        ActivityMasterConfiguration configuration = ActivityMasterConfiguration.get();
+        java.util.List<IMasterSystem<?>> systems = new java.util.ArrayList<>(configuration.getAllSystems());
+        logProgress("System Loading", "Starting Systems... ", 1);
+        setCurrentTask(0);
+        Uni<Void> chain = Uni.createFrom().voidItem();
+        for (IMasterSystem<?> system : systems)
+        {
+            final IMasterSystem<?> current = system;
+            chain = chain.chain(() -> {
+                logProgress("System Loading", "Starting up system " + current.getClass().getName(), 1);
+                return current.postStartup(session, enterprise);
+            });
+        }
+        return chain.invoke(() -> logProgress("System Loading", "Completed Startup of Systems... ", 1));
+    }
+
+    /**
      * Retrieves the enterprise by name only.
      *
      * @param session The Mutiny session to use

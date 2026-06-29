@@ -61,10 +61,9 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
     {
         IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID, ?> relationshipTable = get(getInvolvedPartyNameTypeRelationshipClass());
         IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
-
         return partyService.findInvolvedPartyNameType(session, nameType, system, identityToken)
                        .chain(involvedPartyNameType -> {
-                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID> queryBuilderRelationshipClassification
+                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID> q
                                    = relationshipTable.builder(session)
                                              .findLink((J) this, involvedPartyNameType, null)
                                              .inActiveRange()
@@ -72,19 +71,10 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                              .withValue(searchValue)
                                              .inDateRange()
                                              .withEnterprise(system.getEnterprise())
-                                             .canRead(system, identityToken)
-                                   ;
-                           if (first)
-                           {
-                               queryBuilderRelationshipClassification.setMaxResults(1);
-                           }
-                           if (latest)
-                           {
-                               queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"));
-                           }
-
-                           return queryBuilderRelationshipClassification.get()
-                                          .map(item -> (IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) item);
+                                             .canRead(system, identityToken);
+                           if (first) { q.setMaxResults(1); }
+                           if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+                           return q.get().map(item -> (IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) item);
                        });
     }
 
@@ -96,10 +86,9 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
     {
         IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID, ?> relationshipTable = get(getInvolvedPartyNameTypeRelationshipClass());
         IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
-
         return partyService.findInvolvedPartyNameType(session, nameType, system, identityToken)
                        .chain(involvedPartyNameType -> {
-                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID> queryBuilderRelationshipClassification
+                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID> q
                                    = relationshipTable.builder(session)
                                              .findLink((J) this, involvedPartyNameType, null)
                                              .inActiveRange()
@@ -107,15 +96,9 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                              .withValue(searchValue)
                                              .inDateRange()
                                              .withEnterprise(system.getEnterprise())
-                                             .canRead(system, identityToken)
-                                   ;
-                           if (latest)
-                           {
-                               queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"));
-                           }
-
-                           return queryBuilderRelationshipClassification.getAll()
-                                          .map(list -> (List<IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>>) list);
+                                             .canRead(system, identityToken);
+                           if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+                           return q.getAll().map(list -> (List<IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>>) list);
                        });
     }
 
@@ -127,14 +110,7 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
     {
         IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID, ?> relationshipTable = get(getInvolvedPartyNameTypeRelationshipClass());
         IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
-
-        if (classificationValue == null)
-        {
-            classificationValue = NoClassification.classificationValue();
-        }
-
-        final String finalClassificationValue = classificationValue;
-
+        final String finalClassificationValue = classificationValue == null ? NoClassification.classificationValue() : classificationValue;
         return partyService.findInvolvedPartyNameType(session, nameType, system, identityToken)
                        .chain(involvedPartyNameType -> relationshipTable.builder(session)
                                                                  .findLink((J) this, involvedPartyNameType, null)
@@ -151,8 +127,7 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
      */
     default Uni<Boolean> hasInvolvedPartyNameTypes(Mutiny.Session session, String classificationName, String nameType, String searchValue, ISystems<?, ?> system, UUID... identityToken)
     {
-        return numberOfInvolvedPartyNameTypes(session, classificationName, nameType, searchValue, system, identityToken)
-                       .map(count -> count > 0);
+        return numberOfInvolvedPartyNameTypes(session, classificationName, nameType, searchValue, system, identityToken).map(count -> count > 0);
     }
 
     /**
@@ -273,7 +248,7 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                           .get()
                                           .onFailure(NoResultException.class)
                                           .recoverWithUni(() -> {
-                                              return (Uni) addInvolvedPartyNameType(session, involvedPartyNameTypeType, classificationValue, storeValue, system, identityToken);
+                                              return (Uni) addInvolvedPartyNameType(session, involvedPartyNameTypeType, classificationValue, searchValue, system, identityToken);
                                           })
                                           .chain(result -> {
                                               // Cast the result to the correct type
@@ -374,9 +349,17 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                        .map(result -> (IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) result);
     }
 
-    // ---- Stateless find-or-insert (Uni<Void>): scalar getCount existence gate + session.insert + stateless default security ----
+    /** String-name stateless variant — resolves the secondary name-type via the stateless party finder, then delegates. */
+    default Uni<Void> addOrReuseInvolvedPartyNameType(Mutiny.StatelessSession session, String classificationValue,
+                                                      String involvedPartyNameType,
+                                                      String searchValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+        return service.findInvolvedPartyNameType(session, involvedPartyNameType, system, identityToken)
+                       .chain(secondary -> addOrReuseInvolvedPartyNameType(session, classificationValue, secondary, searchValue, system, identityToken));
+    }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    /** Enum-name stateless variant of {@link #createNameType(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
     default Uni<Void> addOrReuseInvolvedPartyNameType(Mutiny.StatelessSession session, String classificationValue,
                                                       IInvolvedPartyNameType<?, ?> secondary,
                                                       String searchValue, ISystems<?, ?> system, UUID... identityToken)
@@ -413,6 +396,7 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                                                  com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
                                                                          (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
                                                                  ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+                                                                 if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
                                                                  return session.insert(tableForClassification)
                                                                                 .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
                                                                                                 .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
@@ -421,5 +405,72 @@ public interface IManagePartyNameTypes<J extends IWarehouseBaseTable<J, ?, ? ext
                                                              });
                                           });
                        });
+    }
+
+    // ---- Stateless relationship-read twins (verbatim; secondary resolved via the stateless party finder) ----
+
+    @SuppressWarnings("unchecked")
+    default Uni<IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>> findInvolvedPartyNameType(Mutiny.StatelessSession session, String classification, String nameType, String searchValue, ISystems<?, ?> system, boolean first, boolean latest, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID, ?> relationshipTable = get(getInvolvedPartyNameTypeRelationshipClass());
+        IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+        return partyService.findInvolvedPartyNameType(session, nameType, system, identityToken)
+                       .chain(involvedPartyNameType -> {
+                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID> q
+                                   = relationshipTable.builder(session)
+                                             .findLink((J) this, involvedPartyNameType, null)
+                                             .inActiveRange()
+                                             .withClassification(classification, system)
+                                             .withValue(searchValue)
+                                             .inDateRange()
+                                             .withEnterprise(system.getEnterprise())
+                                             .canRead(system, identityToken);
+                           if (first) { q.setMaxResults(1); }
+                           if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+                           return q.get().map(item -> (IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>) item);
+                       });
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<List<IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>>> findInvolvedPartyNameTypesAll(Mutiny.StatelessSession session, String classification, String nameType, String searchValue, ISystems<?, ?> system, boolean latest, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID, ?> relationshipTable = get(getInvolvedPartyNameTypeRelationshipClass());
+        IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+        return partyService.findInvolvedPartyNameType(session, nameType, system, identityToken)
+                       .chain(involvedPartyNameType -> {
+                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID> q
+                                   = relationshipTable.builder(session)
+                                             .findLink((J) this, involvedPartyNameType, null)
+                                             .inActiveRange()
+                                             .withClassification(classification, system)
+                                             .withValue(searchValue)
+                                             .inDateRange()
+                                             .withEnterprise(system.getEnterprise())
+                                             .canRead(system, identityToken);
+                           if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+                           return q.getAll().map(list -> (List<IRelationshipValue<J, IInvolvedPartyNameType<?, ?>, ?>>) list);
+                       });
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<Long> numberOfInvolvedPartyNameTypes(Mutiny.StatelessSession session, String classificationValue, String nameType, String value, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyNameType<?, ?>, UUID, ?> relationshipTable = get(getInvolvedPartyNameTypeRelationshipClass());
+        IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+        final String finalClassificationValue = classificationValue == null ? NoClassification.classificationValue() : classificationValue;
+        return partyService.findInvolvedPartyNameType(session, nameType, system, identityToken)
+                       .chain(involvedPartyNameType -> relationshipTable.builder(session)
+                                                                 .findLink((J) this, involvedPartyNameType, null)
+                                                                 .withValue(value)
+                                                                 .withClassification(finalClassificationValue, system)
+                                                                 .inActiveRange()
+                                                                 .inDateRange()
+                                                                 .canRead(system, identityToken)
+                                                                 .getCount());
+    }
+
+    default Uni<Boolean> hasInvolvedPartyNameTypes(Mutiny.StatelessSession session, String classificationName, String nameType, String searchValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        return numberOfInvolvedPartyNameTypes(session, classificationName, nameType, searchValue, system, identityToken).map(count -> count > 0);
     }
 }

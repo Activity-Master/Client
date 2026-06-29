@@ -311,4 +311,28 @@ public final class NameIdCache {
     public interface Resolver {
         Uni<UUID> resolve(Mutiny.Session session, String name);
     }
+
+    /** Stateless-session counterpart of {@link Resolver}. */
+    @FunctionalInterface
+    public interface StatelessResolver {
+        Uni<UUID> resolve(Mutiny.StatelessSession session, String name);
+    }
+
+    /** Stateless variant of {@link #getActiveFlagId(Mutiny.Session, UUID, String, Resolver)}. */
+    public static Uni<UUID> getActiveFlagId(Mutiny.StatelessSession session,
+                                            UUID enterpriseId,
+                                            String flagName,
+                                            StatelessResolver resolver) {
+        String norm = normalize(flagName);
+        String domainKey = "activeflag|" + (enterpriseId == null ? "" : enterpriseId.toString());
+        Key key = new Key(domainKey, norm);
+
+        UUID cached = getIfPresent(key);
+        if (cached != null) {
+            return Uni.createFrom().item(cached);
+        }
+
+        return resolver.resolve(session, flagName)
+                .invoke(id -> put(key, id));
+    }
 }

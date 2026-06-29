@@ -482,4 +482,53 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 			                              .map(ids -> (java.util.Set<UUID>) new java.util.LinkedHashSet<>(ids));
 		                });
 	}
+
+	/** Stateless variant of {@link #getApplicableSecurityTokenIds(Mutiny.Session, ISystems, UUID...)}. */
+	default Uni<java.util.Set<UUID>> getApplicableSecurityTokenIds(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken)
+	{
+		if (identityToken == null || identityToken.length == 0)
+		{
+			return Uni.createFrom().item(java.util.Collections.emptySet());
+		}
+
+		var enterprise = system.getEnterprise();
+		java.util.List<String> tokens = java.util.Arrays.stream(identityToken)
+		                                                 .filter(java.util.Objects::nonNull)
+		                                                 .map(UUID::toString)
+		                                                 .toList();
+		if (tokens.isEmpty())
+		{
+			return Uni.createFrom().item(java.util.Collections.emptySet());
+		}
+
+		java.time.OffsetDateTime now = com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderSCD
+				.convertToUTCDateTime(com.entityassist.RootEntity.getNow());
+
+		IActiveFlagService<?> afService = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
+		return afService.getVisibleRangeAndUpIds(session, enterprise)
+		                .flatMap(visibleIds -> {
+			                String sql = "with recursive applicable(securitytokenid) as ( " +
+			                             "    select st.securitytokenid " +
+			                             "    from security.securitytoken st " +
+			                             "    where st.securitytoken in (:tokens) " +
+			                             "      and st.enterpriseid = :ent " +
+			                             "  union " +
+			                             "    select x.parentsecuritytokenid " +
+			                             "    from security.securitytokenxsecuritytoken x " +
+			                             "    join applicable a on x.childsecuritytokenid = a.securitytokenid " +
+			                             "    where x.enterpriseid = :ent " +
+			                             "      and (x.effectivefromdate <= :now) " +
+			                             "      and (x.effectivetodate > :now) " +
+			                             "      and x.activeflagid in (:visibleIds) " +
+			                             ") " +
+			                             "select securitytokenid from applicable";
+			                return session.createNativeQuery(sql, UUID.class)
+			                              .setParameter("tokens", tokens)
+			                              .setParameter("ent", enterprise.getId())
+			                              .setParameter("now", now)
+			                              .setParameter("visibleIds", visibleIds)
+			                              .getResultList()
+			                              .map(ids -> (java.util.Set<UUID>) new java.util.LinkedHashSet<>(ids));
+		                });
+	}
 }

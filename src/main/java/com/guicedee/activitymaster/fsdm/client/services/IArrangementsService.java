@@ -167,6 +167,9 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 	 */
 	Uni<IArrangementType<?, ?>> findArrangementType(Mutiny.Session session, String type, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless "fetch ids/scalars + prep" variant of {@link #findArrangementType(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IArrangementType<?, ?>> findArrangementType(Mutiny.StatelessSession session, String type, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds arrangements associated with an involved party.
 	 *

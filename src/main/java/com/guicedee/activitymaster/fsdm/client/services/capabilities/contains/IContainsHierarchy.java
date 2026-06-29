@@ -91,6 +91,46 @@ public interface IContainsHierarchy<J extends IWarehouseBaseTable<J, ?, I>, I ex
 
 
   /**
+   * Stateless variant of {@link #archiveChild(Mutiny.Session, IWarehouseTable, String, String, ISystems, UUID...)}
+   * — finds the active hierarchy link on a {@link Mutiny.StatelessSession} and closes it via the link's stateless
+   * {@code archive} (full-row {@code session.update}). No-op when the link is absent.
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  default Uni<J> archiveChild(Mutiny.StatelessSession session, IWarehouseTable<?, ?, ? extends Serializable, ?> child, String classificationName, String hierarchyValue, ISystems<?, ?> system, UUID... identifyingToken)
+  {
+    J me = (J) this;
+    Class<? extends IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>> hierarchyTable = getHierarchyRelationshipTableClass();
+    IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> linkTable = get(hierarchyTable);
+
+    if (Strings.isNullOrEmpty(classificationName))
+    {
+      classificationName = HierarchyTypeClassification.toString();
+    }
+    IEnterprise<?, ?> enterprise = system.getEnterprise();
+    final String finalClassificationName = classificationName;
+
+    return linkTable.builder(session)
+               .findLink(me, (J) child, hierarchyValue)
+               .inActiveRange()
+               .inDateRange()
+               .withClassification(finalClassificationName, system)
+               .withEnterprise(enterprise)
+               .get()
+               .onItem().transformToUni(exists -> {
+                 if (exists != null)
+                 {
+                   IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> table = (IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>) exists;
+                   return (Uni<J>) table.archive(session, system, identifyingToken)
+                           .replaceWith(me);
+                 }
+                 return Uni.createFrom().item(me);
+               })
+               .onFailure()
+               .recoverWithItem(me);
+  }
+
+
+  /**
    * Adds a child with the default hierarchy type classification
    *
    * @param session
@@ -370,5 +410,95 @@ public interface IContainsHierarchy<J extends IWarehouseBaseTable<J, ?, I>, I ex
   }
 
   void configureNewHierarchyItem(IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> newLink, J parent, J child, String value);
+
+  // =============================================================================================
+  // Stateless (Mutiny.StatelessSession) read twins. The hierarchy query builder is session-polymorphic
+  // and the bodies use system.getEnterprise() (no session.fetch), so these are verbatim session swaps.
+  // addChild already has a stateless overload above; archiveChild (a close-mutation via table.archive)
+  // is intentionally not twinned here.
+  // =============================================================================================
+
+  @SuppressWarnings("unchecked")
+  default Uni<J> findParent(Mutiny.StatelessSession session, String hierarchyValue, String classificationName, ISystems<?, ?> system, UUID... identifyingToken)
+  {
+    Class<? extends IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>> hierarchyTable = getHierarchyRelationshipTableClass();
+    IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> linkTable = get(hierarchyTable);
+    final String finalHierarchyValue = Strings.isNullOrEmpty(hierarchyValue) ? null : hierarchyValue;
+    final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? HierarchyTypeClassification.toString() : classificationName;
+    return (Uni) linkTable.builder(session)
+                     .findLink(null, (J) this, null)
+                     .inActiveRange()
+                     .withClassification(finalClassificationName, system)
+                     .inDateRange()
+                     .withValue(finalHierarchyValue)
+                     .canRead(system, identifyingToken)
+                     .withEnterprise(system.getEnterprise())
+                     .get()
+                     .onItem().transform(exists -> {
+                       IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> q = (IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>) exists;
+                       return q.getPrimary();
+                     })
+                     .onFailure(NoResultException.class).recoverWithItem(() -> null);
+  }
+
+  @SuppressWarnings("unchecked")
+  default Uni<IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>> findParentLink(Mutiny.StatelessSession session, String hierarchyValue, String classificationName, ISystems<?, ?> system, UUID... identifyingToken)
+  {
+    Class<? extends IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>> hierarchyTable = getHierarchyRelationshipTableClass();
+    IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> linkTable = get(hierarchyTable);
+    final String finalHierarchyValue = Strings.isNullOrEmpty(hierarchyValue) ? null : hierarchyValue;
+    final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? HierarchyTypeClassification.toString() : classificationName;
+    return (Uni) linkTable.builder(session)
+                     .findLink(null, (J) this, null)
+                     .inActiveRange()
+                     .withClassification(finalClassificationName, system)
+                     .inDateRange()
+                     .withValue(finalHierarchyValue)
+                     .canRead(system, identifyingToken)
+                     .withEnterprise(system.getEnterprise())
+                     .get()
+                     .onFailure(NoResultException.class).recoverWithItem(() -> null);
+  }
+
+  @SuppressWarnings("unchecked")
+  default Uni<List<IRelationshipValue<J, J, ?>>> findParents(Mutiny.StatelessSession session, String hierarchyValue, String classificationName, ISystems<?, ?> system, UUID... identifyingToken)
+  {
+    Class<? extends IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>> hierarchyTable = getHierarchyRelationshipTableClass();
+    IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> linkTable = get(hierarchyTable);
+    final String finalHierarchyValue = Strings.isNullOrEmpty(hierarchyValue) ? null : hierarchyValue;
+    final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? HierarchyTypeClassification.toString() : classificationName;
+    return linkTable.builder(session)
+               .findLink(null, (J) this, finalHierarchyValue)
+               .inActiveRange()
+               .withClassification(finalClassificationName, system)
+               .inDateRange()
+               .canRead(system, identifyingToken)
+               .withEnterprise(system.getEnterprise())
+               .getAll()
+               .map(list -> (List<IRelationshipValue<J, J, ?>>) list);
+  }
+
+  default Uni<List<IRelationshipValue<J, J, ?>>> findChildren(Mutiny.StatelessSession session, Enum<?> classificationName, String hierarchyValue, ISystems<?, ?> system, UUID... identifyingToken)
+  {
+    return findChildren(session, classificationName.toString(), hierarchyValue, system, identifyingToken);
+  }
+
+  @SuppressWarnings("unchecked")
+  default Uni<List<IRelationshipValue<J, J, ?>>> findChildren(Mutiny.StatelessSession session, String classificationName, String hierarchyValue, ISystems<?, ?> system, UUID... identifyingToken)
+  {
+    Class<? extends IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?>> hierarchyTable = getHierarchyRelationshipTableClass();
+    IWarehouseRelationshipClassificationTable<?, ?, J, J, I, ?> linkTable = get(hierarchyTable);
+    final String finalHierarchyValue = Strings.isNullOrEmpty(hierarchyValue) ? null : hierarchyValue;
+    final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? HierarchyTypeClassification.toString() : classificationName;
+    return linkTable.builder(session)
+               .findLink((J) this, null, finalHierarchyValue)
+               .inActiveRange()
+               .withClassification(finalClassificationName, system)
+               .inDateRange()
+               .canRead(system, identifyingToken)
+               .withEnterprise(system.getEnterprise())
+               .getAll()
+               .map(list -> (List<IRelationshipValue<J, J, ?>>) list);
+  }
 
 }

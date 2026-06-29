@@ -163,6 +163,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     Uni<IActiveFlag<?,?>> getArchivedFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /** Stateless "fetch ids/scalars + prep" variant of {@link #getArchivedFlag(Mutiny.Session, IEnterprise, UUID...)}. */
+    Uni<IActiveFlag<?,?>> getArchivedFlag(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
+
     /**
      * Gets the 'Deleted' flag for the given enterprise.
      *
@@ -173,11 +176,18 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     Uni<IActiveFlag<?,?>> getDeletedFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /** Stateless "fetch ids/scalars + prep" variant of {@link #getDeletedFlag(Mutiny.Session, IEnterprise, UUID...)}. */
+    Uni<IActiveFlag<?,?>> getDeletedFlag(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
+
     /**
      * Resolves an ActiveFlag ID (UUID) by its name within a specific enterprise using a lightweight
      * native SQL lookup with a small in-memory cache to reduce database load.
      */
     Uni<UUID> resolveActiveFlagIdByName(Mutiny.Session session, IEnterprise<?, ?> enterpriseId, String flagName);
+
+    /** Stateless variant of {@link #resolveActiveFlagIdByName(Mutiny.Session, IEnterprise, String)}. */
+    Uni<UUID> resolveActiveFlagIdByName(Mutiny.StatelessSession session, IEnterprise<?, ?> enterpriseId, String flagName);
+
 
     /**
      * Returns the set of ActiveFlag UUIDs for the VisibleRangeAndUp for the given enterprise.
@@ -211,11 +221,51 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
                 .map(id -> { list.add(id); return list; }));
     }
 
+    /** Stateless variant of {@link #getVisibleRangeAndUpIds(Mutiny.Session, IEnterprise)}. */
+    default Uni<List<UUID>> getVisibleRangeAndUpIds(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise) {
+        return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Archived.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.LongTermStorage.name())
+                .map(id -> { List<UUID> l = new ArrayList<>(); l.add(list); l.add(id); return l; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.MidTermStorage.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.ShortTermStorage.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Resolved.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Completed.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Active.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Current.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Important.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Highlighted.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Pending.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Always.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Permanent.name())
+                .map(id -> { list.add(id); return list; }));
+    }
+
     /**
      * Returns the set of ActiveFlag UUIDs for the RemovedRange for the given enterprise.
      * Contract: never returns null. If a required flag is missing, lets NoResultException propagate.
      */
     default Uni<List<UUID>> getRemovedRangeIds(Mutiny.Session session, IEnterprise<?, ?> enterprise) {
+        return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Deleted.name())
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Hidden.name())
+                .map(id -> { List<UUID> l = new ArrayList<>(); l.add(list); l.add(id); return l; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Invisible.name())
+                .map(id -> { list.add(id); return list; }))
+            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Errored.name())
+                .map(id -> { list.add(id); return list; }));
+    }
+
+    /** Stateless variant of {@link #getRemovedRangeIds(Mutiny.Session, IEnterprise)}. */
+    default Uni<List<UUID>> getRemovedRangeIds(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise) {
         return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Deleted.name())
             .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Hidden.name())
                 .map(id -> { List<UUID> l = new ArrayList<>(); l.add(list); l.add(id); return l; }))

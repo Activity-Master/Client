@@ -19,7 +19,22 @@ public interface IMasterSystem<J extends IMasterSystem<J>>
 		extends IDefaultService<J>, IProgressable
 {
 	Uni<ISystems<?,?>> registerSystem(Mutiny.Session session, IEnterprise<?,?> enterprise);
-	
+
+	/**
+	 * Stateless variant of {@link #registerSystem(Mutiny.Session, IEnterprise)} — find-or-creates this
+	 * system's {@code Systems} row and registers it (security token + system involved party) entirely on a
+	 * {@link Mutiny.StatelessSession}, composing the stateless {@code ISystemsService.create} +
+	 * {@code findSystem} + {@code registerNewSystem}. Systems that need bespoke registration logic override.
+	 */
+	default Uni<ISystems<?,?>> registerSystem(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise)
+	{
+		ISystemsService<?> systemsService = IGuiceContext.get(ISystemsService.class);
+		return systemsService.create(session, enterprise, getSystemName(), getSystemDescription())
+				.chain(system -> systemsService.findSystem(session, enterprise, getSystemName())
+						.chain(sys -> systemsService.registerNewSystem(session, enterprise, sys))
+						.replaceWith(system));
+	}
+
 	Uni<Void> createDefaults(Mutiny.Session session, IEnterprise<?,?> enterprise);
 
 	/**
@@ -43,7 +58,17 @@ public interface IMasterSystem<J extends IMasterSystem<J>>
 	{
 		return Uni.createFrom().voidItem();
 	}
-	
+
+	/**
+	 * Stateless variant of {@link #postStartup(Mutiny.Session, IEnterprise)} — validates the system resolves
+	 * on a {@link Mutiny.StatelessSession} via the scalar id projection. Systems with reactive post-startup
+	 * work override this.
+	 */
+	default Uni<Void> postStartup(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise)
+	{
+		return getSystemId(session, enterprise).replaceWithVoid();
+	}
+
 	Uni<ISystems<?,?>> getSystem(Mutiny.Session session, String enterpriseName);
 	
 	Uni<UUID> getSystemToken(Mutiny.Session session, String enterpriseName);

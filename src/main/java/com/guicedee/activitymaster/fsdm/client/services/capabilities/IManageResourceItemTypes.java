@@ -530,4 +530,277 @@ public interface IManageResourceItemTypes<J extends IWarehouseBaseTable<J, ?, ? 
 					});
 			});
 	}
+
+	// =============================================================================================
+	// Stateless (Mutiny.StatelessSession) twins of the read + create family. Secondary IResourceItemType
+	// is resolved via the stateless IResourceItemService.findResourceItemType; writes use session.insert +
+	// system.getEnterprise() + the stateless default-security path. configureResourceItemTypeLinkValue is
+	// session-free. update / expire / archive / remove (session.merge based) are not twinned here.
+	// =============================================================================================
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<J, IResourceItemType<?, ?>, ?>> findResourceItemType(Mutiny.StatelessSession session, String classificationName, String resourceType, String value, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> tableForClassification = get(getResourceItemTypeRelationshipClass());
+		IResourceItemService<?> resourceItemService = get(IResourceItemService.class);
+		return resourceItemService.findResourceItemType(session, resourceType, system, identityToken)
+			.chain(resourceItemType -> tableForClassification.builder(session)
+				.findLink((J) this, resourceItemType, value)
+				.inActiveRange()
+				.withClassification(classificationName, system)
+				.inDateRange()
+				.canRead(system, identityToken)
+				.get()
+				.map(result -> {
+					if (result == null) { throw new NoSuchElementException("Resource item type not found"); }
+					return (IRelationshipValue<J, IResourceItemType<?, ?>, ?>) result;
+				}));
+	}
+
+	default Uni<Boolean> hasResourceItemTypes(Mutiny.StatelessSession session, String classificationName, String resourceItemTypeName, ISystems<?, ?> system, UUID... identityToken)
+	{
+		return numberOfResourceItemTypes(session, classificationName, resourceItemTypeName, system, identityToken).map(count -> count > 0);
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<Long> numberOfResourceItemTypes(Mutiny.StatelessSession session, String classificationName, String resourceItemTypeName, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> tableForClassification = get(getResourceItemTypeRelationshipClass());
+		IResourceItemService<?> resourceItemService = get(IResourceItemService.class);
+		return resourceItemService.findResourceItemType(session, resourceItemTypeName, system, identityToken)
+			.chain(resourceItemType -> tableForClassification.builder(session)
+				.findLink((J) this, resourceItemType, null)
+				.inActiveRange()
+				.withClassification(classificationName, system)
+				.inDateRange()
+				.canRead(system, identityToken)
+				.getCount());
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<J, IResourceItemType<?, ?>, ?>> addResourceItemTypes(Mutiny.StatelessSession session, String resourceType, String value, String classificationName, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> tableForClassification = get(getResourceItemTypeRelationshipClass());
+		IResourceItemService<?> resourceItemService = get(IResourceItemService.class);
+		IClassificationService<?> classificationService = get(IClassificationService.class);
+		final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? DefaultClassifications.NoClassification.toString() : classificationName;
+		final IEnterprise<?, ?> enterprise = system.getEnterprise();
+		IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);
+		ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+		return resourceItemService.findResourceItemType(session, resourceType, system, identityToken)
+			.chain(resourceItemType -> classificationService.find(session, finalClassificationName, system, identityToken)
+				.chain(classification -> activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
+					.chain(activeFlag -> {
+						tableForClassification.setEnterpriseID(enterprise);
+						tableForClassification.setValue(value);
+						tableForClassification.setSystemID(system);
+						tableForClassification.setClassificationID(classification);
+						tableForClassification.setOriginalSourceSystemID(system.getId());
+						tableForClassification.setOriginalSourceSystemUniqueID(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"));
+						tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+						tableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+						tableForClassification.setActiveFlagID(activeFlag);
+						configureResourceItemTypeLinkValue(tableForClassification, (J) this, resourceItemType, classification, value, enterprise);
+						com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+								(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+						if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
+						return session.insert(tableForClassification)
+							.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+								.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+								.onFailure().recoverWithItem(0L))
+							.replaceWith((IRelationshipValue<J, IResourceItemType<?, ?>, ?>) tableForClassification);
+					})));
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<J, IResourceItemType<?, ?>, ?>> addOrReuseResourceItemTypes(Mutiny.StatelessSession session, String resourceTypeName, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> tableForClassification = get(getResourceItemTypeRelationshipClass());
+		IResourceItemService<?> resourceItemService = get(IResourceItemService.class);
+		final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? DefaultClassifications.NoClassification.toString() : classificationName;
+		return resourceItemService.findResourceItemType(session, resourceTypeName, system, identityToken)
+			.onItem().transformToUni(resourceItemType -> tableForClassification.builder(session)
+				.findLink((J) this, resourceItemType, searchValue)
+				.inActiveRange()
+				.withClassification(finalClassificationName, system)
+				.inDateRange()
+				.canRead(system, identityToken)
+				.get()
+				.onFailure(NoResultException.class)
+				.recoverWithUni(() -> (Uni) addResourceItemTypes(session, resourceTypeName, value, finalClassificationName, system, identityToken))
+				.chain(result -> Uni.createFrom().item((IRelationshipValue<J, IResourceItemType<?, ?>, ?>) result)));
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<J, IResourceItemType<?, ?>, ?>> addOrUpdateResourceItemTypes(Mutiny.StatelessSession session, String resourceTypeName, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> tableForClassification = get(getResourceItemTypeRelationshipClass());
+		IResourceItemService<?> resourceItemService = get(IResourceItemService.class);
+		IClassificationService<?> classificationService = get(IClassificationService.class);
+		final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? DefaultClassifications.NoClassification.toString() : classificationName;
+		final IEnterprise<?, ?> enterprise = system.getEnterprise();
+		return resourceItemService.findResourceItemType(session, resourceTypeName, system, identityToken)
+			.chain(resourceItemType -> classificationService.find(session, finalClassificationName, system, identityToken)
+				.chain(classification -> tableForClassification.builder(session)
+					.findLink((J) this, resourceItemType, searchValue)
+					.inActiveRange()
+					.withClassification(finalClassificationName, system)
+					.inDateRange()
+					.canRead(system, identityToken)
+					.get()
+					.onFailure(NoResultException.class)
+					.recoverWithUni(() -> (Uni) addResourceItemTypes(session, resourceTypeName, value, finalClassificationName, system, identityToken))
+					.chain(result -> {
+						IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> existingTable =
+								(IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?>) result;
+						if (Strings.nullToEmpty(value).equals(existingTable.getValue())) {
+							return Uni.createFrom().item((IRelationshipValue<J, IResourceItemType<?, ?>, ?>) existingTable);
+						}
+						IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+						ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+						return flagService.getArchivedFlag(session, enterprise, identityToken)
+							.chain(archivedFlag -> SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag, convertToUTCDateTime(RootEntity.getNow())))
+							.chain(() -> {
+								IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> newTableForClassification = get(getResourceItemTypeRelationshipClass());
+								newTableForClassification.setId(null);
+								newTableForClassification.setClassificationID(existingTable.getClassificationID());
+								newTableForClassification.setSystemID(system);
+								newTableForClassification.setOriginalSourceSystemID(system.getId());
+								newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
+								newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+								newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+								newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+								newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+								return flagService.getActiveFlag(session, enterprise, identityToken)
+									.chain(activeFlag -> {
+										newTableForClassification.setActiveFlagID(activeFlag);
+										newTableForClassification.setValue(value);
+										newTableForClassification.setEnterpriseID(enterprise);
+										configureResourceItemTypeLinkValue(newTableForClassification, (J) this, resourceItemType, classification, value, enterprise);
+										com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+												(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
+										return session.insert(newTableForClassification)
+											.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+												.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+												.onFailure().recoverWithItem(0L))
+											.replaceWith((IRelationshipValue<J, IResourceItemType<?, ?>, ?>) newTableForClassification);
+									});
+							});
+					})));
+	}
+
+	// ---- Stateless SCD close mutations (expire / archive / remove) via full-row session.update ----
+
+	/** Stateless variant of {@link #expireResourceItemTypes(Mutiny.Session, String, String, String, String, ISystems, UUID...)}. */
+	default Uni<Void> expireResourceItemTypes(Mutiny.StatelessSession session, String resourceTypeName, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+		return closeResourceItemTypesStateless(session, resourceTypeName, classificationName, searchValue, value, 0, system, identityToken);
+	}
+
+	/** Stateless variant of {@link #archiveResourceItemTypes(Mutiny.Session, String, String, String, String, ISystems, UUID...)}. */
+	default Uni<Void> archiveResourceItemTypes(Mutiny.StatelessSession session, String resourceTypeName, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+		return closeResourceItemTypesStateless(session, resourceTypeName, classificationName, searchValue, value, 1, system, identityToken);
+	}
+
+	/** Stateless variant of {@link #removeResourceItemTypes(Mutiny.Session, String, String, String, String, ISystems, UUID...)}. */
+	default Uni<Void> removeResourceItemTypes(Mutiny.StatelessSession session, String resourceTypeName, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+		return closeResourceItemTypesStateless(session, resourceTypeName, classificationName, searchValue, value, 2, system, identityToken);
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private Uni<Void> closeResourceItemTypesStateless(Mutiny.StatelessSession session, String resourceTypeName, String classificationName, String searchValue, String value, int mode, ISystems<?, ?> system, UUID... identityToken) {
+		IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> tableForClassification = get(getResourceItemTypeRelationshipClass());
+		IResourceItemService<?> resourceItemService = get(IResourceItemService.class);
+		IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+		final IEnterprise<?, ?> enterprise = system.getEnterprise();
+		final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? DefaultClassifications.NoClassification.toString() : classificationName;
+
+		return resourceItemService.findResourceItemType(session, resourceTypeName, system, identityToken)
+				.chain(resourceItemType -> tableForClassification.builder(session)
+						.findLink((J) this, resourceItemType, searchValue)
+						.inActiveRange()
+						.withClassification(finalClassificationName, system)
+						.inDateRange()
+						.canRead(system, identityToken)
+						.get()
+						.map(r -> (Object) r)
+						.onFailure(NoResultException.class)
+						.recoverWithItem((Object) null)
+						.chain(resultObj -> {
+							IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> existing =
+									(IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?>) resultObj;
+							if (existing == null || Strings.nullToEmpty(value).equals(existing.getValue())) {
+								return Uni.createFrom().voidItem();
+							}
+							existing.setEffectiveToDate(convertToUTCDateTime(RootEntity.getNow()));
+							if (mode == 0) {
+								return session.update(existing).replaceWithVoid();
+							}
+							Uni<? extends com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag.IActiveFlag<?, ?>> flagUni =
+									(mode == 1) ? flagService.getArchivedFlag(session, enterprise, identityToken)
+												: flagService.getDeletedFlag(session, enterprise, identityToken);
+							return flagUni.chain(flag -> {
+								existing.setActiveFlagID(flag);
+								return session.update(existing).replaceWithVoid();
+							});
+						}));
+	}
+
+	/**
+	 * Stateless variant of {@link #updateResourceItemTypes(Mutiny.Session, String, String, String, String, ISystems, UUID...)}
+	 * — SCD retire+reinsert only when the link already exists (no-op if absent).
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<Void> updateResourceItemTypes(Mutiny.StatelessSession session, String resourceTypeName, String classificationName, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
+		IResourceItemService<?> resourceItemService = get(IResourceItemService.class);
+		IClassificationService<?> classificationService = get(IClassificationService.class);
+		IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+		ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+		final String finalClassificationName = Strings.isNullOrEmpty(classificationName) ? DefaultClassifications.NoClassification.toString() : classificationName;
+		final IEnterprise<?, ?> enterprise = system.getEnterprise();
+		return resourceItemService.findResourceItemType(session, resourceTypeName, system, identityToken)
+				.chain(resourceItemType -> classificationService.find(session, finalClassificationName, system, identityToken)
+						.chain(classification -> get(getResourceItemTypeRelationshipClass()).builder(session)
+								.findLink((J) this, resourceItemType, searchValue)
+								.inActiveRange()
+								.withClassification(finalClassificationName, system)
+								.inDateRange()
+								.canRead(system, identityToken)
+								.get()
+								.map(r -> (Object) r)
+								.onFailure(NoResultException.class)
+								.recoverWithItem((Object) null)
+								.chain(resultObj -> {
+									IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> existing =
+											(IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?>) resultObj;
+									if (existing == null || Strings.nullToEmpty(value).equals(existing.getValue())) {
+										return Uni.createFrom().voidItem();
+									}
+									return flagService.getArchivedFlag(session, enterprise, identityToken)
+											.chain(archivedFlag -> SCDLinkMaintenance.retireActiveRow(session, existing, existing.getId(), archivedFlag, convertToUTCDateTime(RootEntity.getNow())))
+											.chain(() -> {
+												IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> newRow = get(getResourceItemTypeRelationshipClass());
+												newRow.setId(null);
+												newRow.setSystemID(system);
+												newRow.setOriginalSourceSystemID(system.getId());
+												newRow.setOriginalSourceSystemUniqueID(existing.getId());
+												newRow.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+												newRow.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+												newRow.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+												newRow.setEffectiveToDate(EndOfTime.atOffset(ZoneOffset.UTC));
+												return flagService.getActiveFlag(session, enterprise, identityToken).chain(activeFlag -> {
+													newRow.setActiveFlagID(activeFlag);
+													newRow.setValue(value);
+													newRow.setEnterpriseID(enterprise);
+													configureResourceItemTypeLinkValue(newRow, (J) this, resourceItemType, classification, value, enterprise);
+													com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+															(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newRow;
+													return session.insert(newRow)
+															.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+																	.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+																	.onFailure().recoverWithItem(0L))
+															.replaceWithVoid();
+												});
+											});
+								})));
+	}
 }

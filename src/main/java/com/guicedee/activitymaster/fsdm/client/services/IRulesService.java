@@ -196,6 +196,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 */
 	Uni<IRulesType<?,?>> findRulesTypes(Mutiny.Session session, String rulesType, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless "fetch ids/scalars + prep" variant of {@link #findRulesTypes(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IRulesType<?,?>> findRulesTypes(Mutiny.StatelessSession session, String rulesType, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds rules types by classification value.
 	 *

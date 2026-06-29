@@ -38,4 +38,7 @@ public interface IInvolvedParty<J extends IInvolvedParty<J,Q>, Q extends IInvolv
 	 * @return A Uni containing the security identity UUID
 	 */
 	Uni<UUID> getSecurityIdentity(Mutiny.Session session);
+
+	/** Stateless variant of {@link #getSecurityIdentity(Mutiny.Session)}. */
+	Uni<UUID> getSecurityIdentity(Mutiny.StatelessSession session);
 }

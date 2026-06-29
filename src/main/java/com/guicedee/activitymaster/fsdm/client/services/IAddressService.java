@@ -168,4 +168,40 @@ public interface IAddressService<J extends IAddressService<?>>
 	 * @return A Uni emitting the address
 	 */
 	Uni<IAddress<?,?>> addOrFindPostalAddress(Mutiny.Session session, String boxIdentifier, String boxNumber, ISystems<?,?> system, UUID... identityToken);
+
+	// ---- Stateless (Mutiny.StatelessSession) twins (Address is non-cacheable + LAZY → stateless-safe). ----
+
+	/** Stateless variant of {@link #create(Mutiny.Session, String, ISystems, String, UUID...)}. */
+	Uni<IAddress<?, ?>> create(Mutiny.StatelessSession session, String addressClassification, ISystems<?, ?> system, String value, UUID... identifyingToken);
+
+	/** Stateless variant of {@link #create(Mutiny.Session, String, UUID, ISystems, String, UUID...)}. */
+	Uni<IAddress<?, ?>> create(Mutiny.StatelessSession session, String addressClassification, UUID key, ISystems<?, ?> system, String value, UUID... identifyingToken);
+
+	/** Stateless variant of {@link #createScopeRestricted(Mutiny.Session, String, UUID, ISystems, String, ISecurityToken, UUID...)}. */
+	Uni<IAddress<?, ?>> createScopeRestricted(Mutiny.StatelessSession session, String addressClassification, UUID key, ISystems<?, ?> system,
+											  String value, ISecurityToken<?, ?> scopeToken, UUID... identifyingToken);
+
+	/** Stateless variant of {@link #addOrFindIPAddress(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IAddress<?, ?>> addOrFindIPAddress(Mutiny.StatelessSession session, String ipAddress, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
+
+	/** Stateless variant of {@link #addOrFindHostName(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IAddress<?, ?>> addOrFindHostName(Mutiny.StatelessSession session, String hostName, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
+
+	/** Stateless variant of {@link #addOrFindWebAddress(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IAddress<?, ?>> addOrFindWebAddress(Mutiny.StatelessSession session, String webAddress, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
+
+	/** Stateless variant of {@link #addOrFindPhoneContact(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IAddress<?, ?>> addOrFindPhoneContact(Mutiny.StatelessSession session, String phoneNumber, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
+
+	/** Stateless variant of {@link #addOrFindEmailContact(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IAddress<?, ?>> addOrFindEmailContact(Mutiny.StatelessSession session, String emailAddressString, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
+
+	/** Stateless variant of {@link #addOrFindStreetAddress(Mutiny.Session, String, String, String, ISystems, UUID...)}. */
+	Uni<IAddress<?, ?>> addOrFindStreetAddress(Mutiny.StatelessSession session, String number, String street, String streetType, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
+
+	/** Stateless variant of {@link #addOrFindPostalAddress(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	Uni<IAddress<?, ?>> addOrFindPostalAddress(Mutiny.StatelessSession session, String boxIdentifier, String boxNumber, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
+
+	/** Stateless variant of {@link #findCellPhoneContact(Mutiny.Session, IInvolvedParty, ISystems, UUID...)}. */
+	Uni<IRelationshipValue<?, IAddress<?, ?>, ?>> findCellPhoneContact(Mutiny.StatelessSession session, IInvolvedParty<?, ?> involvedParty, ISystems<?, ?> system, UUID... identityToken) throws AddressException;
 }

@@ -171,6 +171,9 @@ public interface IWarehouseCoreTable<
 	 */
 	Uni<Long> countDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.Session session);
 
+	/** Stateless variant of {@link #countDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.Session)} — a scalar COUNT (no hydration). */
+	Uni<Long> countDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session);
+
 	/**
 	 * Row-level <strong>read</strong> check. Resolves the caller's applicable security-token ids (the
 	 * supplied identity tokens plus every group/folder they are a member of, transitively, via
@@ -185,6 +188,9 @@ public interface IWarehouseCoreTable<
 	 */
 	Uni<Boolean> canRead(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #canRead(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}. */
+	Uni<Boolean> canRead(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Row-level <strong>write</strong> check — write is granted when any applicable security token has
 	 * {@code CreateAllowed = true} or {@code UpdateAllowed = true} on an in-date-range row of this entity.
@@ -196,6 +202,9 @@ public interface IWarehouseCoreTable<
 	 * @return A Uni emitting {@code true} when write (create or update) access is granted
 	 */
 	Uni<Boolean> canWrite(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #canWrite(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}. */
+	Uni<Boolean> canWrite(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Resolves the set of <strong>this entity type's</strong> ids that the caller may
@@ -216,5 +225,8 @@ public interface IWarehouseCoreTable<
 	 * @return A Uni emitting the readable entity ids; never {@code null}, empty when nothing is readable
 	 */
 	Uni<java.util.Set<UUID>> readableIds(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #readableIds(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}. */
+	Uni<java.util.Set<UUID>> readableIds(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
 }

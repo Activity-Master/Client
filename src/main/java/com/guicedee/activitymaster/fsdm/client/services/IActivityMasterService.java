@@ -113,4 +113,34 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
  		});
  	});
  }
+
+ // ---- Stateless (Mutiny.StatelessSession) twins of the system/token lookups ----
+
+ /** Stateless variant of {@link #getISystem(Mutiny.Session, Enum, IEnterprise)}. */
+ static Uni<ISystems<?, ?>> getISystem(Mutiny.StatelessSession session, Enum systemName, IEnterprise<?, ?> enterprise) {
+ 	return getISystem(session, systemName.toString(), enterprise);
+ }
+
+ /** Stateless variant of {@link #getISystem(Mutiny.Session, String, IEnterprise)} — prepped {@code findSystem}. */
+ static Uni<ISystems<?, ?>> getISystem(Mutiny.StatelessSession session, String systemName, IEnterprise<?, ?> enterprise) {
+ 	ISystemsService<?> systemsService = com.guicedee.client.IGuiceContext.get(ISystemsService.class);
+ 	return systemsService.findSystem(session, enterprise, systemName);
+ }
+
+ /** Stateless variant of {@link #getISystemToken(Mutiny.Session, String, IEnterprise)} (same per-enterprise cache). */
+ static Uni<UUID> getISystemToken(Mutiny.StatelessSession session, String systemName, IEnterprise<?, ?> enterprise) {
+ 	UUID enterpriseId = enterprise.getId();
+ 	Map<UUID, UUID> enterpriseTokens = SYSTEM_TOKEN_CACHE.computeIfAbsent(systemName, k -> new ConcurrentHashMap<>());
+ 	UUID cachedToken = enterpriseTokens.get(enterpriseId);
+ 	if (cachedToken != null) {
+ 		return Uni.createFrom().item(cachedToken);
+ 	}
+ 	ISystemsService<?> systemsService = com.guicedee.client.IGuiceContext.get(ISystemsService.class);
+ 	return getISystem(session, systemName, enterprise).chain(system ->
+ 			systemsService.getSecurityIdentityToken(session, system).onItem().invoke(token -> {
+ 				if (token != null) {
+ 					enterpriseTokens.put(enterpriseId, token);
+ 				}
+ 			}));
+ }
 }

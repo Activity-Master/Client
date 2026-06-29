@@ -1,6 +1,7 @@
 package com.guicedee.activitymaster.fsdm.client.services.capabilities;
 
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.activeflag.IActiveFlag;
+import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.IWarehouseRelationshipTable;
 import io.smallrye.mutiny.Uni;
 import org.hibernate.reactive.mutiny.Mutiny;
 
@@ -55,6 +56,29 @@ public final class SCDLinkMaintenance
                       .setParameter("eff", effectiveTo)
                       .setParameter("id", rowId)
                       .executeUpdate();
+    }
+
+    /**
+     * Stateless variant of {@link #retireActiveRow(Mutiny.Session, Object, UUID, IActiveFlag, OffsetDateTime)}.
+     * <p>
+     * On a {@link Mutiny.StatelessSession} a bulk HQL {@code createMutationQuery(...)} is <strong>not</strong>
+     * usable: it makes {@code org.hibernate.reactive} access {@code org.hibernate.query.hql.spi} in
+     * {@code org.hibernate.orm.core}, which the ORM module does not export to the reactive module, throwing
+     * {@code IllegalAccessError}. Since the caller already holds the loaded link row, close it with a full-row
+     * {@code session.update}: it writes every column by id (no dirty tracking is required, so the lazy
+     * {@code effectiveToDate} is persisted reliably). Returns {@code 1} to preserve the bulk-update contract.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static Uni<Integer> retireActiveRow(Mutiny.StatelessSession session,
+                                               Object managedRow,
+                                               UUID rowId,
+                                               IActiveFlag<?, ?> closingFlag,
+                                               OffsetDateTime effectiveTo)
+    {
+        IWarehouseRelationshipTable row = (IWarehouseRelationshipTable) managedRow;
+        row.setActiveFlagID(closingFlag);
+        row.setEffectiveToDate(effectiveTo);
+        return session.update(managedRow).replaceWith(1);
     }
 }
 

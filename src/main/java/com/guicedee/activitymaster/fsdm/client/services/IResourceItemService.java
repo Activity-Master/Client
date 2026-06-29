@@ -376,6 +376,9 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      */
     Uni<IResourceItemType<?, ?>> findResourceItemType(Mutiny.Session session, String type, ISystems<?, ?> system, UUID... identityToken);
 
+    /** Stateless "fetch ids/scalars + prep" variant of {@link #findResourceItemType(Mutiny.Session, String, ISystems, UUID...)}. */
+    Uni<IResourceItemType<?, ?>> findResourceItemType(Mutiny.StatelessSession session, String type, ISystems<?, ?> system, UUID... identityToken);
+
     /**
      * Finds all resource items of a given type.
      *

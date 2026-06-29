@@ -291,6 +291,170 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
                        });
     }
 
+    // =============================================================================================
+    // Stateless (Mutiny.StatelessSession) twins of the core relationship methods. Reads verbatim;
+    // writes use session.insert + system.getEnterprise() + the stateless default-security path. The
+    // IArrangementsService pass-throughs below are not twinned (the service has no stateless overloads).
+    // =============================================================================================
+
+    @SuppressWarnings("unchecked")
+    default Uni<IRelationshipValue<J, IArrangement<?, ?>, ?>> findArrangement(Mutiny.StatelessSession session, String classification, String searchValue, ISystems<?, ?> system, boolean first, boolean latest, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> relationshipTable = get(getArrangementRelationshipClass());
+        IQueryBuilderRelationships<?, ?, J, IArrangement<?, ?>, java.util.UUID> q
+                = relationshipTable.builder(session)
+                          .findLink((J) this, null, null)
+                          .inActiveRange()
+                          .withClassification(classification, system)
+                          .withValue(searchValue)
+                          .inDateRange()
+                          .withEnterprise(system.getEnterprise())
+                          .canRead(system, identityToken);
+        if (first) { q.setMaxResults(1); }
+        if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+        return q.get()
+                       .onItem().ifNull().failWith(() -> new NoSuchElementException("Arrangement not found"))
+                       .map(item -> (IRelationshipValue<J, IArrangement<?, ?>, ?>) item);
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<List<IRelationshipValue<J, IArrangement<?, ?>, ?>>> findArrangementsAll(Mutiny.StatelessSession session, String classification, String searchValue, ISystems<?, ?> system, boolean latest, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> relationshipTable = get(getArrangementRelationshipClass());
+        IQueryBuilderRelationships<?, ?, J, IArrangement<?, ?>, java.util.UUID> q
+                = relationshipTable.builder(session)
+                          .findLink((J) this, null, null)
+                          .inActiveRange()
+                          .withClassification(classification, system)
+                          .withValue(searchValue)
+                          .inDateRange()
+                          .withEnterprise(system.getEnterprise())
+                          .canRead(system, identityToken);
+        if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+        return q.getAll().map(list -> (List<IRelationshipValue<J, IArrangement<?, ?>, ?>>) list);
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<Long> numberOfArrangements(Mutiny.StatelessSession session, String classificationValue, String value, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> relationshipTable = get(getArrangementRelationshipClass());
+        final String finalClassificationValue = classificationValue == null ? DefaultClassifications.NoClassification.classificationValue() : classificationValue;
+        return relationshipTable.builder(session)
+                       .findLink((J) this, null, value)
+                       .withClassification(finalClassificationValue, system)
+                       .inActiveRange()
+                       .inDateRange()
+                       .canRead(system, identityToken)
+                       .getCount();
+    }
+
+    default Uni<Boolean> hasArrangements(Mutiny.StatelessSession session, String arrangementTypeName, String searchValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        return numberOfArrangements(session, arrangementTypeName, searchValue, system, identityToken).map(count -> count > 0);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default Uni<IRelationshipValue<J, IArrangement<?, ?>, ?>> addArrangement(Mutiny.StatelessSession session, IArrangement<?, ?> arrangement, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> tableForClassification = get(getArrangementRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        final var enterprise = system.getEnterprise();
+        IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);
+        ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+        return classificationService.find(session, classificationName, system, identityToken)
+                       .chain(classification -> activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
+                               .chain(activeFlag -> {
+                                   tableForClassification.setEnterpriseID(enterprise);
+                                   tableForClassification.setValue(Strings.nullToEmpty(value));
+                                   tableForClassification.setSystemID(system);
+                                   tableForClassification.setOriginalSourceSystemID(system.getId());
+                                   tableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+                                   tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+                                   tableForClassification.setActiveFlagID(activeFlag);
+                                   tableForClassification.setClassificationID(classification);
+                                   configureArrangementAddable(tableForClassification, (J) this, arrangement, classification, value, system);
+                                   com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+                                           (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+                                   if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
+                                   return session.insert(tableForClassification)
+                                           .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+                                                   .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+                                                   .onFailure().recoverWithItem(0L))
+                                           .replaceWith((IRelationshipValue<J, IArrangement<?, ?>, ?>) tableForClassification);
+                               }));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default Uni<IRelationshipValue<J, IArrangement<?, ?>, ?>> addOrReuseArrangement(Mutiny.StatelessSession session, String classificationValue, IArrangement<?, ?> arrangementType, String searchValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> tableForClassification = get(getArrangementRelationshipClass());
+        return tableForClassification.builder(session)
+                       .findLink((J) this, null, null)
+                       .withValue(searchValue)
+                       .inActiveRange()
+                       .inDateRange()
+                       .withClassification(classificationValue, system)
+                       .get()
+                       .onFailure(NoResultException.class)
+                       .recoverWithUni(() -> (Uni) addArrangement(session, arrangementType, classificationValue, searchValue, system, identityToken))
+                       .chain(result -> Uni.createFrom().item((IRelationshipValue<J, IArrangement<?, ?>, ?>) result));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default Uni<IRelationshipValue<J, IArrangement<?, ?>, ?>> addOrUpdateArrangement(Mutiny.StatelessSession session, String classificationValue, IArrangement<?, ?> arrangementType, String searchValue, String storeValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        final IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> tableForClassification = get(getArrangementRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        final var enterprise = system.getEnterprise();
+        return classificationService.find(session, classificationValue, system, identityToken)
+                       .chain(classification -> tableForClassification.builder(session)
+                                       .findLink((J) this, null, null)
+                                       .withValue(searchValue)
+                                       .inActiveRange()
+                                       .inDateRange()
+                                       .withClassification(classificationValue, system)
+                                       .get()
+                                       .onFailure(NoResultException.class)
+                                       .recoverWithUni(() -> (Uni) addArrangement(session, arrangementType, classificationValue, storeValue, system, identityToken))
+                                       .chain(result -> {
+                                           IRelationshipValue<J, IArrangement<?, ?>, ?> existingRelation = (IRelationshipValue<J, IArrangement<?, ?>, ?>) result;
+                                           if (Strings.nullToEmpty(storeValue).equals(existingRelation.getValue())) {
+                                               return Uni.createFrom().item(existingRelation);
+                                           }
+                                           final IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?>) result;
+                                           IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+                                           ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+                                           return flagService.getArchivedFlag(session, enterprise, identityToken)
+                                                   .chain(archivedFlag -> SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag, convertToUTCDateTime(RootEntity.getNow())))
+                                                   .chain(() -> {
+                                                       IWarehouseRelationshipTable<?, ?, J, IArrangement<?, ?>, java.util.UUID, ?> newTableForClassification = get(getArrangementRelationshipClass());
+                                                       newTableForClassification.setId(null);
+                                                       newTableForClassification.setClassificationID(existingTable.getClassificationID());
+                                                       newTableForClassification.setSystemID(system);
+                                                       newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+                                                       newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
+                                                       newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+                                                       newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
+                                                       newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(RootEntity.getNow()));
+                                                       newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+                                                       return flagService.getActiveFlag(session, enterprise, identityToken)
+                                                               .chain(activeFlag -> {
+                                                                   newTableForClassification.setActiveFlagID(activeFlag);
+                                                                   newTableForClassification.setValue(storeValue == null ? "" : storeValue);
+                                                                   newTableForClassification.setEnterpriseID(enterprise);
+                                                                   configureArrangementAddable(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
+                                                                   com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+                                                                           (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
+                                                                   return session.insert(newTableForClassification)
+                                                                           .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+                                                                                   .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+                                                                                   .onFailure().recoverWithItem(0L))
+                                                                           .replaceWith((IRelationshipValue<J, IArrangement<?, ?>, ?>) newTableForClassification);
+                                                               });
+                                                   });
+                                       }));
+    }
+
      // Convenience pass-throughs to ArrangementsService searches
      default io.smallrye.mutiny.Uni<java.util.List<com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.arrangements.IArrangement<?, ?>>> findArrangementsByClassification(org.hibernate.reactive.mutiny.Mutiny.Session session, String classificationName, String value, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems<?, ?> system, java.util.UUID... identityToken)
      {

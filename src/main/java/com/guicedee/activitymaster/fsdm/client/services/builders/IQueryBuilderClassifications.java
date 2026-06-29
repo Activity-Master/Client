@@ -354,4 +354,118 @@ public interface IQueryBuilderClassifications<
 
   }
 
+  // =============================================================================================
+  // Stateless (Mutiny.StatelessSession) twins. The convenience overloads delegate; the aggregate pivot
+  // builds the same native SQL and executes it directly on the supplied stateless session.
+  // =============================================================================================
+
+  default Uni<List<Object[]>> getClassificationsValuePivot(Mutiny.StatelessSession session, String classificationValues, Set<String> idValuesIn, ISystems<?, ?> system, UUID[] identityToken, String... values)
+  {
+    return getClassificationsValuePivot(session, SelectAggregrate.Max, classificationValues, idValuesIn, system, identityToken, values);
+  }
+
+  default Uni<List<Object[]>> getClassificationsValuePivot(Mutiny.StatelessSession session, String classificationValues, String idValuesIn, ISystems<?, ?> system, UUID[] identityToken, String... values)
+  {
+    if (idValuesIn == null)
+    {
+      return getClassificationsValuePivot(session, SelectAggregrate.Max, classificationValues, null, system, identityToken, values);
+    }
+    else
+    {
+      return getClassificationsValuePivot(session, SelectAggregrate.Max, classificationValues, Set.of(idValuesIn), system, identityToken, values);
+    }
+  }
+
+  @SuppressWarnings({"SqlResolve", "rawtypes", "unchecked"})
+  default Uni<List<Object[]>> getClassificationsValuePivot(Mutiny.StatelessSession session, SelectAggregrate aggregrate, String classificationValues, Set<String> idValuesIn, ISystems<?, ?> system, UUID[] identityToken, String... values)
+  {
+    List<String> cStrings = new ArrayList<>();
+    cStrings.add(classificationValues);
+    cStrings.addAll(Arrays.asList(values));
+
+    String classificationValuesInList = IQueryBuilderFlags.listToSqlString(cStrings);
+
+    RootEntity me = (RootEntity) getEntity();
+
+    String myTableName = me.getTableName();
+    String idColumnName = (String) me.getIdPair().getKey();
+
+    String joinTableName = myTableName + "XClassification";
+    String targetTableName = "Classification.Classification";
+
+    Set<ActiveFlag> activeFlags = ActiveFlag.getActiveRangeAndUp();
+    String activeFlagsInList = IQueryBuilderFlags.listToSqlString(ActiveFlag.activeFlagToStrings(activeFlags));
+
+    String idInValues = "";
+    if (idValuesIn != null && !idValuesIn.isEmpty())
+    {
+      StringBuilder searchInClause = new StringBuilder();
+      for (String s1 : idValuesIn)
+      {
+        searchInClause.append("'").append(s1.replace("'", "''")).append("',");
+      }
+      searchInClause.deleteCharAt(searchInClause.length() - 1);
+      idInValues = searchInClause.toString();
+    }
+
+    String cteColumnNames = "ID," + IQueryBuilderFlags.listToSqlString(cStrings);
+    cteColumnNames = cteColumnNames.replaceAll("'", "");
+
+    String s = "" +
+                   "With Results (" + cteColumnNames + ") as (\n" +
+                   "\tselect " +
+                   "\t\t ri." + idColumnName + "  AS \"ID\",";
+
+    String caseStatements = IQueryBuilderFlags.listToCaseSqlPostgresCrossTableString("ClassificationName", "ric.value", cStrings);
+    s += caseStatements;
+    s +=
+        "\tfrom " + myTableName + "  ri\n" +
+            "\t\tleft join " + joinTableName + " ric\n" +
+            "\t\t\ton ri." + idColumnName + " = ric." + idColumnName + "\n" +
+            "\t\tleft join " + targetTableName + " c\n" +
+            "\t\t\ton ric.ClassificationID = c.ClassificationID\n" +
+            "\t\tjoin dbo.ActiveFlag af\n" +
+            "\t\t\ton ri.ActiveFlagID = af.ActiveFlagID\n" +
+            "\t\t\tand ric.ActiveFlagID = af.ActiveFlagID\n" +
+            "\t\t\tand c.ActiveFlagID = af.ActiveFlagID\n" +
+            "\t\tWHERE ClassificationName in (" + classificationValuesInList + ")\n" +
+            "\t\tand af.ActiveFlagName in (" + activeFlagsInList + ")\n" +
+            "\t\tand ri.EffectiveFromDate <= now()\n" +
+            "\t\tand ri.EffectiveToDate >= now()\n" +
+            "\t\tand ric.EffectiveFromDate <= now()\n" +
+            "\t\tand ric.EffectiveToDate >= now() \n" +
+            (Strings.isNullOrEmpty(idInValues) ? "" : "\t\tand ri." + idColumnName + " IN (" + idInValues + ")\n ") +
+            "\t\tand c.EffectiveFromDate <= now()\n" +
+            "\t\tand c.EffectiveToDate >= now()\n" +
+            ")";
+    String aggregrateSelect = IQueryBuilderFlags.listToAggregateSelect("MAX", cStrings);
+
+    s += "\n" + "SELECT ID," + aggregrateSelect + "\n";
+    s += "FROM \n" + "Results \n" + "GROUP BY ID\n" + "\n";
+
+    return session.createNativeQuery(s, new Object[]{}.getClass())
+               .getResultList()
+               .chain(results -> {
+                 for (Object[] objects : results)
+                 {
+                   for (int i = 0; i < objects.length; i++)
+                   {
+                     Object o = objects[i];
+                     if (o == null)
+                     {
+                       objects[i] = "";
+                     }
+                     if (o instanceof String)
+                     {
+                       if ("null".equals(o))
+                       {
+                         objects[i] = "";
+                       }
+                     }
+                   }
+                 }
+                 return Uni.createFrom().item(new ArrayList<>(results));
+               });
+  }
+
 }

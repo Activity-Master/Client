@@ -134,6 +134,37 @@ public interface IWarehouseBaseTable<
     }
 
     /**
+     * Stateless variant of {@link #expire(Mutiny.Session)} — immediate expiry on a
+     * {@link Mutiny.StatelessSession} via a full-row {@code session.update} (no merge; the row is already loaded).
+     *
+     * @param session the active stateless session to use
+     * @return the expired entity
+     */
+    default Uni<J> expire(Mutiny.StatelessSession session)
+    {
+        return expire(session, Duration.ZERO);
+    }
+
+    /**
+     * Stateless variant of {@link #expire(Mutiny.Session, Duration)} — sets the effective-to date and writes the
+     * row with a full-row {@code session.update} (no bulk HQL, which is blocked on a stateless session).
+     *
+     * @param session  the active stateless session to use
+     * @param duration how far in the future to set the expiry (Duration.ZERO = immediate)
+     * @return the expired entity
+     */
+    @SuppressWarnings("unchecked")
+    default Uni<J> expire(Mutiny.StatelessSession session, Duration duration)
+    {
+        J me = (J) this;
+        var newExpiry = IQueryBuilderSCD
+                .convertToUTCDateTime(com.entityassist.RootEntity.getNow())
+                .plus(duration);
+        me.setEffectiveToDate(newExpiry);
+        return session.update(me).replaceWith(me);
+    }
+
+    /**
      * Checks if the entity is a "fake" or transient entity (no ID assigned yet).
      *
      * @return true if ID is null

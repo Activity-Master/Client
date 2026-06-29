@@ -121,6 +121,9 @@ public interface IEventService<J extends IEventService<J>> {
      */
     Uni<IEventType<?, ?>> findEventType(Mutiny.Session session, String eventType, ISystems<?, ?> system, UUID... identityToken);
 
+    /** Stateless "fetch ids/scalars + prep" variant of {@link #findEventType(Mutiny.Session, String, ISystems, UUID...)}. */
+    Uni<IEventType<?, ?>> findEventType(Mutiny.StatelessSession session, String eventType, ISystems<?, ?> system, UUID... identityToken);
+
     // --- Cross-domain searchable queries (EventX<DomainType>) ---
 
     /**

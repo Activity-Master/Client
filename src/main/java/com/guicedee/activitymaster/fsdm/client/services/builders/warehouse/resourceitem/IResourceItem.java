@@ -36,6 +36,9 @@ public interface IResourceItem<J extends IResourceItem<J, Q>,
 	 */
 	Uni<String> getFilename(Mutiny.Session session);
 
+	/** Stateless variant of {@link #getFilename(Mutiny.Session)}. */
+	Uni<String> getFilename(Mutiny.StatelessSession session);
+
 	/**
 	 * Retrieves the data row for this resource item.
 	 *
@@ -44,6 +47,9 @@ public interface IResourceItem<J extends IResourceItem<J, Q>,
 	 * @return A Uni containing the resource data
 	 */
 	Uni<IResourceData<?,?,?>> getDataRow(Mutiny.Session session, UUID... identityToken);
+
+	/** Stateless variant of {@link #getDataRow(Mutiny.Session, UUID...)}. */
+	Uni<IResourceData<?,?,?>> getDataRow(Mutiny.StatelessSession session, UUID... identityToken);
 
 	/**
 	 * Returns the data type of the resource item.

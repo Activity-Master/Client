@@ -378,6 +378,16 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
 
     // ---- Stateless find-or-insert (Uni<Void>): scalar getCount existence gate + session.insert + stateless default security ----
 
+    /** String-name stateless variant — resolves the secondary type via the stateless party finder, then delegates. */
+    default Uni<Void> addOrReuseInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String classificationValue,
+                                                                String involvedPartyIdentificationType,
+                                                                String searchValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+        return service.findInvolvedPartyIdentificationType(session, involvedPartyIdentificationType, system, identityToken)
+                       .chain(secondary -> addOrReuseInvolvedPartyIdentificationType(session, classificationValue, secondary, searchValue, system, identityToken));
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     default Uni<Void> addOrReuseInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String classificationValue,
                                                                 IInvolvedPartyIdentificationType<?, ?> secondary,
@@ -415,13 +425,175 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                                                  com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
                                                                          (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
                                                                  ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
-                                                                 return session.insert(tableForClassification)
-                                                                                .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
-                                                                                                .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
-                                                                                                .onFailure().recoverWithItem(0L)
-                                                                                                .replaceWithVoid());
+                                                                  if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
+                                                                  return session.insert(tableForClassification)
+                                                                                 .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+                                                                                                 .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+                                                                                                 .onFailure().recoverWithItem(0L)
+                                                                                                 .replaceWithVoid());
                                                              });
                                           });
                        });
+    }
+
+    // ---- Stateless add-or-update (Uni<Void>): SCD retire + re-insert when the stored value changes ----
+
+    /** Enum-name stateless variant of {@link #addOrUpdateInvolvedPartyIdentificationType(Mutiny.StatelessSession, String, String, String, String, ISystems, UUID...)}. */
+    default Uni<Void> addOrUpdateInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String classificationValue,
+                                                                 Enum<?> involvedPartyIdentificationType, String searchValue,
+                                                                 String storeValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        return addOrUpdateInvolvedPartyIdentificationType(session, classificationValue, involvedPartyIdentificationType.toString(), searchValue, storeValue, system, identityToken);
+    }
+
+    /** String-name stateless variant — resolves the secondary type via the stateless party finder, then delegates. */
+    default Uni<Void> addOrUpdateInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String classificationValue,
+                                                                 String involvedPartyIdentificationType, String searchValue,
+                                                                 String storeValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+        return partyService.findInvolvedPartyIdentificationType(session, involvedPartyIdentificationType, system, identityToken)
+                       .chain(secondary -> addOrUpdateInvolvedPartyIdentificationType(session, classificationValue, secondary, searchValue, storeValue, system, identityToken));
+    }
+
+    /**
+     * Stateless variant of {@link #addOrUpdateInvolvedPartyIdentificationType(Mutiny.Session, String, IInvolvedPartyIdentificationType, String, String, ISystems, UUID...)}.
+     * The relationship ({@code *X*}) row is non-cacheable with lazy FKs, so {@code .get()} is stateless-safe;
+     * a value change retires the active row (bulk update via {@link SCDLinkMaintenance#retireActiveRow}) and
+     * inserts a fresh one with the new value + its default security — all on the stateless session.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    default Uni<Void> addOrUpdateInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String classificationValue,
+                                                                 IInvolvedPartyIdentificationType<?, ?> secondary,
+                                                                 String searchValue, String storeValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> tableForClassification = get(getInvolvedPartyIdentificationTypeRelationshipClass());
+        IClassificationService<?> classificationService = get(IClassificationService.class);
+        final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+        ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+        IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+
+        return classificationService.find(session, classificationValue, system, identityToken)
+                       .chain(classification -> tableForClassification.builder(session)
+                                      .findLink((J) this, secondary, null)
+                                      .withValue(searchValue)
+                                      .inActiveRange()
+                                      .inDateRange()
+                                      .withClassification(classificationValue, system)
+                                      .get()
+                                      .map(r -> (Object) r)
+                                      .onFailure(NoResultException.class)
+                                      .recoverWithItem((Object) null)
+                                      .chain(existingObj -> {
+                                          IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> existing =
+                                                  (IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?>) existingObj;
+                                          if (existing != null && Strings.nullToEmpty(storeValue).equals(existing.getValue()))
+                                          {
+                                              return Uni.createFrom().voidItem();
+                                          }
+                                           Uni<Void> retire = (existing == null)
+                                                   ? Uni.createFrom().voidItem()
+                                                   : flagService.getArchivedFlag(session, enterprise, identityToken)
+                                                             .chain(archivedFlag -> {
+                                                                 // Close the prior active row with a stateless full-row UPDATE (session.update) rather
+                                                                 // than a bulk HQL mutation: createMutationQuery(HQL) trips a JPMS access error on a
+                                                                 // Mutiny.StatelessSession (orm.core does not export query.hql.spi to the reactive module).
+                                                                 existing.setActiveFlagID(archivedFlag);
+                                                                 existing.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                                 return session.update(existing).replaceWithVoid();
+                                                             });
+                                          return retire.chain(() -> flagService.getActiveFlag(session, enterprise, identityToken)
+                                                         .chain(activeFlag -> {
+                                                              tableForClassification.setId(java.util.UUID.randomUUID());
+                                                              tableForClassification.setValue(storeValue == null ? "" : storeValue);
+                                                             tableForClassification.setSystemID(system);
+                                                             tableForClassification.setOriginalSourceSystemID(system.getId());
+                                                             tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+                                                             tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+                                                             tableForClassification.setActiveFlagID(activeFlag);
+                                                             tableForClassification.setClassificationID(classification);
+                                                             tableForClassification.setEnterpriseID(enterprise);
+                                                             configureInvolvedPartyIdentificationTypeAddable(tableForClassification, (J) this, secondary, classification, storeValue, system);
+                                                             com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+                                                                     (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+                                                             return session.insert(tableForClassification)
+                                                                            .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+                                                                                           .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+                                                                                           .onFailure().recoverWithItem(0L)
+                                                                                           .replaceWithVoid());
+                                                         }));
+                                      }));
+    }
+
+    // ---- Stateless relationship-read twins (verbatim; secondary resolved via the stateless party finder) ----
+
+    default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> findInvolvedPartyIdentificationType(Mutiny.StatelessSession session, Enum<?> classification, Enum<?> identificationType, String searchValue, ISystems<?, ?> system, boolean first, boolean latest, UUID... identityToken)
+    {
+        return findInvolvedPartyIdentificationType(session, classification.toString(), identificationType.toString(), searchValue, system, first, latest, identityToken);
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> findInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String classification, String identificationType, String searchValue, ISystems<?, ?> system, boolean first, boolean latest, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> relationshipTable = get(getInvolvedPartyIdentificationTypeRelationshipClass());
+        IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+        return partyService.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
+                       .chain(involvedPartyIdentificationType -> {
+                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID> q
+                                   = relationshipTable.builder(session)
+                                             .findLink((J) this, involvedPartyIdentificationType, null)
+                                             .inActiveRange()
+                                             .withClassification(classification, system)
+                                             .withValue(searchValue)
+                                             .inDateRange()
+                                             .withEnterprise(system.getEnterprise())
+                                             .canRead(system, identityToken);
+                           if (first) { q.setMaxResults(1); }
+                           if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+                           return q.get().map(item -> (IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>) item);
+                       });
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<List<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>>> findInvolvedPartyIdentificationTypesAll(Mutiny.StatelessSession session, String classification, String identificationType, String searchValue, ISystems<?, ?> system, boolean latest, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> relationshipTable = get(getInvolvedPartyIdentificationTypeRelationshipClass());
+        IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+        return partyService.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
+                       .chain(involvedPartyIdentificationType -> {
+                           IQueryBuilderRelationships<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID> q
+                                   = relationshipTable.builder(session)
+                                             .findLink((J) this, involvedPartyIdentificationType, null)
+                                             .inActiveRange()
+                                             .withClassification(classification, system)
+                                             .withValue(searchValue)
+                                             .inDateRange()
+                                             .withEnterprise(system.getEnterprise())
+                                             .canRead(system, identityToken);
+                           if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+                           return q.getAll().map(list -> (List<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>>) list);
+                       });
+    }
+
+    @SuppressWarnings("unchecked")
+    default Uni<Long> numberOfInvolvedPartyIdentificationTypes(Mutiny.StatelessSession session, String classificationValue, String identificationType, String value, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> relationshipTable = get(getInvolvedPartyIdentificationTypeRelationshipClass());
+        IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+        final String finalClassificationValue = classificationValue == null ? DefaultClassifications.NoClassification.classificationValue() : classificationValue;
+        return partyService.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
+                       .chain(involvedPartyIdentificationType -> relationshipTable.builder(session)
+                                                                         .findLink((J) this, involvedPartyIdentificationType, null)
+                                                                         .withValue(value)
+                                                                         .withClassification(finalClassificationValue, system)
+                                                                         .inActiveRange()
+                                                                         .inDateRange()
+                                                                         .canRead(system, identityToken)
+                                                                         .getCount());
+    }
+
+    default Uni<Boolean> hasInvolvedPartyIdentificationTypes(Mutiny.StatelessSession session, String classificationName, String identificationTypeName, String searchValue, ISystems<?, ?> system, UUID... identityToken)
+    {
+        return numberOfInvolvedPartyIdentificationTypes(session, classificationName, identificationTypeName, searchValue, system, identityToken).map(count -> count > 0);
     }
 }

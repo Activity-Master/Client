@@ -356,6 +356,16 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 
 	// ---- Stateless find-or-insert (Uni<Void>): scalar getCount existence gate + session.insert + stateless default security ----
 
+	/** String-name stateless variant — resolves the secondary type via the stateless party finder, then delegates. */
+	default Uni<Void> addOrReuseInvolvedPartyType(Mutiny.StatelessSession session, String classificationValue,
+												  String involvedPartyType,
+												  String searchValue, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+		return service.findType(session, involvedPartyType, system, identityToken)
+					   .chain(secondary -> addOrReuseInvolvedPartyType(session, classificationValue, secondary, searchValue, system, identityToken));
+	}
+
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	default Uni<Void> addOrReuseInvolvedPartyType(Mutiny.StatelessSession session, String classificationValue,
 												  IInvolvedPartyType<?, ?> secondary,
@@ -393,6 +403,7 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 											com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 													(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
 											ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+											if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
 											return session.insert(tableForClassification)
 													.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
 															.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
@@ -401,6 +412,75 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 										});
 							});
 				});
+	}
+
+	// ---- Stateless relationship-read twins (verbatim; secondary resolved via the stateless party finder) ----
+
+	@SuppressWarnings("unchecked")
+	default Uni<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>> findInvolvedPartyType(Mutiny.StatelessSession session, String classification, String ipType, String searchValue, ISystems<?, ?> system, boolean first, boolean latest, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> relationshipTable = get(getInvolvedPartyTypeRelationshipClass());
+		IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+		return partyService.findType(session, ipType, system, identityToken)
+			.chain(type -> {
+				IQueryBuilderRelationships<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID> q
+						= relationshipTable.builder(session)
+						                   .findLink((J) this, type, null)
+						                   .inActiveRange()
+						                   .withClassification(classification, system)
+						                   .withValue(searchValue)
+						                   .inDateRange()
+						                   .withEnterprise(system.getEnterprise())
+						                   .canRead(system, identityToken);
+				if (first) { q.setMaxResults(1); }
+				if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+				return q.get()
+					.onItem().ifNull().failWith(() -> new NoSuchElementException("Involved party type not found"))
+					.map(item -> (IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) item);
+			});
+	}
+
+	@SuppressWarnings("unchecked")
+	default Uni<List<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>>> findInvolvedPartyTypesAll(Mutiny.StatelessSession session, String classification, String ipType, String searchValue, ISystems<?, ?> system, boolean latest, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> relationshipTable = get(getInvolvedPartyTypeRelationshipClass());
+		IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+		return partyService.findType(session, ipType, system, identityToken)
+			.chain(type -> {
+				IQueryBuilderRelationships<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID> q
+						= relationshipTable.builder(session)
+						                   .findLink((J) this, type, null)
+						                   .inActiveRange()
+						                   .withClassification(classification, system)
+						                   .withValue(searchValue)
+						                   .inDateRange()
+						                   .withEnterprise(system.getEnterprise())
+						                   .canRead(system, identityToken);
+				if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
+				return q.getAll().map(list -> (List<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>>) list);
+			});
+	}
+
+	@SuppressWarnings("unchecked")
+	default Uni<Long> numberOfInvolvedPartyTypes(Mutiny.StatelessSession session, String classificationValue, String ipType, String value, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> relationshipTable = get(getInvolvedPartyTypeRelationshipClass());
+		IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+		final String finalClassificationValue = classificationValue == null ? DefaultClassifications.NoClassification.classificationValue() : classificationValue;
+		return partyService.findType(session, ipType, system, identityToken)
+			.chain(type -> relationshipTable.builder(session)
+				.findLink((J) this, type, null)
+				.withValue(value)
+				.withClassification(finalClassificationValue, system)
+				.inActiveRange()
+				.inDateRange()
+				.canRead(system, identityToken)
+				.getCount());
+	}
+
+	default Uni<Boolean> hasInvolvedPartyTypes(Mutiny.StatelessSession session, String classificationName, String ipType, String searchValue, ISystems<?, ?> system, UUID... identityToken)
+	{
+		return numberOfInvolvedPartyTypes(session, classificationName, ipType, searchValue, system, identityToken).map(count -> count > 0);
 	}
 }
 

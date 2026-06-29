@@ -231,4 +231,75 @@ public interface IRelationshipValue<
 		return tableForClassification.builder(session).update();
 	}
 
+	// =============================================================================================
+	// Stateless (Mutiny.StatelessSession) twins. The relationship row IS already loaded (it is `this`),
+	// so every close/update is a full-row session.update(this) — no merge/detach (a no-op under reactive
+	// bytecode enhancement) and no bulk HQL (createMutationQuery is blocked on a stateless session).
+	// =============================================================================================
+
+	/** Stateless variant of {@link #expire(Mutiny.Session, Duration, UUID...)}. */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<P, S, ?>> expire(Mutiny.StatelessSession session, Duration duration, UUID... identityToken)
+	{
+		IWarehouseBaseTable tableForClassification = (IWarehouseBaseTable) this;
+		tableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow())
+				.plus(duration));
+		return session.update(this).replaceWith((IRelationshipValue<P, S, ?>) this);
+	}
+
+	/** Stateless variant of {@link #expire(Mutiny.Session, UUID...)}. */
+	default Uni<IRelationshipValue<P, S, ?>> expire(Mutiny.StatelessSession session, UUID... identityToken)
+	{
+		return expire(session, Duration.ZERO);
+	}
+
+	/** Stateless variant of {@link #archive(Mutiny.Session, Duration, ISystems, UUID...)}. */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<P, S, ?>> archive(Mutiny.StatelessSession session, Duration duration, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, ?, ?, ?, ?> tableForClassification = (IWarehouseRelationshipTable<?, ?, ?, ?, ?, ?>) this;
+		tableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow())
+				.plus(duration));
+		IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+		return (Uni) flagService.getArchivedFlag(session, system.getEnterprise())
+				.onItem().transformToUni(archivedFlag -> {
+					tableForClassification.setActiveFlagID(archivedFlag);
+					return session.update(this).replaceWith((IRelationshipValue<P, S, ?>) this);
+				});
+	}
+
+	/** Stateless variant of {@link #archive(Mutiny.Session, ISystems, UUID...)}. */
+	default Uni<IRelationshipValue<P, S, ?>> archive(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken)
+	{
+		return archive(session, Duration.ZERO, system, identityToken);
+	}
+
+	/** Stateless variant of {@link #remove(Mutiny.Session, Duration, ISystems, UUID...)}. */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<P, S, ?>> remove(Mutiny.StatelessSession session, Duration duration, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, ?, ?, ?, ?> tableForClassification = (IWarehouseRelationshipTable<?, ?, ?, ?, ?, ?>) this;
+		tableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow())
+				.plus(duration));
+		IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+		return (Uni) flagService.getDeletedFlag(session, system.getEnterprise())
+				.onItem().transformToUni(deletedFlag -> {
+					tableForClassification.setActiveFlagID(deletedFlag);
+					return session.update(this).replaceWith((IRelationshipValue<P, S, ?>) this);
+				});
+	}
+
+	/** Stateless variant of {@link #remove(Mutiny.Session, Duration, ISystems, UUID...)} with immediate effect. */
+	default Uni<IRelationshipValue<P, S, ?>> remove(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken)
+	{
+		return remove(session, Duration.ZERO, system, identityToken);
+	}
+
+	/** Stateless variant of {@link #update(Mutiny.Session, ISystems, UUID...)}. */
+	@SuppressWarnings({"unchecked"})
+	default Uni<IRelationshipValue<P, S, ?>> update(Mutiny.StatelessSession session, ISystems<?, ?> originatingSystem, UUID... identityToken)
+	{
+		return session.update(this).replaceWith((IRelationshipValue<P, S, ?>) this);
+	}
+
 }

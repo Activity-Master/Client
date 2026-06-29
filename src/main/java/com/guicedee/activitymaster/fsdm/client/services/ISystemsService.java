@@ -188,6 +188,15 @@ public interface ISystemsService<J extends ISystemsService<J>> {
     Uni<String> registerNewSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise, ISystems<?, ?> newSystem);
 
     /**
+     * Stateless variant of {@link #registerNewSystem(Mutiny.Session, IEnterprise, ISystems)} — provisions the
+     * new system's identity security token + the Systems-group token, links them, tags the system with its
+     * {@code SystemIdentity} classification, secures both tokens, and creates the system involved party —
+     * entirely on a {@link Mutiny.StatelessSession} (prepped reads + {@code session.insert} + the stateless
+     * default-security path).
+     */
+    Uni<String> registerNewSystem(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise, ISystems<?, ?> newSystem);
+
+    /**
      * Creates a new system within an enterprise.
      *
      * @param session        The Mutiny session to use

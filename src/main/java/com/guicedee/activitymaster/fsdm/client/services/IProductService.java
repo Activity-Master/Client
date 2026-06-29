@@ -185,6 +185,9 @@ public interface IProductService<J extends IProductService<J>>
 	 */
 	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.Session session, String productType, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless "fetch ids/scalars + prep" variant of {@link #findProductTypeForProduct(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.StatelessSession session, String productType, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds a product by name and classification data concept.
 	 *
