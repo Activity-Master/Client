@@ -177,7 +177,7 @@ public interface IManageArrangements<J extends IWarehouseBaseTable<J, ?, ? exten
     }
 
     @SuppressWarnings("unchecked")
-    ////@Transactional()
+    
     default Uni<IRelationshipValue<J, IArrangement<?, ?>, ?>> addOrUpdateArrangement(Mutiny.Session session, String classificationValue,
                                                                                      IArrangement<?, ?> arrangementType,
                                                                                      String searchValue,

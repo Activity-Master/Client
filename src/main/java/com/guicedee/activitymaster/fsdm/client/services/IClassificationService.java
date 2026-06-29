@@ -499,6 +499,11 @@ public interface IClassificationService<J extends IClassificationService<J>>
 		return find(session, name.toString(), system, identityToken);
 	}
 
+	/** Concept-aware stateless find (concept narrows the lookup; name is the primary key). */
+	default Uni<IClassification<?,?>> find(Mutiny.StatelessSession session, String name, EnterpriseClassificationDataConcepts concept, ISystems<?,?> system, UUID... identityToken) {
+		return find(session, name, system, identityToken);
+	}
+
 	/** Stateless prepped variant of {@link #getHierarchyType(Mutiny.Session, ISystems, UUID...)}. */
 	Uni<IClassification<?,?>> getHierarchyType(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 

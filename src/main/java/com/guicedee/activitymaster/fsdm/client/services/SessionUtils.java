@@ -17,6 +17,7 @@ import java.util.function.Function;
 
 import static com.guicedee.activitymaster.fsdm.client.services.IActivityMasterService.getISystem;
 import static com.guicedee.activitymaster.fsdm.client.services.IActivityMasterService.getISystemToken;
+import static com.guicedee.activitymaster.fsdm.client.services.IActivityMasterService.getIEnterprise;
 
 /**
  * Utility helpers for consistent Mutiny session lifecycle handling across Vert.x event consumers.
@@ -56,7 +57,8 @@ public final class SessionUtils {
      * thread (the HTTP request thread), which differs from the connection thread.
      */
     public static <T> Uni<T> withSessionTx(Mutiny.SessionFactory sessionFactory,
-                                           Function<Mutiny.Session, Uni<T>> work) {
+                                           Function<Mutiny.Session, Uni<T>> work
+    ) {
         return sessionFactory.openSession().chain(session -> session.withTransaction(tx -> work.apply(session)
         ).eventually(session::close));
     }
@@ -65,7 +67,8 @@ public final class SessionUtils {
      * Run the provided work within a Hibernate-managed stateless session and transaction.
      */
     public static <T> Uni<T> withStatelessSessionTx(Mutiny.SessionFactory sessionFactory,
-                                                    Function<Mutiny.StatelessSession, Uni<T>> work) {
+                                                    Function<Mutiny.StatelessSession, Uni<T>> work
+    ) {
         return sessionFactory.openStatelessSession()
                 .chain(session -> session
                         .withTransaction(tx -> work.apply(session))
@@ -79,7 +82,8 @@ public final class SessionUtils {
      * manages the Vert.x context and thread affinity properly.
      */
     public static <T> Uni<T> withSession(Mutiny.SessionFactory sessionFactory,
-                                         Function<Mutiny.Session, Uni<T>> work) {
+                                         Function<Mutiny.Session, Uni<T>> work
+    ) {
         return sessionFactory.withSession(work::apply);
     }
 
@@ -97,7 +101,8 @@ public final class SessionUtils {
      * not be flushed.
      */
     public static <T> Uni<T> withSessionReadOnly(Mutiny.SessionFactory sessionFactory,
-                                                 Function<Mutiny.Session, Uni<T>> work) {
+                                                 Function<Mutiny.Session, Uni<T>> work
+    ) {
         return sessionFactory.withSession(session -> {
             session.setDefaultReadOnly(true);
             session.setFlushMode(FlushMode.MANUAL);
@@ -114,7 +119,8 @@ public final class SessionUtils {
      * GraphQL fetchers that map straight to a transport shape.
      */
     public static <T> Uni<T> withStatelessSession(Mutiny.SessionFactory sessionFactory,
-                                                  Function<Mutiny.StatelessSession, Uni<T>> work) {
+                                                  Function<Mutiny.StatelessSession, Uni<T>> work
+    ) {
         return sessionFactory.withStatelessSession(work::apply);
     }
 
@@ -135,9 +141,10 @@ public final class SessionUtils {
      */
     public static Uni<Void> withSystemAndToken(String enterpriseName, String systemName, Consumer<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>> consumer) {
         return withSystemAndToken(enterpriseName, systemName, tuple -> {
-            consumer.accept(tuple);
-            return Uni.createFrom().voidItem();
-        });
+                                      consumer.accept(tuple);
+                                      return Uni.createFrom().voidItem();
+                                  }
+        );
     }
 
     /**
@@ -174,7 +181,8 @@ public final class SessionUtils {
      * @return A Uni of the function's result type. Session lifecycle and transaction are managed internally.
      */
     public static <T> Uni<T> withSystemAndToken(String enterpriseName, String systemName,
-                                                java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+                                                java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
         log.trace("Executing as system '{}' with its own identity token", systemName);
         Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
         IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
@@ -182,7 +190,11 @@ public final class SessionUtils {
                 enterpriseService.getEnterprise(session, enterpriseName)
                         .chain(enterprise -> getISystem(session, systemName, enterprise)
                                 .chain(system -> getISystemToken(session, systemName, enterprise)
-                                        .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
+                                        .chain(token -> fn.apply(Tuple4.of(session,
+                                                                           enterprise,
+                                                                           system,
+                                                                           new UUID[]{token}
+                                        )))
                                         .chain(a -> {
                                             // Flush any pending changes to the database BEFORE clearing the
                                             // persistence context. session.clear() detaches everything and would
@@ -192,8 +204,8 @@ public final class SessionUtils {
                                                     .invoke(session::clear)
                                                     .replaceWith(a);
                                         })
-                                 )
-                         )
+                                )
+                        )
         );
     }
 
@@ -213,7 +225,8 @@ public final class SessionUtils {
      * @return A Uni of the function's result type. Session lifecycle and transaction are managed internally.
      */
     public static <T> Uni<T> withActivityMaster(String enterpriseName, String systemName,
-                                                java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+                                                java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
         return withSystemAndToken(enterpriseName, systemName, fn);
     }
 
@@ -236,7 +249,8 @@ public final class SessionUtils {
      * @return A Uni of the function's result type.
      */
     public static <T> Uni<T> withSystemAndTokenReadOnly(String enterpriseName, String systemName,
-                                                        java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+                                                        java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
         log.trace("Executing read-only as system '{}' with its own identity token", systemName);
         Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
         IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
@@ -244,7 +258,11 @@ public final class SessionUtils {
                 enterpriseService.getEnterprise(session, enterpriseName)
                         .chain(enterprise -> getISystem(session, systemName, enterprise)
                                 .chain(system -> getISystemToken(session, systemName, enterprise)
-                                        .chain(token -> fn.apply(Tuple4.of(session, enterprise, system, new UUID[]{token})))
+                                        .chain(token -> fn.apply(Tuple4.of(session,
+                                                                           enterprise,
+                                                                           system,
+                                                                           new UUID[]{token}
+                                        )))
                                 )
                         )
         );
@@ -265,9 +283,68 @@ public final class SessionUtils {
      * @return A Uni of the function's result type.
      */
     public static <T> Uni<T> withActivityMasterReadOnly(String enterpriseName, String systemName,
-                                                        java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+                                                        java.util.function.Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
         return withSystemAndTokenReadOnly(enterpriseName, systemName, fn);
     }
+
+    /**
+     * Stateless variant of {@link #withSystemAndToken(String, String, java.util.function.Function)} —
+     * runs as the named system using <em>that system's own identity token</em> inside a Hibernate
+     * stateless session and transaction.
+     * <p>
+     * A {@link Mutiny.StatelessSession} carries no persistence context: no first-level cache, no
+     * dirty checking and no auto-flush. This is the leanest option for high-volume writes/reads that
+     * map straight to a transport shape and do not need lazy navigation through managed entities. The
+     * enterprise, system and the system's own identity token are still resolved, so downstream access
+     * checks evaluate only the privileges that that specific system has been granted.
+     * <p>
+     * Because there is no persistence context there is no trailing {@code flush()}/{@code clear()};
+     * each operation must be a complete insert/update/delete.
+     *
+     * @param enterpriseName The AM Enterprise Name (security scope)
+     * @param systemName     The AM System Name performing the task — its own identity token is supplied
+     * @param fn             Reactive function receiving (statelessSession, enterprise, system, tokens)
+     * @return A Uni of the function's result type. Stateless session lifecycle and transaction are managed internally.
+     */
+    public static <T> Uni<T> withSystemAndTokenStateless(String enterpriseName, String systemName,
+                                                         java.util.function.Function<Tuple4<Mutiny.StatelessSession, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
+        log.trace("Executing stateless as system '{}' with its own identity token", systemName);
+        Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
+        return withStatelessSessionTx(sessionFactory, session ->
+                getIEnterprise(session, enterpriseName)
+                        .chain(enterprise -> getISystem(session, systemName, enterprise)
+                                .chain(system -> getISystemToken(session, systemName, enterprise)
+                                        .chain(token -> fn.apply(Tuple4.of(session,
+                                                                           enterprise,
+                                                                           system,
+                                                                           new UUID[]{token}
+                                        )))
+                                )
+                        )
+        );
+    }
+
+    /**
+     * Stateless variant of {@link #withActivityMaster(String, String, java.util.function.Function)}.
+     * <p>
+     * <strong>Naming note:</strong> backward-compatible alias for
+     * {@link #withSystemAndTokenStateless(String, String, java.util.function.Function)}; the
+     * {@code systemName} you pass determines which system's own identity token is supplied. Prefer
+     * {@link #withSystemAndTokenStateless} in new code.
+     *
+     * @param enterpriseName The AM Enterprise Name
+     * @param systemName     The AM System Name performing the task
+     * @param fn             Reactive function receiving (statelessSession, enterprise, system, tokens)
+     * @return A Uni of the function's result type.
+     */
+    public static <T> Uni<T> withActivityMasterStateless(String enterpriseName, String systemName,
+                                                         java.util.function.Function<Tuple4<Mutiny.StatelessSession, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
+        return withSystemAndTokenStateless(enterpriseName, systemName, fn);
+    }
+
 
     /**
      * Context-aware variant of {@link #withActivityMaster(String, String, Function)} that resolves
@@ -292,27 +369,32 @@ public final class SessionUtils {
      * @return a Uni of the function's result type
      */
     public static <T> Uni<T> withActivityMasterFromContext(String systemName,
-                                                           Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+                                                           Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
         log.trace("Executing with activity master details resolved from call context");
         ActivityMasterConfiguration configuration = ActivityMasterConfiguration.get();
         UUID enterpriseId = configuration.getEnterpriseId();
         Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
         IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
         return withSessionTx(sessionFactory, session -> {
-            Uni<IEnterprise<?, ?>> enterpriseUni = enterpriseId != null
-                    ? enterpriseService.getEnterprise(session, enterpriseId)
-                    : enterpriseService.getEnterprise(session, ActivityMasterConfiguration.applicationEnterpriseName);
-            return enterpriseUni
-                    .chain(enterprise -> getISystem(session, systemName, enterprise)
-                            .chain(system -> getISystemToken(session, systemName, enterprise)
-                                    .chain(token -> fn.apply(Tuple4.of(session, enterprise, system,
-                                            contextTokens(token, configuration.getIdentityToken()))))
-                                    .chain(a -> session.flush()
-                                            .invoke(session::clear)
-                                            .replaceWith(a))
-                            )
-                    );
-        });
+                                 Uni<IEnterprise<?, ?>> enterpriseUni = enterpriseId != null
+                                         ? enterpriseService.getEnterprise(session, enterpriseId)
+                                         : enterpriseService.getEnterprise(session, ActivityMasterConfiguration.applicationEnterpriseName);
+                                 return enterpriseUni
+                                         .chain(enterprise -> getISystem(session, systemName, enterprise)
+                                                 .chain(system -> getISystemToken(session, systemName, enterprise)
+                                                         .chain(token -> fn.apply(Tuple4.of(session, enterprise, system,
+                                                                                            contextTokens(token,
+                                                                                                          configuration.getIdentityToken()
+                                                                                            )
+                                                         )))
+                                                         .chain(a -> session.flush()
+                                                                 .invoke(session::clear)
+                                                                 .replaceWith(a))
+                                                 )
+                                         );
+                             }
+        );
     }
 
     /**
@@ -327,7 +409,8 @@ public final class SessionUtils {
      * @return a Uni of the function's result type
      */
     public static <T> Uni<T> withSystemAndTokenFromContext(String systemName,
-                                                           Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+                                                           Function<Tuple4<Mutiny.Session, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
+    ) {
         return withActivityMasterFromContext(systemName, fn);
     }
 
@@ -349,7 +432,8 @@ public final class SessionUtils {
         IEnterpriseService<?> enterpriseService = IGuiceContext.get(IEnterpriseService.class);
         return withSessionReadOnly(sessionFactory, session ->
                 enterpriseService.getEnterprise(session, enterpriseName)
-                        .chain(enterprise -> getISystemToken(session, systemName, enterprise)));
+                        .chain(enterprise -> getISystemToken(session, systemName, enterprise))
+        );
     }
 
     /**
@@ -385,10 +469,14 @@ public final class SessionUtils {
                 : IGuiceContext.get(Vertx.class);
         io.vertx.core.Context newCtx = vertx.getOrCreateContext();
         newCtx.runOnContext(v ->
-                uni.subscribe().with(
-                        success -> log.trace("Async operation completed: {}", description),
-                        failure -> log.error("Async operation failed: {}: {}", description, failure.getMessage(), failure)
-                )
+                                    uni.subscribe().with(
+                                            success -> log.trace("Async operation completed: {}", description),
+                                            failure -> log.error("Async operation failed: {}: {}",
+                                                                 description,
+                                                                 failure.getMessage(),
+                                                                 failure
+                                            )
+                                    )
         );
     }
 

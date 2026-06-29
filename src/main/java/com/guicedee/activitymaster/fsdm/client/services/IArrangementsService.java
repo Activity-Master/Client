@@ -156,6 +156,15 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 	 */
 	Uni<IArrangementType<?, ?>> createArrangementType(Mutiny.Session session, String type, UUID key, ISystems<?, ?> system, UUID... identityToken);
 
+	/** Stateless find-or-insert variant of {@link #createArrangementType(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IArrangementType<?, ?>> createArrangementType(Mutiny.StatelessSession session, String type, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless Enum convenience over {@link #createArrangementType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
+	default Uni<IArrangementType<?, ?>> createArrangementType(Mutiny.StatelessSession session, Enum<?> type, ISystems<?,?> system, UUID... identityToken)
+	{
+		return createArrangementType(session, type.toString(), system, identityToken);
+	}
+
 	/**
 	 * Finds an arrangement type by name.
 	 *

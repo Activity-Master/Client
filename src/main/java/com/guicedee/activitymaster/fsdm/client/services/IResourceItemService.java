@@ -296,6 +296,16 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      */
     Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId, String systemName);
 
+    /** Stateless variant of {@link #updateResourceData(Mutiny.Session, byte[], UUID)} (relational only). */
+    Uni<Void> updateResourceData(Mutiny.StatelessSession session, byte[] data, UUID resourceItemId);
+
+    /** Stateless find-or-insert variant of {@link #create(Mutiny.Session, String, String, byte[], ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, String resourceItemDataValue, byte[] data,
+                                    ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findByUUID(Mutiny.Session, UUID)}. */
+    Uni<IResourceItem<?, ?>> findByUUID(Mutiny.StatelessSession session, UUID uuid);
+
     /**
      * Adds a relationship between a resource item and a type.
      *

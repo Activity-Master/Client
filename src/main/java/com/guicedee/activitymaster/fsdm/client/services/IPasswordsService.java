@@ -52,6 +52,9 @@ public interface IPasswordsService<J extends IPasswordsService<J>> extends IProg
 	 */
 	Uni<List<IInvolvedParty<?, ?>>> getAllUsers(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #getAllUsers(Mutiny.Session, ISystems, UUID...)} — projects ids and preps detached parties. */
+	Uni<List<IInvolvedParty<?, ?>>> getAllUsers(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken);
+
 	/**
 	 * Adds or updates a username and password for an involved party.
 	 *

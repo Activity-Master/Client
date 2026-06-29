@@ -404,6 +404,13 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	 */
 	Uni<ISecurityToken<?,?>> getSecurityTokenByName(Mutiny.Session session, String name, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless prepped-read variant of {@link #getSecurityTokenByName(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getSecurityTokenByName(Mutiny.StatelessSession session, String name, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #applyDefaultSecurityToRows(Mutiny.Session, java.util.Collection, ISystems, UUID...)}. */
+	Uni<Void> applyDefaultSecurityToRows(Mutiny.StatelessSession session, java.util.Collection<? extends IWarehouseCoreTable<?,?,?,?>> rows,
+	                                     ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Gets a security token by its identifying UUID, with an option to override the active flag.
 	 *

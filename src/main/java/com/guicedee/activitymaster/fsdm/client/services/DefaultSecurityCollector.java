@@ -38,6 +38,9 @@ public final class DefaultSecurityCollector
 	private static final Map<Mutiny.Session, List<IWarehouseCoreTable<?, ?, ?, ?>>> PENDING = new ConcurrentHashMap<>();
 	private static final Set<Mutiny.Session> ACTIVE = ConcurrentHashMap.newKeySet();
 
+	private static final Map<Mutiny.StatelessSession, List<IWarehouseCoreTable<?, ?, ?, ?>>> PENDING_SL = new ConcurrentHashMap<>();
+	private static final Set<Mutiny.StatelessSession> ACTIVE_SL = ConcurrentHashMap.newKeySet();
+
 	private DefaultSecurityCollector()
 	{
 	}
@@ -69,6 +72,36 @@ public final class DefaultSecurityCollector
 	{
 		ACTIVE.remove(session);
 		List<IWarehouseCoreTable<?, ?, ?, ?>> rows = PENDING.remove(session);
+		if (rows == null || rows.isEmpty())
+		{
+			return Uni.createFrom().voidItem();
+		}
+		ISecurityTokenService<?> securityTokenService = IGuiceContext.get(ISecurityTokenService.class);
+		return securityTokenService.applyDefaultSecurityToRows(session, rows, system, identityToken);
+	}
+
+	// ---- Stateless twins ----
+
+	public static void activate(Mutiny.StatelessSession session)
+	{
+		if (session != null) ACTIVE_SL.add(session);
+	}
+
+	public static boolean isActive(Mutiny.StatelessSession session)
+	{
+		return session != null && ACTIVE_SL.contains(session);
+	}
+
+	public static void record(Mutiny.StatelessSession session, IWarehouseCoreTable<?, ?, ?, ?> row)
+	{
+		if (session == null || row == null) return;
+		PENDING_SL.computeIfAbsent(session, s -> new ArrayList<>()).add(row);
+	}
+
+	public static Uni<Void> flush(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken)
+	{
+		ACTIVE_SL.remove(session);
+		List<IWarehouseCoreTable<?, ?, ?, ?>> rows = PENDING_SL.remove(session);
 		if (rows == null || rows.isEmpty())
 		{
 			return Uni.createFrom().voidItem();

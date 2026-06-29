@@ -45,4 +45,15 @@ public interface ISystemUpdate extends IProgressable
 	 * @param enterprise
 	 */
 	Uni<Boolean> update(Mutiny.Session session, IEnterprise<?,?> enterprise);
+
+	/**
+	 * Stateless variant of {@link #update(Mutiny.Session, IEnterprise)}. Default throws to act as the
+	 * incremental-migration seam: the install loop prefers this overload and falls back to the managed
+	 * one when an updater has not been converted to run on a {@link Mutiny.StatelessSession}.
+	 */
+	default Uni<Boolean> update(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise)
+	{
+		return Uni.createFrom().failure(new UnsupportedOperationException(
+				getClass().getSimpleName() + " has no stateless update overload"));
+	}
 }

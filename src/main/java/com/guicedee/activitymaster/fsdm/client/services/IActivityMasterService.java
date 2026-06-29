@@ -116,15 +116,55 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 
  // ---- Stateless (Mutiny.StatelessSession) twins of the system/token lookups ----
 
+ /**
+  * Cache of detached, prepped {@code Systems} resolved on a stateless session, keyed by systemName then
+  * enterpriseId. Safe because stateless {@code findSystem} returns a fresh DETACHED entity (scalar
+  * projection, no persistence context) — it carries only identity/descriptive columns and is never
+  * bound to a session, so it may be reused across stateless units of work.
+  */
+ Map<String, Map<UUID, ISystems<?, ?>>> SYSTEM_CACHE = new ConcurrentHashMap<>();
+
+ /**
+  * Cache of detached enterprises resolved on a stateless session, keyed by enterprise name. Detached
+  * identity carriers (no persistence context), safe to share across stateless units of work.
+  */
+ Map<String, IEnterprise<?, ?>> ENTERPRISE_CACHE = new ConcurrentHashMap<>();
+
  /** Stateless variant of {@link #getISystem(Mutiny.Session, Enum, IEnterprise)}. */
  static Uni<ISystems<?, ?>> getISystem(Mutiny.StatelessSession session, Enum systemName, IEnterprise<?, ?> enterprise) {
  	return getISystem(session, systemName.toString(), enterprise);
  }
 
- /** Stateless variant of {@link #getISystem(Mutiny.Session, String, IEnterprise)} — prepped {@code findSystem}. */
+ /** Stateless variant of {@link #getISystem(Mutiny.Session, String, IEnterprise)} — prepped {@code findSystem}, cached (detached). */
  static Uni<ISystems<?, ?>> getISystem(Mutiny.StatelessSession session, String systemName, IEnterprise<?, ?> enterprise) {
+ 	UUID enterpriseId = enterprise.getId();
+ 	Map<UUID, ISystems<?, ?>> bySystem = SYSTEM_CACHE.computeIfAbsent(systemName, k -> new ConcurrentHashMap<>());
+ 	ISystems<?, ?> cached = bySystem.get(enterpriseId);
+ 	if (cached != null) {
+ 		return Uni.createFrom().item(cached);
+ 	}
  	ISystemsService<?> systemsService = com.guicedee.client.IGuiceContext.get(ISystemsService.class);
- 	return systemsService.findSystem(session, enterprise, systemName);
+ 	return systemsService.findSystem(session, enterprise, systemName)
+ 			.onItem().invoke(system -> {
+ 				if (system != null && system.getId() != null) {
+ 					bySystem.put(enterpriseId, system);
+ 				}
+ 			});
+ }
+
+ /** Stateless, cached resolve of a detached enterprise by name. */
+ static Uni<IEnterprise<?, ?>> getIEnterprise(Mutiny.StatelessSession session, String enterpriseName) {
+ 	IEnterprise<?, ?> cached = ENTERPRISE_CACHE.get(enterpriseName);
+ 	if (cached != null) {
+ 		return Uni.createFrom().item(cached);
+ 	}
+ 	IEnterpriseService<?> enterpriseService = com.guicedee.client.IGuiceContext.get(IEnterpriseService.class);
+ 	return enterpriseService.getEnterprise(session, enterpriseName)
+ 			.onItem().invoke(ent -> {
+ 				if (ent != null && ent.getId() != null) {
+ 					ENTERPRISE_CACHE.put(enterpriseName, ent);
+ 				}
+ 			});
  }
 
  /** Stateless variant of {@link #getISystemToken(Mutiny.Session, String, IEnterprise)} (same per-enterprise cache). */
