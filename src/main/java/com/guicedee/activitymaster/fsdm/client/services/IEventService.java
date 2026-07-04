@@ -81,6 +81,31 @@ public interface IEventService<J extends IEventService<J>> {
     Uni<IEvent<?, ?>> createEvent(Mutiny.Session session, String eventType, UUID key, ISystems<?, ?> system, UUID... identityToken);
 
     /**
+     * Stateless variant of {@link #createEvent(Mutiny.Session, String, ISystems, UUID...)} — provisions the
+     * event (and its event-type link) entirely on a {@link Mutiny.StatelessSession} via {@code session.insert}
+     * + the stateless default-security path. World-readable (public) security matrix.
+     *
+     * @param session        The stateless session to use
+     * @param eventType      The type of event to create
+     * @param system         The system creating the event
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the created event
+     */
+    Uni<IEvent<?, ?>> createEvent(Mutiny.StatelessSession session, String eventType, ISystems<?, ?> system, UUID... identityToken);
+
+    /**
+     * Stateless variant of {@link #createEvent(Mutiny.Session, String, UUID, ISystems, UUID...)} (explicit key).
+     *
+     * @param session        The stateless session to use
+     * @param eventType      The type of event to create
+     * @param key            The UUID key for the event, or {@code null} to generate one
+     * @param system         The system creating the event
+     * @param identityToken  Optional security identity tokens
+     * @return A Uni emitting the created event
+     */
+    Uni<IEvent<?, ?>> createEvent(Mutiny.StatelessSession session, String eventType, UUID key, ISystems<?, ?> system, UUID... identityToken);
+
+    /**
      * Creates a new event that is <strong>scope-restricted</strong> rather than world-readable. Identical
      * to {@link #createEvent(Mutiny.Session, String, UUID, ISystems, UUID...)} except the event is secured
      * with the restricted matrix: only Administrators / Systems / Applications / Plugins retain access, plus
@@ -99,6 +124,11 @@ public interface IEventService<J extends IEventService<J>> {
             com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
             ISystems<?, ?> system, UUID... identityToken);
 
+    /** Stateless scope-restricted variant of {@link #createEventScopeRestricted(Mutiny.Session, String, UUID, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, ISystems, UUID...)}. */
+    Uni<IEvent<?, ?>> createEventScopeRestricted(Mutiny.StatelessSession session, String eventType, UUID key,
+            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+            ISystems<?, ?> system, UUID... identityToken);
+
     /**
      * Creates a new event type by name.
      *
@@ -109,6 +139,14 @@ public interface IEventService<J extends IEventService<J>> {
      * @return A Uni emitting the created event type
      */
     Uni<IEventType<?, ?>> createEventType(Mutiny.Session session, String eventType, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #createEventType(Mutiny.Session, String, ISystems, UUID...)} — find-or-insert. */
+    Uni<IEventType<?, ?>> createEventType(Mutiny.StatelessSession session, String eventType, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless Enum convenience over {@link #createEventType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
+    default Uni<IEventType<?, ?>> createEventType(Mutiny.StatelessSession session, Enum<?> eventType, ISystems<?, ?> system, UUID... identityToken) {
+        return createEventType(session, eventType.toString(), system, identityToken);
+    }
 
     /**
      * Finds an event type by name.
@@ -320,5 +358,55 @@ public interface IEventService<J extends IEventService<J>> {
      * @return A Uni emitting a list of found events
      */
     Uni<List<IEvent<?, ?>>> findAll(Mutiny.Session session, String eventType, ISystems<?, ?> system, UUID... identityToken);
+
+    // ---- Stateless finder twins ----
+
+    /** Stateless variant of {@link #find(Mutiny.Session, UUID)}. */
+    Uni<IEvent<?, ?>> find(Mutiny.StatelessSession session, UUID id);
+
+    /** Stateless variant of {@link #findEventsByClassification(Mutiny.Session, String, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByClassification(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> systems, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByClassification(Mutiny.Session, String, IEvent, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByClassification(Mutiny.StatelessSession session, String classificationName, IEvent<?, ?> withParent, String value, ISystems<?, ?> systems, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByClassificationGT(Mutiny.Session, String, IEvent, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByClassificationGT(Mutiny.StatelessSession session, String classificationName, IEvent<?, ?> withParent, String value, ISystems<?, ?> systems, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByClassificationGTE(Mutiny.Session, String, IEvent, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByClassificationGTE(Mutiny.StatelessSession session, String classificationName, IEvent<?, ?> withParent, String value, ISystems<?, ?> systems, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByClassificationLT(Mutiny.Session, String, IEvent, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByClassificationLT(Mutiny.StatelessSession session, String classificationName, IEvent<?, ?> withParent, String value, ISystems<?, ?> systems, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByClassificationLTE(Mutiny.Session, String, IEvent, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByClassificationLTE(Mutiny.StatelessSession session, String classificationName, IEvent<?, ?> withParent, String value, ISystems<?, ?> systems, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, ISystems, UUID...)}. */
+    Uni<IEvent<?, ?>> findEventByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?, ?> involvedParty, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?, ?> involvedParty, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, LocalDateTime, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?, ?> involvedParty, String classificationName, String value, LocalDateTime startDate, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, LocalDateTime, LocalDateTime, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?, ?> involvedParty, String classificationName, String value, LocalDateTime startDate, LocalDateTime endDate, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventByResourceItem(Mutiny.Session, IResourceItem, String, String, ISystems, UUID...)}. */
+    Uni<IEvent<?, ?>> findEventByResourceItem(Mutiny.StatelessSession session, IResourceItem<?, ?> resourceItem, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventByArrangement(Mutiny.Session, IArrangement, String, String, ISystems, UUID...)}. */
+    Uni<IEvent<?, ?>> findEventByArrangement(Mutiny.StatelessSession session, IArrangement<?, ?> arrangement, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventByProduct(Mutiny.Session, IProduct, String, String, ISystems, UUID...)}. */
+    Uni<IEvent<?, ?>> findEventByProduct(Mutiny.StatelessSession session, IProduct<?, ?> product, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findEventsByRules(Mutiny.Session, IRules, String, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findEventsByRules(Mutiny.StatelessSession session, IRules<?, ?> rules, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #findAll(Mutiny.Session, String, ISystems, UUID...)}. */
+    Uni<List<IEvent<?, ?>>> findAll(Mutiny.StatelessSession session, String eventType, ISystems<?, ?> system, UUID... identityToken);
 
 }

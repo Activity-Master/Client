@@ -11,7 +11,9 @@ import lombok.extern.log4j.Log4j2;
 import org.hibernate.FlushMode;
 import org.hibernate.reactive.mutiny.Mutiny;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -38,6 +40,8 @@ import static com.guicedee.activitymaster.fsdm.client.services.IActivityMasterSe
  */
 @Log4j2
 public final class SessionUtils {
+    private static final Map<StatelessActivityMasterKey, StatelessActivityMasterContext> STATELESS_ACTIVITY_MASTER_CONTEXT_CACHE =
+            new ConcurrentHashMap<>();
 
     private SessionUtils() {
     }
@@ -313,17 +317,31 @@ public final class SessionUtils {
         log.trace("Executing stateless as system '{}' with its own identity token", systemName);
         Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
         return withStatelessSessionTx(sessionFactory, session ->
-                getIEnterprise(session, enterpriseName)
-                        .chain(enterprise -> getISystem(session, systemName, enterprise)
-                                .chain(system -> getISystemToken(session, systemName, enterprise)
-                                        .chain(token -> fn.apply(Tuple4.of(session,
-                                                                           enterprise,
-                                                                           system,
-                                                                           new UUID[]{token}
-                                        )))
-                                )
-                        )
+                getStatelessActivityMasterContext(session, enterpriseName, systemName)
+                        .chain(context -> fn.apply(Tuple4.of(session,
+                                                             context.enterprise(),
+                                                             context.system(),
+                                                             context.identityTokens()
+                        )))
         );
+    }
+
+    private static Uni<StatelessActivityMasterContext> getStatelessActivityMasterContext(Mutiny.StatelessSession session,
+                                                                                         String enterpriseName,
+                                                                                         String systemName) {
+        StatelessActivityMasterKey key = new StatelessActivityMasterKey(enterpriseName, systemName);
+        StatelessActivityMasterContext cached = STATELESS_ACTIVITY_MASTER_CONTEXT_CACHE.get(key);
+        if (cached != null) {
+            return Uni.createFrom().item(cached);
+        }
+        return getIEnterprise(session, enterpriseName)
+                .chain(enterprise -> getISystem(session, systemName, enterprise)
+                        .chain(system -> getISystemToken(session, systemName, enterprise)
+                                .map(token -> new StatelessActivityMasterContext(enterprise,
+                                                                                 system,
+                                                                                 new UUID[]{token}
+                                ))))
+                .invoke(context -> STATELESS_ACTIVITY_MASTER_CONTEXT_CACHE.put(key, context));
     }
 
     /**
@@ -445,6 +463,22 @@ public final class SessionUtils {
             return new UUID[]{systemToken, identityToken};
         }
         return new UUID[]{systemToken};
+    }
+
+    private record StatelessActivityMasterKey(String enterpriseName, String systemName) {
+        private StatelessActivityMasterKey {
+            enterpriseName = enterpriseName == null ? "" : enterpriseName.trim();
+            systemName = systemName == null ? "" : systemName.trim();
+        }
+    }
+
+    private record StatelessActivityMasterContext(IEnterprise<?, ?> enterprise,
+                                                  ISystems<?, ?> system,
+                                                  UUID[] identityTokens) {
+        @Override
+        public UUID[] identityTokens() {
+            return identityTokens.clone();
+        }
     }
 
     /**

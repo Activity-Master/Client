@@ -414,6 +414,119 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 				});
 	}
 
+	// ---- Stateless add (always-insert) + add-or-update party-type link ----
+
+	/** Stateless add involved-party type (String name with classification) — resolves the secondary via the stateless party finder. */
+	default Uni<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>> addInvolvedPartyType(Mutiny.StatelessSession session, String involvedPartyType,
+																						 String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+		return partyService.findType(session, involvedPartyType, system, identityToken)
+			.chain(type -> addInvolvedPartyType(session, type, classificationName, value, system, identityToken));
+	}
+
+	/** Stateless add involved-party type (resolved secondary) — always inserts via session.insert + stateless default security. */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>> addInvolvedPartyType(Mutiny.StatelessSession session, IInvolvedPartyType<?, ?> involvedPartyType,
+																						 String classificationName, String value, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> tableForClassification = get(getInvolvedPartyTypeRelationshipClass());
+		IClassificationService<?> classificationService = get(IClassificationService.class);
+		final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+		IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);
+		ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+		return classificationService.find(session, classificationName, system, identityToken)
+			.chain(classification -> activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
+				.chain(activeFlag -> {
+					tableForClassification.setValue(Strings.nullToEmpty(value));
+					tableForClassification.setSystemID(system);
+					tableForClassification.setOriginalSourceSystemID(system.getId());
+					tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+					tableForClassification.setActiveFlagID(activeFlag);
+					tableForClassification.setClassificationID(classification);
+					tableForClassification.setEnterpriseID(enterprise);
+					configureInvolvedPartyTypeAddable(tableForClassification, (J) this, involvedPartyType, classification, value, system);
+					com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+							(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+					if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
+					return session.insert(tableForClassification)
+							.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+									.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+									.onFailure().recoverWithItem(0L)
+									.replaceWithVoid())
+							.replaceWith((IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>) tableForClassification);
+				}));
+	}
+
+	/** String-name stateless add-or-update — resolves the secondary type via the stateless party finder, then delegates. */
+	default Uni<Void> addOrUpdateInvolvedPartyType(Mutiny.StatelessSession session, String classificationValue,
+												   String involvedPartyType, String searchValue, String storeValue, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
+		return partyService.findType(session, involvedPartyType, system, identityToken)
+			.chain(secondary -> addOrUpdateInvolvedPartyType(session, classificationValue, secondary, searchValue, storeValue, system, identityToken));
+	}
+
+	/** Stateless add-or-update party type (SCD retire + reinsert on value change). */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	default Uni<Void> addOrUpdateInvolvedPartyType(Mutiny.StatelessSession session, String classificationValue,
+												   IInvolvedPartyType<?, ?> secondary, String searchValue, String storeValue, ISystems<?, ?> system, UUID... identityToken)
+	{
+		IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> tableForClassification = get(getInvolvedPartyTypeRelationshipClass());
+		IClassificationService<?> classificationService = get(IClassificationService.class);
+		final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
+		ISecurityTokenService<?> sts = get(ISecurityTokenService.class);
+		IActiveFlagService<?> flagService = get(IActiveFlagService.class);
+		return classificationService.find(session, classificationValue, system, identityToken)
+			.chain(classification -> tableForClassification.builder(session)
+				.findLink((J) this, secondary, null)
+				.withValue(searchValue)
+				.inActiveRange()
+				.inDateRange()
+				.withClassification(classificationValue, system)
+				.get()
+				.map(r -> (Object) r)
+				.onFailure(NoResultException.class)
+				.recoverWithItem((Object) null)
+				.chain(existingObj -> {
+					IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> existing =
+							(IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?>) existingObj;
+					if (existing != null && Strings.nullToEmpty(storeValue).equals(existing.getValue()))
+					{
+						return Uni.createFrom().voidItem();
+					}
+					Uni<Void> retire = (existing == null)
+							? Uni.createFrom().voidItem()
+							: flagService.getArchivedFlag(session, enterprise, identityToken)
+								.chain(archivedFlag -> {
+									existing.setActiveFlagID(archivedFlag);
+									existing.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+									return session.update(existing).replaceWithVoid();
+								});
+					return retire.chain(() -> flagService.getActiveFlag(session, enterprise, identityToken)
+						.chain(activeFlag -> {
+							tableForClassification.setId(java.util.UUID.randomUUID());
+							tableForClassification.setValue(storeValue == null ? "" : storeValue);
+							tableForClassification.setSystemID(system);
+							tableForClassification.setOriginalSourceSystemID(system.getId());
+							tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
+							tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+							tableForClassification.setActiveFlagID(activeFlag);
+							tableForClassification.setClassificationID(classification);
+							tableForClassification.setEnterpriseID(enterprise);
+							configureInvolvedPartyTypeAddable(tableForClassification, (J) this, secondary, classification, storeValue, system);
+							com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
+									(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
+							return session.insert(tableForClassification)
+									.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
+											.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
+											.onFailure().recoverWithItem(0L)
+											.replaceWithVoid());
+						}));
+				}));
+	}
+
 	// ---- Stateless relationship-read twins (verbatim; secondary resolved via the stateless party finder) ----
 
 	@SuppressWarnings("unchecked")

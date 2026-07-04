@@ -275,4 +275,27 @@ public interface ISystemsService<J extends ISystemsService<J>> {
                                .map(result -> (UUID) result);
                 });
     }
+
+    /**
+     * Stateless variant of {@link #resolveSystemIdByName(Mutiny.Session, UUID, String)}.
+     * <p>
+     * Resolves the systems id via a scalar native-SQL lookup (never hydrating the {@code @Cacheable}
+     * {@code Systems} entity), so it is safe on a {@link Mutiny.StatelessSession}. Shares the same
+     * {@link com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache} key space as the managed
+     * resolver, so a value cached by either path is reused by both.
+     */
+    default Uni<UUID> resolveSystemIdByName(Mutiny.StatelessSession session, UUID enterpriseId, String systemName) {
+        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
+                .getSystemId(session, enterpriseId, systemName, (sess, name) -> {
+                    String sql = "select systemid from dbo.systems where enterpriseid = :ent and systemname = :name " +
+                                 "and (effectivefromdate <= current_timestamp) " +
+                                 "and (effectivetodate > current_timestamp) " +
+                                 "and activeflagid = (select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = 'Active')";
+                    return sess.createNativeQuery(sql)
+                               .setParameter("ent", enterpriseId)
+                               .setParameter("name", name)
+                               .getSingleResult()
+                               .map(result -> (UUID) result);
+                });
+    }
 }

@@ -57,6 +57,7 @@ module com.guicedee.activitymaster.fsdm.client {
     requires transitive org.hibernate.validator;
     requires transitive org.apache.logging.log4j;
     requires com.guicedee.rest.client;
+    requires org.apache.logging.log4j.core;
 
     uses IMasterSystem;
 

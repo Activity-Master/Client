@@ -35,6 +35,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.Session session, String flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /** Stateless variant of {@link #findFlagByName(Mutiny.Session, String, IEnterprise, UUID...)}. */
+    Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.StatelessSession session, String flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
+
     /**
      * Opt-in <strong>scope-restricted</strong> ActiveFlag create. Unlike the standard reference-data create (which
      * stamps <em>no</em> per-record security), this variant secures the new flag with the restricted matrix: only
@@ -58,6 +61,12 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
                                                 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
                                                 UUID... identifyingToken);
 
+    /** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.Session, IEnterprise, String, String, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+    Uni<IActiveFlag<?,?>> createScopeRestricted(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, String name, String description,
+                                                com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems<?, ?> system,
+                                                com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+                                                UUID... identifyingToken);
+
     /**
      * Gets a new, uninitialized active flag instance.
      *
@@ -76,6 +85,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.Session session, ActiveFlag flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /** Stateless variant of {@link #findFlagByName(Mutiny.Session, ActiveFlag, IEnterprise, UUID...)}. */
+    Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.StatelessSession session, ActiveFlag flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
+
     /**
      * Finds the range of active flags for the given enterprise.
      *
@@ -85,6 +97,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      * @return A Uni emitting a list of active flags in the active range
      */
     Uni<List<IActiveFlag<?,?>>> findActiveRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ... identifyingToken);
+
+    /** Stateless variant of {@link #findActiveRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    Uni<List<IActiveFlag<?,?>>> findActiveRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID ... identifyingToken);
 
     /**
      * Gets the range of visible active flags for the given enterprise.
@@ -96,6 +111,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     Uni<List<IActiveFlag<?,?>>> getVisibleRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
+    /** Stateless variant of {@link #getVisibleRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    Uni<List<IActiveFlag<?,?>>> getVisibleRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
+
     /**
      * Gets the range of removed active flags for the given enterprise.
      *
@@ -105,6 +123,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      * @return A Uni emitting a list of active flags in the removed range
      */
     Uni<List<IActiveFlag<?,?>>> getRemovedRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
+
+    /** Stateless variant of {@link #getRemovedRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    Uni<List<IActiveFlag<?,?>>> getRemovedRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
     /**
      * Gets the range of archived active flags for the given enterprise.
@@ -116,6 +137,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     Uni<List<IActiveFlag<?,?>>> getArchiveRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
 
+    /** Stateless variant of {@link #getArchiveRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    Uni<List<IActiveFlag<?,?>>> getArchiveRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
+
     /**
      * Gets the range of highlighted active flags for the given enterprise.
      *
@@ -125,6 +149,9 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      * @return A Uni emitting a list of active flags in the highlighted range
      */
     Uni<List<IActiveFlag<?,?>>> getHighlightedRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
+
+    /** Stateless variant of {@link #getHighlightedRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    Uni<List<IActiveFlag<?,?>>> getHighlightedRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
     /**
      * Gets the default 'Active' flag for the given enterprise.

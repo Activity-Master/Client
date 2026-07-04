@@ -132,6 +132,10 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	Uni<Void> moveToken(Mutiny.Session session, ISecurityToken<?,?> oldParent, ISecurityToken<?,?> newParent,
 	                    ISecurityToken<?,?> child, IClassification<?,?> classification, String... identifyingToken);
 
+	/** Stateless variant of {@link #moveToken(Mutiny.Session, ISecurityToken, ISecurityToken, ISecurityToken, IClassification, String...)}. */
+	Uni<Void> moveToken(Mutiny.StatelessSession session, ISecurityToken<?,?> oldParent, ISecurityToken<?,?> newParent,
+	                    ISecurityToken<?,?> child, IClassification<?,?> classification, String... identifyingToken);
+
 	/**
 	 * Gets the 'Everyone' group token.
 	 *
@@ -239,6 +243,17 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	                                       ISystems<?,?> system, UUID... identityToken);
 
 	/**
+	 * Stateless batch variant of {@link #applyScopeRestrictedSecurity(Mutiny.Session, java.util.Map, ISystems, UUID...)}.
+	 * Writes the scope-restricted matrix for every {@code (record → scopeToken)} pair directly on the supplied
+	 * {@link Mutiny.StatelessSession} (no nested transaction). Resolve the seven group/folder tokens and the
+	 * active flag once, then secure each record sequentially. Partition records across independent stateless
+	 * sessions for parallelism.
+	 */
+	Uni<Void> applyScopeRestrictedSecurity(Mutiny.StatelessSession session,
+	                                       java.util.Map<? extends IWarehouseCoreTable<?,?,?,?>, ? extends ISecurityToken<?,?>> recordScopes,
+	                                       ISystems<?,?> system, UUID... identityToken);
+
+	/**
 	 * Gets the 'Guests' folder token.
 	 *
 	 * @param session        The Mutiny session to use
@@ -327,6 +342,12 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	/** Stateless prepped variant of {@link #getGuestsFolder(Mutiny.Session, ISystems, UUID...)}. */
 	Uni<ISecurityToken<?,?>> getGuestsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless prepped variant of {@link #getRegisteredGuestsFolder(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getRegisteredGuestsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless prepped variant of {@link #getVisitorsGuestsFolder(Mutiny.Session, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getVisitorsGuestsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
+
 	/** Stateless prepped variant of {@link #getAdministratorsFolder(Mutiny.Session, ISystems, UUID...)}. */
 	Uni<ISecurityToken<?,?>> getAdministratorsFolder(Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
@@ -388,6 +409,9 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 	 * @return A Uni emitting the found security token
 	 */
 	Uni<ISecurityToken<?,?>> getSecurityToken(Mutiny.Session session, UUID identifyingToken, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #getSecurityToken(Mutiny.Session, UUID, ISystems, UUID...)}. */
+	Uni<ISecurityToken<?,?>> getSecurityToken(Mutiny.StatelessSession session, UUID identifyingToken, ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Finds a security token by its (enterprise-unique) <em>name</em>, or emits {@code null} when no such

@@ -116,6 +116,20 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
     }
 
     /**
+     * Stateless variant of {@link IMasterSystem#registerSystem(Mutiny.Session, IEnterprise)} — delegates to the
+     * {@link ISystemsService} stateless create + findSystem + registerNewSystem chain.
+     * Concrete subclasses with bespoke registration logic (different description, null-guards, etc.) override this.
+     */
+    @Override
+    public Uni<ISystems<?,?>> registerSystem(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise)
+    {
+        return systemsService.create(session, enterprise, getSystemName(), getSystemDescription())
+                .chain(system -> systemsService.findSystem(session, enterprise, getSystemName())
+                        .chain(sys -> systemsService.registerNewSystem(session, enterprise, sys))
+                        .replaceWith(system));
+    }
+
+    /**
      * Stateless variant of {@link #getSystemToken(Mutiny.Session, IEnterprise)} — resolves this system's
      * identity-token UUID via the stateless scalar projection (no link-entity hydration).
      */

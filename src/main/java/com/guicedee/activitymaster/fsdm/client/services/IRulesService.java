@@ -85,6 +85,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 */
 	Uni<IRules<?,?>> find(Mutiny.Session session, UUID identity);
 
+	/** Stateless variant of {@link #find(Mutiny.Session, UUID)}. */
+	Uni<IRules<?,?>> find(Mutiny.StatelessSession session, UUID identity);
+
 	/**
 	 * Finds a rules type by its unique ID.
 	 *
@@ -93,6 +96,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 * @return A Uni emitting the found rules type
 	 */
 	Uni<IRulesType<?,?>> findType(Mutiny.Session session, UUID identity);
+
+	/** Stateless variant of {@link #findType(Mutiny.Session, UUID)}. */
+	Uni<IRulesType<?,?>> findType(Mutiny.StatelessSession session, UUID identity);
 
 	/**
 	 * Finds rules by name within an enterprise.
@@ -105,6 +111,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 */
 	Uni<IRules<?,?>> findRules(Mutiny.Session session, String name, IEnterprise<?,?> enterprise, UUID... identityToken);
 
+	/** Stateless variant of {@link #findRules(Mutiny.Session, String, IEnterprise, UUID...)}. */
+	Uni<IRules<?,?>> findRules(Mutiny.StatelessSession session, String name, IEnterprise<?,?> enterprise, UUID... identityToken);
+
 	/**
 	 * Finds rules by product name, classification, and enterprise.
 	 *
@@ -116,6 +125,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 * @return A Uni emitting the found rules
 	 */
 	Uni<IRules<?,?>> findRules(Mutiny.Session session, String productName, IClassification<?,?> classification, IEnterprise<?,?> enterprise, UUID... identityToken);
+
+	/** Stateless variant of {@link #findRules(Mutiny.Session, String, IClassification, IEnterprise, UUID...)}. */
+	Uni<IRules<?,?>> findRules(Mutiny.StatelessSession session, String productName, IClassification<?,?> classification, IEnterprise<?,?> enterprise, UUID... identityToken);
 
 	/**
 	 * Creates a new rules type using an enum.
@@ -224,6 +236,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 */
 	Uni<List<IRules<?,?>>> findByRulesTypes(Mutiny.Session session, IRulesType<?,?> rulesType, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #findByRulesTypes(Mutiny.Session, IRulesType, String, String, ISystems, UUID...)}. */
+	Uni<List<IRules<?,?>>> findByRulesTypes(Mutiny.StatelessSession session, IRulesType<?,?> rulesType, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds rules types associated with specific rules and classification.
 	 *
@@ -236,6 +251,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 * @return A Uni emitting a list of found rules types
 	 */
 	Uni<List<IRulesType<?,?>>> findRuleTypesByRules(Mutiny.Session session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findRuleTypesByRules(Mutiny.Session, IRules, String, String, ISystems, UUID...)}. */
+	Uni<List<IRulesType<?,?>>> findRuleTypesByRules(Mutiny.StatelessSession session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Finds relationship values between rules and rules types.
@@ -250,6 +268,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 */
 	Uni<List<IRelationshipValue<IRules<?,?>,IRulesType<?,?>,?>>> findRuleTypeValuesByRules(Mutiny.Session session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #findRuleTypeValuesByRules(Mutiny.Session, IRules, String, String, ISystems, UUID...)}. */
+	Uni<List<IRelationshipValue<IRules<?,?>,IRulesType<?,?>,?>>> findRuleTypeValuesByRules(Mutiny.StatelessSession session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds rules associated with a product and classification.
 	 *
@@ -263,6 +284,9 @@ public interface IRulesService<J extends IRulesService<J>>
 	 */
 	Uni<List<IRules<?,?>>> findRulesByProduct(Mutiny.Session session, IProduct<?,?> product, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #findRulesByProduct(Mutiny.Session, IProduct, String, String, ISystems, UUID...)}. */
+	Uni<List<IRules<?,?>>> findRulesByProduct(Mutiny.StatelessSession session, IProduct<?,?> product, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds rules associated with a resource item and classification.
 	 *
@@ -275,4 +299,37 @@ public interface IRulesService<J extends IRulesService<J>>
 	 * @return A Uni emitting a list of relationship values containing rules
 	 */
 	Uni<List<IRelationshipValue<IRules<?,?>, IResourceItem<?,?>,?>>> findRulesByResourceItem(Mutiny.Session session, IResourceItem<?, ?> resourceItem, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findRulesByResourceItem(Mutiny.Session, IResourceItem, String, String, ISystems, UUID...)}. */
+	Uni<List<IRelationshipValue<IRules<?,?>, IResourceItem<?,?>,?>>> findRulesByResourceItem(Mutiny.StatelessSession session, IResourceItem<?, ?> resourceItem, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+	// ============================================================================================
+	// Stateless create twins (Rules + RulesType, public + scope-restricted). Each runs entirely on the
+	// supplied Mutiny.StatelessSession, so independent stateless sessions can provision rules in parallel.
+	// ============================================================================================
+
+	/** Stateless variant of {@link #createRules(Mutiny.Session, String, String, String, ISystems, UUID...)}. */
+	Uni<IRules<?,?>> createRules(Mutiny.StatelessSession session, String rulesType, String name, String description, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #createRules(Mutiny.Session, String, UUID, String, String, ISystems, UUID...)}. */
+	Uni<IRules<?,?>> createRules(Mutiny.StatelessSession session, String rulesType, UUID key, String name, String description, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless scope-restricted variant of {@link #createRulesScopeRestricted(Mutiny.Session, String, UUID, String, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+	Uni<IRules<?,?>> createRulesScopeRestricted(Mutiny.StatelessSession session, String rulesType, UUID key, String name, String description, ISystems<?,?> system,
+												com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?,?> scopeToken,
+												UUID... identityToken);
+
+	/** Stateless variant of {@link #createRulesType(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IRulesType<?,?>> createRulesType(Mutiny.StatelessSession session, String rulesType, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #createRulesType(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	Uni<IRulesType<?,?>> createRulesType(Mutiny.StatelessSession session, String rulesType, String description, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #createRulesType(Mutiny.Session, String, UUID, String, ISystems, UUID...)}. */
+	Uni<IRulesType<?,?>> createRulesType(Mutiny.StatelessSession session, String rulesType, UUID key, String description, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless scope-restricted variant of {@link #createRulesTypeScopeRestricted(Mutiny.Session, String, UUID, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+	Uni<IRulesType<?,?>> createRulesTypeScopeRestricted(Mutiny.StatelessSession session, String rulesType, UUID key, String description, ISystems<?,?> system,
+													   com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?,?> scopeToken,
+													   UUID... identityToken);
 }

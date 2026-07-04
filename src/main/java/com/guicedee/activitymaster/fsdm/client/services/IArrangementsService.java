@@ -109,6 +109,45 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 								  UUID... identityToken);
 
 	/**
+	 * Stateless variant of {@link #create(Mutiny.Session, UUID, String, String, String, ISystems, UUID...)} —
+	 * provisions the arrangement (and its arrangement-type link) entirely on a {@link Mutiny.StatelessSession}
+	 * via {@code session.insert} + the stateless default-security path. World-readable (public) security matrix.
+	 *
+	 * @param session                        The stateless session to use
+	 * @param key                            The UUID key for the arrangement, or {@code null} to generate one
+	 * @param type                           The arrangement type
+	 * @param arrangementTypeClassification  The classification for the arrangement type
+	 * @param arrangementTypeValue           The value for the arrangement type classification
+	 * @param system                         The system creating the arrangement
+	 * @param identityToken                  Optional security identity tokens
+	 * @return A Uni emitting the created arrangement
+	 */
+	Uni<IArrangement<?,?>> create(Mutiny.StatelessSession session, UUID key, String type,
+								  String arrangementTypeClassification,
+								  String arrangementTypeValue,
+								  ISystems<?, ?> system,
+								  UUID... identityToken);
+
+	/**
+	 * Stateless variant of {@link #create(Mutiny.Session, String, UUID, String, String, ISystems, UUID...)} —
+	 * provisions the arrangement (and its arrangement-type link) entirely on a {@link Mutiny.StatelessSession}.
+	 *
+	 * @param session                        The stateless session to use
+	 * @param type                           The arrangement type
+	 * @param key                            The UUID key for the arrangement, or {@code null} to generate one
+	 * @param arrangementTypeClassification  The classification for the arrangement type
+	 * @param arrangementTypeValue           The value for the arrangement type classification
+	 * @param system                         The system creating the arrangement
+	 * @param identityToken                  Optional security identity tokens
+	 * @return A Uni emitting the created arrangement
+	 */
+	Uni<IArrangement<?,?>> create(Mutiny.StatelessSession session, String type, UUID key,
+								  String arrangementTypeClassification,
+								  String arrangementTypeValue,
+								  ISystems<?, ?> system,
+								  UUID... identityToken);
+
+	/**
 	 * Creates a new arrangement that is <strong>scope-restricted</strong> rather than world-readable.
 	 * Identical to {@link #create(Mutiny.Session, String, UUID, String, String, ISystems, UUID...)} except
 	 * the arrangement is secured with the restricted matrix: only Administrators / Systems / Applications /
@@ -127,6 +166,14 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 	 * @return A Uni emitting the created (scope-restricted) arrangement
 	 */
 	Uni<IArrangement<?,?>> createScopeRestricted(Mutiny.Session session, String type, UUID key,
+												 String arrangementTypeClassification,
+												 String arrangementTypeValue,
+												 ISystems<?, ?> system,
+												 ISecurityToken<?, ?> scopeToken,
+												 UUID... identityToken);
+
+	/** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.Session, String, UUID, String, String, ISystems, ISecurityToken, UUID...)}. */
+	Uni<IArrangement<?,?>> createScopeRestricted(Mutiny.StatelessSession session, String type, UUID key,
 												 String arrangementTypeClassification,
 												 String arrangementTypeValue,
 												 ISystems<?, ?> system,
@@ -202,6 +249,9 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 	 * @return A Uni emitting a list of found arrangements
 	 */
 	Uni<List<IArrangement<?,?>>> findArrangementsByClassification(Mutiny.Session session, String arrType, String value, ISystems<?,?> systems, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByClassification(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByClassification(Mutiny.StatelessSession session, String arrType, String value, ISystems<?,?> systems, UUID... identityToken);
 
 	/**
 	 * Finds arrangements by classification value greater than the specified value.
@@ -437,5 +487,58 @@ public interface IArrangementsService<J extends IArrangementsService<J>>
 	 * @return A Uni emitting the completed arrangement
 	 */
 	Uni<@NotNull IArrangement<?,?>> completeArrangement(Mutiny.Session session, IArrangement<?,?> arrangement, ISystems<?,?> system, UUID... identityToken);
+
+	// ---- Stateless finder twins ----
+
+	/** Stateless variant of {@link #find(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<IArrangementType<?,?>> find(Mutiny.StatelessSession session, String arrangementType, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #find(Mutiny.Session, UUID, ISystems, UUID...)}. */
+	Uni<IArrangement<?,?>> find(Mutiny.StatelessSession session, UUID id, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #find(Mutiny.Session, UUID)}. */
+	Uni<IArrangement<?,?>> find(Mutiny.StatelessSession session, UUID id);
+
+	/** Stateless variant of {@link #findAll(Mutiny.Session, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findAll(Mutiny.StatelessSession session, String arrangementType, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementByResourceItem(Mutiny.Session, IResourceItem, String, String, ISystems, UUID...)}. */
+	Uni<IArrangement<?,?>> findArrangementByResourceItem(Mutiny.StatelessSession session, IResourceItem<?,?> resourceItem, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, ISystems, UUID...)}. */
+	Uni<IArrangement<?,?>> findArrangementByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?,?> involvedParty, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementInvolvedParties(Mutiny.Session, IArrangement, String, String, ISystems, UUID...)}. */
+	Uni<List<IInvolvedParty<?,?>>> findArrangementInvolvedParties(Mutiny.StatelessSession session, IArrangement<?,?> arrangement, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?,?> involvedParty, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByRulesType(Mutiny.Session, IRulesType, String, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByRulesType(Mutiny.StatelessSession session, IRulesType<?,?> ruleType, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByClassification(Mutiny.Session, String, IArrangement, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByClassification(Mutiny.StatelessSession session, String arrType, IArrangement<?,?> withParent, String value, ISystems<?,?> systems, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByClassificationGT(Mutiny.Session, String, IArrangement, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByClassificationGT(Mutiny.StatelessSession session, String arrType, IArrangement<?,?> withParent, String value, ISystems<?,?> systems, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByClassificationGTE(Mutiny.Session, String, IArrangement, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByClassificationGTE(Mutiny.StatelessSession session, String arrType, IArrangement<?,?> withParent, String value, ISystems<?,?> systems, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByClassificationLT(Mutiny.Session, String, IArrangement, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByClassificationLT(Mutiny.StatelessSession session, String arrType, IArrangement<?,?> withParent, String value, ISystems<?,?> systems, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByClassificationLTE(Mutiny.Session, String, IArrangement, String, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByClassificationLTE(Mutiny.StatelessSession session, String arrType, IArrangement<?,?> withParent, String value, ISystems<?,?> systems, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, LocalDateTime, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?,?> involvedParty, String classificationName, String value, LocalDateTime startDate, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findArrangementsByInvolvedParty(Mutiny.Session, IInvolvedParty, String, String, LocalDateTime, LocalDateTime, ISystems, UUID...)}. */
+	Uni<List<IArrangement<?,?>>> findArrangementsByInvolvedParty(Mutiny.StatelessSession session, IInvolvedParty<?,?> involvedParty, String classificationName, String value, LocalDateTime startDate, LocalDateTime endDate, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #completeArrangement(Mutiny.Session, IArrangement, ISystems, UUID...)}. */
+	Uni<@NotNull IArrangement<?,?>> completeArrangement(Mutiny.StatelessSession session, IArrangement<?,?> arrangement, ISystems<?,?> system, UUID... identityToken);
 
 }

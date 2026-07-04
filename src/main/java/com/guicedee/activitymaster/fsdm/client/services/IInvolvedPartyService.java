@@ -41,6 +41,10 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedParty<?,?>> findByID(Mutiny.Session session, UUID id);
 
+	/** Stateless variant of {@link #findByID(Mutiny.Session, UUID)}. */
+	Uni<IInvolvedParty<?,?>> findByID(Mutiny.StatelessSession session, UUID id);
+
+
 	/**
 	 * Creates a new name type for involved parties.
 	 *
@@ -195,6 +199,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedParty<?,?>> findByResourceItem(Mutiny.Session session, IResourceItem<?,?> idType, String value, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #findByResourceItem(Mutiny.Session, IResourceItem, String, ISystems, UUID...)}. */
+	Uni<IInvolvedParty<?,?>> findByResourceItem(Mutiny.StatelessSession session, IResourceItem<?,?> idType, String value, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Creates a new involved party.
 	 *
@@ -257,6 +264,11 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 													Pair<String, String> idTypes, boolean isOrganic,
 													ISecurityToken<?, ?> scopeToken, UUID... identityToken);
 
+	/** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.Session, ISystems, UUID, Pair, boolean, ISecurityToken, UUID...)}. */
+	Uni<IInvolvedParty<?, ?>> createScopeRestricted(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID key,
+													Pair<String, String> idTypes, boolean isOrganic,
+													ISecurityToken<?, ?> scopeToken, UUID... identityToken);
+
 	/**
 	 * Finds an involved party type by name string.
 	 *
@@ -295,6 +307,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedParty<?,?>> findByToken(Mutiny.Session session, ISecurityToken<?,?> token, UUID... identityToken);
 
+	/** Stateless variant of {@link #findByToken(Mutiny.Session, ISecurityToken, UUID...)}. */
+	Uni<IInvolvedParty<?,?>> findByToken(Mutiny.StatelessSession session, ISecurityToken<?,?> token, UUID... identityToken);
+
 	/**
 	 * Finds an involved party by its unique ID.
 	 *
@@ -303,6 +318,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 * @return A Uni emitting the found involved party
 	 */
 	Uni<IInvolvedParty<?,?>> find(Mutiny.Session session, UUID uuid);
+
+	/** Stateless variant of {@link #find(Mutiny.Session, UUID)}. */
+	Uni<IInvolvedParty<?,?>> find(Mutiny.StatelessSession session, UUID uuid);
 
 	/**
 	 * Finds an involved party type by its unique ID.
@@ -322,6 +340,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedPartyNameType<?,?>> findNameType(Mutiny.Session session, UUID uuid);
 
+	/** Stateless variant of {@link #findNameType(Mutiny.Session, UUID)}. */
+	Uni<IInvolvedPartyNameType<?,?>> findNameType(Mutiny.StatelessSession session, UUID uuid);
+
 	/**
 	 * Finds an identification type by its unique ID.
 	 *
@@ -330,6 +351,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 * @return A Uni emitting the found identification type
 	 */
 	Uni<IInvolvedPartyIdentificationType<?,?>> findIdentificationType(Mutiny.Session session, UUID uuid);
+
+	/** Stateless variant of {@link #findIdentificationType(Mutiny.Session, UUID)}. */
+	Uni<IInvolvedPartyIdentificationType<?,?>> findIdentificationType(Mutiny.StatelessSession session, UUID uuid);
 
 	/**
 	 * Finds an involved party by UUID token.
@@ -342,6 +366,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<IInvolvedParty<?,?>> findByUUID(Mutiny.Session session, UUID token, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #findByUUID(Mutiny.Session, UUID, ISystems, UUID...)}. */
+	Uni<IInvolvedParty<?,?>> findByUUID(Mutiny.StatelessSession session, UUID token, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds all relationships by identification type and value.
 	 *
@@ -351,6 +378,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 * @return A Uni emitting a list of matching relationship values
 	 */
 	Uni<List<IRelationshipValue<IInvolvedParty<?,?>, IInvolvedPartyIdentificationType<?,?>, ?>>> findAllByIdentificationType(Mutiny.Session session, String identificationType, String value);
+
+	/** Stateless variant of {@link #findAllByIdentificationType(Mutiny.Session, String, String)}. */
+	Uni<List<IRelationshipValue<IInvolvedParty<?,?>, IInvolvedPartyIdentificationType<?,?>, ?>>> findAllByIdentificationType(Mutiny.StatelessSession session, String identificationType, String value);
 
 	/**
 	 * Finds involved parties by rules classification.
@@ -364,6 +394,9 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	Uni<List<IInvolvedParty<?,?>>> findByRulesClassification(Mutiny.Session session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
 
+	/** Stateless variant of {@link #findByRulesClassification(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	Uni<List<IInvolvedParty<?,?>>> findByRulesClassification(Mutiny.StatelessSession session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
+
 	/**
 	 * Finds an involved party by classification.
 	 *
@@ -375,4 +408,7 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 * @return A Uni emitting the found involved party
 	 */
 	Uni<IInvolvedParty<?,?>> findByClassification(Mutiny.Session session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
+
+	/** Stateless variant of {@link #findByClassification(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	Uni<IInvolvedParty<?,?>> findByClassification(Mutiny.StatelessSession session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
 }

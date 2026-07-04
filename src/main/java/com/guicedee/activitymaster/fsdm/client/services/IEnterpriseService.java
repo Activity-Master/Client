@@ -4,6 +4,7 @@ import com.guicedee.activitymaster.fsdm.client.IEnterpriseNames;
 import com.guicedee.activitymaster.fsdm.client.services.administration.ActivityMasterConfiguration;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.classifications.IClassification;
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise;
+import com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache;
 import com.guicedee.activitymaster.fsdm.client.services.systems.*;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
@@ -20,8 +21,7 @@ import java.util.*;
  *
  * @param <J> The type of the service that implements this interface
  */
-public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IProgressable
-{
+public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IProgressable {
     /**
      * The name of the Enterprise system.
      */
@@ -58,6 +58,11 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
     Uni<Integer> loadUpdates(Mutiny.Session session, IEnterprise<?, ?> enterprise);
 
     /**
+     * Stateless variant of {@link #loadUpdates(Mutiny.Session, IEnterprise)}.
+     */
+    Uni<Integer> loadUpdates(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise);
+
+    /**
      * Retrieves the set of applied update names for an enterprise.
      *
      * @param session    The Mutiny session to use
@@ -67,6 +72,11 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
     Uni<Set<String>> getEnterpriseAppliedUpdates(Mutiny.Session session, IEnterprise<?, ?> enterprise);
 
     /**
+     * Stateless variant of {@link #getEnterpriseAppliedUpdates(Mutiny.Session, IEnterprise)}.
+     */
+    Uni<Set<String>> getEnterpriseAppliedUpdates(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise);
+
+    /**
      * Retrieves the available updates for an enterprise.
      *
      * @param session    The Mutiny session to use
@@ -74,6 +84,12 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @return A Uni emitting a map of update versions to their classes
      */
     Uni<Map<Integer, Class<? extends ISystemUpdate>>> getUpdates(Mutiny.Session session, IEnterprise<?, ?> enterprise);
+
+    /**
+     * Stateless variant of {@link #getUpdates(Mutiny.Session, IEnterprise)}.
+     */
+    Uni<Map<Integer, Class<? extends ISystemUpdate>>> getUpdates(Mutiny.StatelessSession session,
+                                                                 IEnterprise<?, ?> enterprise);
 
     /**
      * Gets all possible updates for the system.
@@ -89,7 +105,14 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param classification The classification to search for
      * @return A Uni emitting a list of matching enterprises
      */
-    Uni<List<IEnterprise<?, ?>>> findEnterprisesWithClassification(Mutiny.Session session, IClassification<?, ?> classification);
+    Uni<List<IEnterprise<?, ?>>> findEnterprisesWithClassification(Mutiny.Session session,
+                                                                   IClassification<?, ?> classification);
+
+    /**
+     * Stateless variant of {@link #findEnterprisesWithClassification(Mutiny.Session, IClassification)}.
+     */
+    Uni<List<IEnterprise<?, ?>>> findEnterprisesWithClassification(Mutiny.StatelessSession session,
+                                                                   IClassification<?, ?> classification);
 
     /**
      * Retrieves an enterprise by name using a stateless session.
@@ -125,34 +148,23 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param enterprise The enterprise to initialize
      * @return A Uni that completes when the operation is finished
      */
-    default Uni<Void> performPostStartup(Mutiny.Session session, IEnterprise<?, ?> enterprise)
-    {
+    default Uni<Void> performPostStartup(Mutiny.Session session, IEnterprise<?, ?> enterprise) {
         ActivityMasterConfiguration configuration = ActivityMasterConfiguration.get();
-        return configuration.isEnterpriseReady(session)
-                       .chain(ent -> {
-                           logProgress("System Loading", "Starting Systems... ", 1);
-                           setCurrentTask(0);
-                           Multi<IMasterSystem<?>> multi = Multi.createFrom()
-                                   .iterable(configuration.getAllSystems());
-                           multi.invoke(iActivityMasterSystem -> {
-                                       logProgress("System Loading", "Starting up system " + iActivityMasterSystem.getClass()
-                                                                                                     .getName(), 1);
-                                       // Call postStartup synchronously since it's not reactive yet
-                                       iActivityMasterSystem.postStartup(session, enterprise).await().atMost(Duration.of(50L, ChronoUnit.SECONDS));
-                                   })
-                                   .onCompletion()
-                                   .invoke(() -> {
-                                       logProgress("System Loading", "Completed Startup of Systems... ", 1);
-                                   })
-                                   ;
-                           multi.toUni()
-                                   .await()
-                                   .atMost(Duration.of(50L, ChronoUnit.SECONDS))
-                           ;
-                           return Uni.createFrom().voidItem();
-                       })
-                       .replaceWith(Uni.createFrom()
-                                            .voidItem());
+        return configuration.isEnterpriseReady(session).chain(ent -> {
+            logProgress("System Loading", "Starting Systems... ", 1);
+            setCurrentTask(0);
+            Multi<IMasterSystem<?>> multi = Multi.createFrom().iterable(configuration.getAllSystems());
+            multi.invoke(iActivityMasterSystem -> {
+                logProgress("System Loading", "Starting up system " + iActivityMasterSystem.getClass().getName(), 1);
+                // Call postStartup synchronously since it's not reactive yet
+                iActivityMasterSystem.postStartup(session, enterprise).await()
+                                     .atMost(Duration.of(30L, ChronoUnit.SECONDS));
+            }).onCompletion().invoke(() -> {
+                logProgress("System Loading", "Completed Startup of Systems... ", 1);
+            });
+            multi.toUni().await().atMost(Duration.of(50L, ChronoUnit.SECONDS));
+            return Uni.createFrom().voidItem();
+        }).replaceWith(Uni.createFrom().voidItem());
     }
 
     /**
@@ -160,15 +172,13 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * system's {@link IMasterSystem#postStartup(Mutiny.StatelessSession, IEnterprise)} sequentially on the
      * supplied {@link Mutiny.StatelessSession} (no blocking {@code await}, one operation at a time).
      */
-    default Uni<Void> performPostStartup(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
-    {
+    default Uni<Void> performPostStartup(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise) {
         ActivityMasterConfiguration configuration = ActivityMasterConfiguration.get();
         java.util.List<IMasterSystem<?>> systems = new java.util.ArrayList<>(configuration.getAllSystems());
         logProgress("System Loading", "Starting Systems... ", 1);
         setCurrentTask(0);
         Uni<Void> chain = Uni.createFrom().voidItem();
-        for (IMasterSystem<?> system : systems)
-        {
+        for (IMasterSystem<?> system : systems) {
             final IMasterSystem<?> current = system;
             chain = chain.chain(() -> {
                 logProgress("System Loading", "Starting up system " + current.getClass().getName(), 1);
@@ -194,8 +204,7 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param name    The enterprise name object
      * @return A Uni emitting the found enterprise
      */
-    default Uni<IEnterprise<?, ?>> getEnterprise(Mutiny.Session session, IEnterpriseNames<?> name)
-    {
+    default Uni<IEnterprise<?, ?>> getEnterprise(Mutiny.Session session, IEnterpriseNames<?> name) {
         return getEnterprise(session, name.toString());
     }
 
@@ -207,16 +216,12 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param enterpriseName The name of the enterprise
      * @return A Uni emitting the UUID of the enterprise
      */
-    default Uni<UUID> resolveEnterpriseIdByName(Mutiny.Session session, String enterpriseName)
-    {
-        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
-                .getEnterpriseId(session, enterpriseName, (sess, name) -> {
-                    String sql = "select enterpriseid from dbo.enterprise where enterprisename = :name";
-                    return sess.createNativeQuery(sql)
-                               .setParameter("name", name)
-                               .getSingleResult()
-                               .map(result -> (UUID) result);
-                });
+    default Uni<UUID> resolveEnterpriseIdByName(Mutiny.Session session, String enterpriseName) {
+        return NameIdCache.getEnterpriseId(session, enterpriseName, (sess, name) -> {
+            String sql = "select enterpriseid from dbo.enterprise where enterprisename = :name";
+            return sess.createNativeQuery(sql).setParameter("name", name).getSingleResult()
+                       .map(result -> (UUID) result);
+        });
     }
 
     /**
@@ -228,8 +233,10 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param adminPassword  The administrator password
      * @return A Uni emitting the created enterprise
      */
-    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.Session session, String enterpriseName,
-                                              @NotNull String adminUserName, @NotNull String adminPassword);
+    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.Session session,
+                                              String enterpriseName,
+                                              @NotNull String adminUserName,
+                                              @NotNull String adminPassword);
 
     /**
      * Starts a new enterprise with a specific ID.
@@ -241,8 +248,11 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param uuidIdentifier The specific UUID to use for the enterprise
      * @return A Uni emitting the created enterprise
      */
-    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.Session session, String enterpriseName,
-                                              @NotNull String adminUserName, @NotNull String adminPassword, UUID uuidIdentifier);
+    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.Session session,
+                                              String enterpriseName,
+                                              @NotNull String adminUserName,
+                                              @NotNull String adminPassword,
+                                              UUID uuidIdentifier);
 
     /**
      * Starts a new enterprise driven from a stateless session.
@@ -260,8 +270,10 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param adminPassword  The administrator password
      * @return A Uni emitting the created enterprise
      */
-    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.StatelessSession session, String enterpriseName,
-                                              @NotNull String adminUserName, @NotNull String adminPassword);
+    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.StatelessSession session,
+                                              String enterpriseName,
+                                              @NotNull String adminUserName,
+                                              @NotNull String adminPassword);
 
     /**
      * Starts a new enterprise with a specific ID, driven from a stateless session.
@@ -274,8 +286,11 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @return A Uni emitting the created enterprise
      * @see #startNewEnterprise(Mutiny.StatelessSession, String, String, String)
      */
-    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.StatelessSession session, String enterpriseName,
-                                              @NotNull String adminUserName, @NotNull String adminPassword, UUID uuidIdentifier);
+    Uni<IEnterprise<?, ?>> startNewEnterprise(Mutiny.StatelessSession session,
+                                              String enterpriseName,
+                                              @NotNull String adminUserName,
+                                              @NotNull String adminPassword,
+                                              UUID uuidIdentifier);
 
     /**
      * Creates a new enterprise from an existing enterprise object.
@@ -284,7 +299,7 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param enterprise The enterprise object to create
      * @return A Uni emitting the created enterprise
      */
-    Uni<IEnterprise<?,?>> createNewEnterprise(Mutiny.Session session, @NotNull IEnterprise<?, ?> enterprise);
+    Uni<IEnterprise<?, ?>> createNewEnterprise(Mutiny.Session session, @NotNull IEnterprise<?, ?> enterprise);
 
     /**
      * Creates a new enterprise from an existing enterprise object, driven from a stateless session.
@@ -296,7 +311,7 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @param enterprise The enterprise object to create
      * @return A Uni emitting the created enterprise
      */
-    Uni<IEnterprise<?,?>> createNewEnterprise(Mutiny.StatelessSession session, @NotNull IEnterprise<?, ?> enterprise);
+    Uni<IEnterprise<?, ?>> createNewEnterprise(Mutiny.StatelessSession session, @NotNull IEnterprise<?, ?> enterprise);
 
     /**
      * Checks if the enterprise is ready.
@@ -305,4 +320,9 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
      * @return A Uni emitting the enterprise if ready
      */
     Uni<IEnterprise<?, ?>> isEnterpriseReady(Mutiny.Session session);
+
+    /**
+     * Stateless variant of {@link #isEnterpriseReady(Mutiny.Session)}.
+     */
+    Uni<IEnterprise<?, ?>> isEnterpriseReady(Mutiny.StatelessSession session);
 }

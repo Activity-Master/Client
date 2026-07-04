@@ -92,6 +92,16 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                         .getCount());
     }
 
+    /** Stateless variant of {@link #hasClassifications(Mutiny.Session, Enum, String, ISystems, UUID...)}. */
+    default Uni<Boolean> hasClassifications(Mutiny.StatelessSession session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return hasClassifications(session, classificationName.toString(), value, system, identityToken);
+    }
+
+    /** Stateless variant of {@link #hasClassifications(Mutiny.Session, String, String, ISystems, UUID...)}. */
+    default Uni<Boolean> hasClassifications(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return numberOfClassifications(session, classificationName, value, system, identityToken).map(count -> count > 0);
+    }
+
     default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName, ISystems<?, ?> system, UUID... identityToken) {
         IClassificationService<?> classificationService = get(IClassificationService.class);
         IWarehouseRelationshipTable<?, ?, J, IClassification<?, ?>, UUID, ?> relationshipTable = get(getClassificationsRelationshipClass());
@@ -149,14 +159,44 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
     }
 
     default Uni<java.util.Map<String, String>> findClassificationValues(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken) {
-        return findClassifications(session, system, identityToken).map(links -> {
-            java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
-            for (IRelationshipValue<J, IClassification<?, ?>, ?> link : links) {
-                IClassification<?, ?> classification = link.getSecondary();
-                if (classification != null && classification.getName() != null) values.putIfAbsent(classification.getName(), link.getValue());
-            }
-            return values;
-        });
+        // Stateless-safe batched read: a join query that projects (ClassificationName, value) as SCALARS,
+        // so the link's lazy @ManyToOne secondary classification name is NEVER navigated (navigating it
+        // throws LazyInitializationException on a detached stateless entity). Mirrors the native-SQL join
+        // used by IQueryBuilderClassifications.getClassificationsValuePivot.
+        com.entityassist.RootEntity me = (com.entityassist.RootEntity) this;
+        String myTableName = me.getTableName();
+        String idColumnName = (String) me.getIdPair().getKey();
+        Object myId = me.getIdPair().getValue();
+        String joinTableName = myTableName + "XClassification";
+        String targetTableName = "Classification.Classification";
+        java.util.Set<com.entityassist.enumerations.ActiveFlag> activeFlags = com.entityassist.enumerations.ActiveFlag.getActiveRangeAndUp();
+        String activeFlagsInList = com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderFlags.listToSqlString(
+                com.entityassist.enumerations.ActiveFlag.activeFlagToStrings(activeFlags));
+        // Compare SCD effective windows against the same logical "now" the rows were written with
+        // (convertToUTCDateTime(RootEntity.getNow())) rather than DB now() — the native query does not
+        // auto-flush and the DB clock can trail a row written earlier in this same transaction. Mirror the
+        // managed read: filter only the LINK row (its id, active flag, date range); join the classification
+        // purely to project its name (reference data, always active).
+        java.time.OffsetDateTime now = convertToUTCDateTime(com.entityassist.RootEntity.getNow());
+        String sql = "select c.ClassificationName, ric.value " +
+                "from " + joinTableName + " ric " +
+                "join " + targetTableName + " c on ric.ClassificationID = c.ClassificationID " +
+                "join dbo.ActiveFlag af on ric.ActiveFlagID = af.ActiveFlagID " +
+                "where ric." + idColumnName + " = '" + myId + "' " +
+                "and af.ActiveFlagName in (" + activeFlagsInList + ") " +
+                "and ric.EffectiveFromDate <= :now and ric.EffectiveToDate >= :now";
+        return session.createNativeQuery(sql, Object[].class)
+                .setParameter("now", now)
+                .getResultList()
+                .map(rows -> {
+                    java.util.Map<String, String> values = new java.util.LinkedHashMap<>();
+                    for (Object[] row : rows) {
+                        if (row[0] != null) {
+                            values.putIfAbsent(String.valueOf(row[0]), row[1] == null ? "" : String.valueOf(row[1]));
+                        }
+                    }
+                    return values;
+                });
     }
 
     default Uni<List<IRelationshipValue<J, IClassification<?, ?>, ?>>> findClassifications(Mutiny.Session session, String classificationName, int maxResults, ISystems<?, ?> system, UUID... identityToken) {
@@ -583,6 +623,28 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
     /** Stateless add-or-update classification link (String name with concept) — find-or-insert, idempotent on re-install. */
     default Uni<Void> addOrUpdateClassification(Mutiny.StatelessSession session, String classificationName, EnterpriseClassificationDataConcepts concept, String searchValue, String value, ISystems<?, ?> system, UUID... identityToken) {
         return addOrInsertClassificationStateless(session, classificationName, concept, value, system, identityToken);
+    }
+
+    // ---- Stateless add-or-update convenience overloads (value only — no explicit searchValue) ----
+
+    /** Stateless add-or-update classification link (Enum name, value only). */
+    default Uni<Void> addOrUpdateClassification(Mutiny.StatelessSession session, Enum<?> classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName.toString(), EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, null, value, system, identityToken);
+    }
+
+    /** Stateless add-or-update classification link (Enum name with concept, value only). */
+    default Uni<Void> addOrUpdateClassification(Mutiny.StatelessSession session, Enum<?> classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName.toString(), concept, null, value, system, identityToken);
+    }
+
+    /** Stateless add-or-update classification link (String name, value only). */
+    default Uni<Void> addOrUpdateClassification(Mutiny.StatelessSession session, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, null, value, system, identityToken);
+    }
+
+    /** Stateless add-or-update classification link (String name with concept, value only). */
+    default Uni<Void> addOrUpdateClassification(Mutiny.StatelessSession session, String classificationName, EnterpriseClassificationDataConcepts concept, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return addOrUpdateClassification(session, classificationName, concept, null, value, system, identityToken);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

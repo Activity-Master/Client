@@ -35,7 +35,6 @@ import org.hibernate.reactive.mutiny.Mutiny;
 /**
  * Designates a system update, must be annotation with @Update for sorting and task information
  */
-@FunctionalInterface
 public interface ISystemUpdate extends IProgressable
 {
 	/**
@@ -44,7 +43,11 @@ public interface ISystemUpdate extends IProgressable
 	 * @param session
 	 * @param enterprise
 	 */
-	Uni<Boolean> update(Mutiny.Session session, IEnterprise<?,?> enterprise);
+	default Uni<Boolean> update(Mutiny.Session session, IEnterprise<?,?> enterprise)
+    {
+        return Uni.createFrom().failure(new UnsupportedOperationException(
+                getClass().getSimpleName() + " has no session update overload"));
+    }
 
 	/**
 	 * Stateless variant of {@link #update(Mutiny.Session, IEnterprise)}. Default throws to act as the

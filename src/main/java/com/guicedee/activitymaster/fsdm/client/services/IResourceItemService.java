@@ -66,6 +66,19 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
     }
 
     /**
+     * Creates a new resource item type by name, using the name as the description.
+     *
+     * @param session        The Mutiny session to use
+     * @param value           The name of the type
+     * @param system          The system creating the type
+     * @param identityToken   Optional security identity tokens
+     * @return A Uni emitting the created resource item type
+     */
+    default Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return createType(session, value, value, system, identityToken);
+    }
+
+    /**
      * Gets a new, uninitialized resource item type instance.
      *
      * @return A new resource item type instance
@@ -91,6 +104,21 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      */
     Uni<IResourceItemType<?, ?>> createType(Mutiny.StatelessSession session, String value, String description, ISystems<?, ?> system, UUID... identityToken);
 
+    /** Stateless variant of {@link #createType(Mutiny.Session, String, ISystems, UUID...)}. */
+    default Uni<IResourceItemType<?, ?>> createType(Mutiny.StatelessSession session, String value, ISystems<?, ?> system, UUID... identityToken) {
+        return createType(session, value, value, system, identityToken);
+    }
+
+    /** Stateless variant of {@link #createType(Mutiny.Session, Enum, ISystems, UUID...)}. */
+    default Uni<IResourceItemType<?, ?>> createType(Mutiny.StatelessSession session, Enum<?> value, ISystems<?, ?> system, UUID... identityToken) {
+        return createType(session, value.toString(), value.toString(), system, identityToken);
+    }
+
+    /** Stateless variant of {@link #createType(Mutiny.Session, Enum, String, ISystems, UUID...)}. */
+    default Uni<IResourceItemType<?, ?>> createType(Mutiny.StatelessSession session, Enum<?> value, String description, ISystems<?, ?> system, UUID... identityToken) {
+        return createType(session, value.toString(), description, system, identityToken);
+    }
+
     /**
      * Creates a new resource item type with a specific key.
      *
@@ -103,6 +131,9 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      * @return A Uni emitting the created resource item type
      */
     Uni<IResourceItemType<?, ?>> createType(Mutiny.Session session, String value, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #createType(Mutiny.Session, String, UUID, String, ISystems, UUID...)}. */
+    Uni<IResourceItemType<?, ?>> createType(Mutiny.StatelessSession session, String value, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
 
     /**
      * Opt-in <strong>scope-restricted</strong> resource-item-type create. Same as
@@ -119,6 +150,11 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      * @return A Uni emitting the created (scope-restricted) resource item type
      */
     Uni<IResourceItemType<?, ?>> createTypeScopeRestricted(Mutiny.Session session, String value, UUID key, String description, ISystems<?, ?> system,
+                                                           com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+                                                           UUID... identityToken);
+
+    /** Stateless scope-restricted variant of {@link #createTypeScopeRestricted(Mutiny.Session, String, UUID, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+    Uni<IResourceItemType<?, ?>> createTypeScopeRestricted(Mutiny.StatelessSession session, String value, UUID key, String description, ISystems<?, ?> system,
                                                            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
                                                            UUID... identityToken);
 
@@ -296,12 +332,60 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      */
     Uni<Void> updateResourceData(Mutiny.Session session, byte[] data, UUID resourceItemId, String systemName);
 
+    /** Stateless variant of {@link #updateResourceData(Mutiny.Session, byte[], UUID, String)}. */
+    Uni<Void> updateResourceData(Mutiny.StatelessSession session, byte[] data, UUID resourceItemId, String systemName);
+
     /** Stateless variant of {@link #updateResourceData(Mutiny.Session, byte[], UUID)} (relational only). */
     Uni<Void> updateResourceData(Mutiny.StatelessSession session, byte[] data, UUID resourceItemId);
 
     /** Stateless find-or-insert variant of {@link #create(Mutiny.Session, String, String, byte[], ISystems, UUID...)}. */
     Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, String resourceItemDataValue, byte[] data,
                                     ISystems<?, ?> system, UUID... identityToken);
+
+    // --- Full stateless create family: a stateless twin for every managed create overload so a managed
+    // create call converts to stateless by only changing the session type. Each links the resource-item
+    // TYPE relationship and honours key / originalSourceSystemUniqueID / effectiveFromDate. ---
+
+    /** Stateless variant of {@link #create(Mutiny.Session, String, String, ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, String resourceItemDataValue,
+                                    ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #create(Mutiny.Session, String, UUID, String, ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, UUID key, String resourceItemDataValue,
+                                    ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #create(Mutiny.Session, String, UUID, String, byte[], ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, UUID key, String resourceItemDataValue, byte[] data,
+                                    ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #create(Mutiny.Session, String, String, UUID, LocalDateTime, ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
+                                    LocalDateTime effectiveFromDate, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #create(Mutiny.Session, String, String, UUID, LocalDateTime, byte[], ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
+                                    LocalDateTime effectiveFromDate, byte[] data, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #create(Mutiny.Session, String, UUID, String, UUID, LocalDateTime, ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, UUID key, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
+                                    LocalDateTime effectiveFromDate, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #create(Mutiny.Session, String, UUID, String, UUID, LocalDateTime, byte[], ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, UUID key, String resourceItemDataValue, UUID originalSourceSystemUniqueID,
+                                    LocalDateTime effectiveFromDate, byte[] data, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless scope-restricted variant of the stateless {@link #create(Mutiny.StatelessSession, String, String, byte[], ISystems, UUID...)} — secures the resource item with the restricted matrix plus a read grant for {@code scopeToken}. */
+    Uni<IResourceItem<?, ?>> createScopeRestricted(Mutiny.StatelessSession session, String identityResourceType, String resourceItemDataValue, byte[] data,
+                                    ISystems<?, ?> system,
+                                    com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+                                    UUID... identityToken);
+
+    /** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.Session, String, UUID, String, UUID, LocalDateTime, byte[], ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+    Uni<IResourceItem<?, ?>> createScopeRestricted(Mutiny.StatelessSession session, String identityResourceType, UUID key, String resourceItemDataValue,
+                                    UUID originalSourceSystemUniqueID, LocalDateTime effectiveFromDate, byte[] data,
+                                    ISystems<?, ?> system,
+                                    com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+                                    UUID... identityToken);
 
     /** Stateless variant of {@link #findByUUID(Mutiny.Session, UUID)}. */
     Uni<IResourceItem<?, ?>> findByUUID(Mutiny.StatelessSession session, UUID uuid);
@@ -318,6 +402,9 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      * @return A Uni that completes when the relationship is added
      */
     Uni<Void> addResourceItemTypeRelationship(Mutiny.Session session, IResourceItem<?, ?> resourceItem, String typeName, String value, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Stateless variant of {@link #addResourceItemTypeRelationship(Mutiny.Session, IResourceItem, String, String, ISystems, UUID...)}. */
+    Uni<Void> addResourceItemTypeRelationship(Mutiny.StatelessSession session, IResourceItem<?, ?> resourceItem, String typeName, String value, ISystems<?, ?> system, UUID... identityToken);
 
     /**
      * Finds a resource item by its type and classification.
@@ -336,6 +423,13 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
                                                   ISystems<?, ?> systems,
                                                   UUID... identityToken);
 
+    /** Stateless variant of {@link #findByClassification(Mutiny.Session, String, String, String, ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> findByClassification(Mutiny.StatelessSession session, String resourceType,
+                                                  String classification,
+                                                  String value,
+                                                  ISystems<?, ?> systems,
+                                                  UUID... identityToken);
+
     /**
      * Finds all resource items matching a type and classification.
      *
@@ -348,6 +442,13 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      * @return A Uni emitting a list of relationship values containing resource items
      */
     Uni<List<IRelationshipValue<IResourceItem<?, ?>, IClassification<?, ?>, ?>>> findByClassificationAll(Mutiny.Session session, String resourceType,
+                                                                                                         String classification,
+                                                                                                         String value,
+                                                                                                         ISystems<?, ?> systems,
+                                                                                                         UUID... identityToken);
+
+    /** Stateless variant of {@link #findByClassificationAll(Mutiny.Session, String, String, String, ISystems, UUID...)}. */
+    Uni<List<IRelationshipValue<IResourceItem<?, ?>, IClassification<?, ?>, ?>>> findByClassificationAll(Mutiny.StatelessSession session, String resourceType,
                                                                                                          String classification,
                                                                                                          String value,
                                                                                                          ISystems<?, ?> systems,
@@ -372,6 +473,11 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      * @return A Uni emitting the found resource item
      */
     Uni<IResourceItem<?, ?>> findByOriginalSourceUniqueID(Mutiny.Session session, UUID originalSourceUniqueID,
+                                                          ISystems<?, ?> systems,
+                                                          UUID... identityToken);
+
+    /** Stateless variant of {@link #findByOriginalSourceUniqueID(Mutiny.Session, UUID, ISystems, UUID...)}. */
+    Uni<IResourceItem<?, ?>> findByOriginalSourceUniqueID(Mutiny.StatelessSession session, UUID originalSourceUniqueID,
                                                           ISystems<?, ?> systems,
                                                           UUID... identityToken);
 
@@ -400,6 +506,9 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      */
     Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.Session session, String type, ISystems<?, ?> systems, UUID... identityToken);
 
+    /** Stateless variant of {@link #findByResourceItemType(Mutiny.Session, String, ISystems, UUID...)}. */
+    Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.StatelessSession session, String type, ISystems<?, ?> systems, UUID... identityToken);
+
     /**
      * Finds resource items of a given type with a specific value.
      *
@@ -411,6 +520,9 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
      * @return A Uni emitting a list of resource items
      */
     Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.Session session, String type, String value, ISystems<?, ?> systems, UUID... identityToken);
+
+    /** Stateless variant of {@link #findByResourceItemType(Mutiny.Session, String, String, ISystems, UUID...)}. */
+    Uni<List<IResourceItem<?, ?>>> findByResourceItemType(Mutiny.StatelessSession session, String type, String value, ISystems<?, ?> systems, UUID... identityToken);
 
     /**
      * Finds JSON resource-item data documents in MongoDB using native query criteria.
@@ -510,6 +622,38 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
                     // with (convertToUTCDateTime(RootEntity.getNow())) rather than the database current_timestamp.
                     // The native query does not auto-flush and the DB clock can trail the just-written effective
                     // date, so using current_timestamp made a row created earlier in this transaction invisible.
+                    java.time.OffsetDateTime now = com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderSCD
+                            .convertToUTCDateTime(com.entityassist.RootEntity.getNow());
+                    return afService.getVisibleRangeAndUpIds(sess, enterpriseId)
+                            .flatMap(visibleIds -> {
+                                String sql = "select resourceitemtypeid from resource.resourceitemtype " +
+                                        "where enterpriseid = :ent and resourceitemtypename = :name " +
+                                        "and (effectivefromdate <= :now) " +
+                                        "and (effectivetodate > :now) " +
+                                        "and activeflagid in (:visibleIds)";
+                                return sess.createNativeQuery(sql, java.util.UUID.class)
+                                        .setParameter("ent", enterpriseId.getId())
+                                        .setParameter("name", name)
+                                        .setParameter("now", now)
+                                        .setParameter("visibleIds", visibleIds)
+                                        .getSingleResult();
+                            });
+                });
+    }
+
+    /**
+     * Stateless variant of {@link #resolveResourceItemTypeIdByName(Mutiny.Session, IEnterprise, String)}.
+     * <p>
+     * Resolves the resource-item-type id via a scalar native-SQL lookup (never hydrating the
+     * {@code @Cacheable} {@code ResourceItemType} entity), so it is safe on a {@link Mutiny.StatelessSession}.
+     * Mirrors the managed contract exactly (SCD window compared against the logical {@code now}, ActiveFlag
+     * visible-range filter via the stateless {@code getVisibleRangeAndUpIds}) and shares the same
+     * {@link com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache} key space.
+     */
+    default Uni<java.util.UUID> resolveResourceItemTypeIdByName(Mutiny.StatelessSession session, IEnterprise<?, ?> enterpriseId, String resourceItemTypeName) {
+        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
+                .getResourceItemTypeId(session, enterpriseId.getId(), resourceItemTypeName, (sess, name) -> {
+                    var afService = com.guicedee.client.IGuiceContext.get(com.guicedee.activitymaster.fsdm.client.services.IActiveFlagService.class);
                     java.time.OffsetDateTime now = com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderSCD
                             .convertToUTCDateTime(com.entityassist.RootEntity.getNow());
                     return afService.getVisibleRangeAndUpIds(sess, enterpriseId)

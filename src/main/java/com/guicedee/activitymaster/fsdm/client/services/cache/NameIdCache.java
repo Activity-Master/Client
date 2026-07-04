@@ -335,4 +335,63 @@ public final class NameIdCache {
         return resolver.resolve(session, flagName)
                 .invoke(id -> put(key, id));
     }
+
+    /** Stateless variant of {@link #getSystemId(Mutiny.Session, UUID, String, Resolver)}. */
+    public static Uni<UUID> getSystemId(Mutiny.StatelessSession session,
+                                        UUID enterpriseId,
+                                        String systemName,
+                                        StatelessResolver resolver) {
+        String norm = normalize(systemName);
+        String domainKey = "systems|" + (enterpriseId == null ? "" : enterpriseId.toString());
+        Key key = new Key(domainKey, norm);
+
+        UUID cached = getIfPresent(key);
+        if (cached != null) {
+            return Uni.createFrom().item(cached);
+        }
+
+        return resolver.resolve(session, systemName)
+                .invoke(id -> put(key, id));
+    }
+
+    /** Stateless variant of {@link #getClassificationId(Mutiny.Session, UUID, UUID, UUID, String, Resolver)}. */
+    public static Uni<UUID> getClassificationId(Mutiny.StatelessSession session,
+                                                UUID enterpriseId,
+                                                UUID systemId,
+                                                UUID conceptId,
+                                                String classificationName,
+                                                StatelessResolver resolver) {
+        String norm = normalize(classificationName);
+        String domainKey = "classification|" +
+                (enterpriseId == null ? "" : enterpriseId.toString()) + "|" +
+                (systemId == null ? "" : systemId.toString()) + "|" +
+                (conceptId == null ? "" : conceptId.toString());
+        Key key = new Key(domainKey, norm);
+
+        UUID cached = getIfPresent(key);
+        if (cached != null) {
+            return Uni.createFrom().item(cached);
+        }
+
+        return resolver.resolve(session, classificationName)
+                .invoke(id -> put(key, id));
+    }
+
+    /** Stateless variant of {@link #getResourceItemTypeId(Mutiny.Session, UUID, String, Resolver)}. */
+    public static Uni<UUID> getResourceItemTypeId(Mutiny.StatelessSession session,
+                                                  UUID enterpriseId,
+                                                  String resourceItemTypeName,
+                                                  StatelessResolver resolver) {
+        String norm = normalize(resourceItemTypeName);
+        String domainKey = "resourceitemtype|" + (enterpriseId == null ? "" : enterpriseId.toString());
+        Key key = new Key(domainKey, norm);
+
+        UUID cached = getIfPresent(key);
+        if (cached != null) {
+            return Uni.createFrom().item(cached);
+        }
+
+        return resolver.resolve(session, resourceItemTypeName)
+                .invoke(id -> put(key, id));
+    }
 }
