@@ -3,6 +3,7 @@ package com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.part
 //import io.swagger.v3.oas.annotations.media.Schema;
 
 import com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseBaseTable;
+import com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IContainsNameAndDescription;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -17,7 +18,7 @@ import java.util.UUID;
  */
 public interface IInvolvedPartyIdentificationType<J extends IInvolvedPartyIdentificationType<J, Q>,
 		Q extends IInvolvedPartyIdentificationTypeQueryBuilder<Q, J>>
-		extends IWarehouseBaseTable<J, Q, UUID>
+		extends IWarehouseBaseTable<J, Q, UUID>, IContainsNameAndDescription<J>
 {
 
 }

@@ -657,6 +657,31 @@ public interface IClassificationService<J extends IClassificationService<J>> {
                                     UUID... identityToken);
 
     /**
+     * Stateless ID lookup for prepped, detached classifications.
+     * <p>
+     * Implementations may cache this because the returned instance is detached from the stateless session.
+     *
+     * @param session       The stateless session to use
+     * @param id            The classification id
+     * @param system        The system searching for the classification, when already available
+     * @param identityToken Optional security identity tokens
+     * @return A Uni emitting the prepped, detached classification
+     */
+    Uni<IClassification<?, ?>> find(Mutiny.StatelessSession session,
+                                    UUID id,
+                                    ISystems<?, ?> system,
+                                    UUID... identityToken);
+
+    /**
+     * Stateless ID lookup when the caller does not already have a system reference.
+     */
+    default Uni<IClassification<?, ?>> find(Mutiny.StatelessSession session,
+                                            UUID id,
+                                            UUID... identityToken) {
+        return find(session, id, null, identityToken);
+    }
+
+    /**
      * Enum-name convenience over {@link #find(Mutiny.StatelessSession, String, ISystems, UUID...)}.
      */
     default Uni<IClassification<?, ?>> find(Mutiny.StatelessSession session,
