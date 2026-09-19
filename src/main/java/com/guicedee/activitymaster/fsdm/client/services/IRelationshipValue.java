@@ -119,125 +119,13 @@ public interface IRelationshipValue<
 	 */
 	S getSecondary();
 
-	/**
-	 * Expires the relationship after a certain duration.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param duration      The duration until expiration
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the updated relationship value
-	 */
-	default Uni<IRelationshipValue<P, S,?>> expire(Mutiny.Session session, Duration duration, UUID... identityToken)
-	{
-		IWarehouseBaseTable tableForClassification = (IWarehouseBaseTable) this;
-		tableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow())
-		                                                       .plus(duration));
-		return tableForClassification.builder(session).update();
-	}
-
-	/**
-	 * Immediately expires the relationship.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the updated relationship value
-	 */
-	default Uni<IRelationshipValue<P, S,?>> expire(Mutiny.Session session, UUID... identityToken)
-	{
-		return expire(session, Duration.ZERO);
-	}
-
-	/**
-	 * Archives the relationship after a certain duration.
-	 * Sets the active flag to 'Archived'.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param duration      The duration until archiving
-	 * @param system        The system performing the operation
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the archived relationship value
-	 */
-	default Uni<IRelationshipValue<P, S,?>> archive(Mutiny.Session session, Duration duration, ISystems<?,?> system, UUID... identityToken)
-	{
-		IWarehouseRelationshipTable<?, ?, ?,?,?,?> tableForClassification = (IWarehouseRelationshipTable<?, ?, ?, ?, ?,?>) this;
-		// Set the end date when archiving to close out the active range
-		tableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow())
-				.plus(duration));
-		IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-
-		return (Uni) flagService.getArchivedFlag(session, system.getEnterprise())
-			.onItem().transformToUni(archivedFlag -> {
-				tableForClassification.setActiveFlagID(archivedFlag);
-				// Detach first so update()'s merge is treated as an explicit update of a detached
-				// instance. Under Hibernate Reactive with bytecode enhancement, mutating a still
-				// managed entity and merging is a no-op (self-dirty-tracking is not flushed), so the
-				// archive would silently not persist. This is a pure close (no following insert).
-				session.detach(tableForClassification);
-				return tableForClassification.update(session, system, identityToken);
-			});
-	}
-
-	/**
-	 * Removes (deletes) the relationship after a certain duration.
-	 * Sets the active flag to 'Deleted'.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param duration      The duration until removal
-	 * @param system        The system performing the operation
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the removed relationship value
-	 */
-	default Uni<IRelationshipValue<P, S,?>> remove(Mutiny.Session session, Duration duration, ISystems<?,?> system, UUID... identityToken)
-	{
-		IWarehouseRelationshipTable<?, ?, ?,?,?,?> tableForClassification = (IWarehouseRelationshipTable<?, ?, ?, ?, ?,?>) this;
-		tableForClassification.setEffectiveToDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow())
-			                                                       .plus(duration));
-		IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-
-		return (Uni) flagService.getDeletedFlag(session, system.getEnterprise())
-			.onItem().transformToUni(deletedFlag -> {
-				tableForClassification.setActiveFlagID(deletedFlag);
-				// See archive(): detach before update() so the close is actually flushed under
-				// Hibernate Reactive bytecode enhancement (merging a managed entity is a no-op).
-				session.detach(tableForClassification);
-				return tableForClassification.update(session, system, identityToken);
-			});
-	}
-
-	/**
-	 * Immediately archives the relationship.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param system        The system performing the operation
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the archived relationship value
-	 */
-	default Uni<IRelationshipValue<P, S,?>> archive(Mutiny.Session session, ISystems<?,?> system, UUID... identityToken)
-	{
-		return archive(session, Duration.ZERO,system, identityToken);
-	}
-
-	/**
-	 * Updates the relationship value in the database.
-	 *
-	 * @param session           The Mutiny session to use
-	 * @param originatingSystem The system originating the update
-	 * @param identityToken      Optional security identity tokens
-	 * @return A Uni emitting the updated relationship value
-	 */
-	default Uni<IRelationshipValue<P, S,?>> update(Mutiny.Session session, ISystems<?,?> originatingSystem, UUID... identityToken)
-	{
-		var tableForClassification = (IWarehouseBaseTable) this;
-		return tableForClassification.builder(session).update();
-	}
-
 	// =============================================================================================
 	// Stateless (Mutiny.StatelessSession) twins. The relationship row IS already loaded (it is `this`),
 	// so every close/update is a full-row session.update(this) — no merge/detach (a no-op under reactive
 	// bytecode enhancement) and no bulk HQL (createMutationQuery is blocked on a stateless session).
 	// =============================================================================================
 
-	/** Stateless variant of {@link #expire(Mutiny.Session, Duration, UUID...)}. */
+	/** Stateless variant of {@link #expire(Mutiny.StatelessSession, Duration, UUID...)}. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	default Uni<IRelationshipValue<P, S, ?>> expire(Mutiny.StatelessSession session, Duration duration, UUID... identityToken)
 	{
@@ -247,13 +135,13 @@ public interface IRelationshipValue<
 		return session.update(this).replaceWith((IRelationshipValue<P, S, ?>) this);
 	}
 
-	/** Stateless variant of {@link #expire(Mutiny.Session, UUID...)}. */
+	/** Stateless variant of {@link #expire(Mutiny.StatelessSession, UUID...)}. */
 	default Uni<IRelationshipValue<P, S, ?>> expire(Mutiny.StatelessSession session, UUID... identityToken)
 	{
 		return expire(session, Duration.ZERO);
 	}
 
-	/** Stateless variant of {@link #archive(Mutiny.Session, Duration, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #archive(Mutiny.StatelessSession, Duration, ISystems, UUID...)}. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	default Uni<IRelationshipValue<P, S, ?>> archive(Mutiny.StatelessSession session, Duration duration, ISystems<?, ?> system, UUID... identityToken)
 	{
@@ -268,13 +156,13 @@ public interface IRelationshipValue<
 				});
 	}
 
-	/** Stateless variant of {@link #archive(Mutiny.Session, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #archive(Mutiny.StatelessSession, ISystems, UUID...)}. */
 	default Uni<IRelationshipValue<P, S, ?>> archive(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken)
 	{
 		return archive(session, Duration.ZERO, system, identityToken);
 	}
 
-	/** Stateless variant of {@link #remove(Mutiny.Session, Duration, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #remove(Mutiny.StatelessSession, Duration, ISystems, UUID...)}. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	default Uni<IRelationshipValue<P, S, ?>> remove(Mutiny.StatelessSession session, Duration duration, ISystems<?, ?> system, UUID... identityToken)
 	{
@@ -289,13 +177,13 @@ public interface IRelationshipValue<
 				});
 	}
 
-	/** Stateless variant of {@link #remove(Mutiny.Session, Duration, ISystems, UUID...)} with immediate effect. */
+	/** Stateless variant of {@link #remove(Mutiny.StatelessSession, Duration, ISystems, UUID...)} with immediate effect. */
 	default Uni<IRelationshipValue<P, S, ?>> remove(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken)
 	{
 		return remove(session, Duration.ZERO, system, identityToken);
 	}
 
-	/** Stateless variant of {@link #update(Mutiny.Session, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #update(Mutiny.StatelessSession, ISystems, UUID...)}. */
 	@SuppressWarnings({"unchecked"})
 	default Uni<IRelationshipValue<P, S, ?>> update(Mutiny.StatelessSession session, ISystems<?, ?> originatingSystem, UUID... identityToken)
 	{

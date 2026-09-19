@@ -30,7 +30,7 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
     private IEnterpriseService<?> enterpriseService;
 
     @Override
-    public Uni<Void> postStartup(Mutiny.Session session, IEnterprise<?, ?> enterprise)
+    public Uni<Void> postStartup(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
     {
         log.debug("🚀 Starting post-startup tasks for enterprise {}", enterprise.getId());
         
@@ -50,7 +50,7 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
     }
 
     @Override
-    public Uni<Boolean> hasSystemInstalled(Mutiny.Session session, IEnterprise<?, ?> enterprise)
+    public Uni<Boolean> hasSystemInstalled(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
     {
         log.debug("🔍 Checking if system '{}' is installed for enterprise '{}'", getSystemName(), enterprise.getName());
         
@@ -66,40 +66,8 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
                     log.error("❌ Error checking if system '{}' is installed: {}", getSystemName(), error.getMessage(), error));
     }
 
-    public Uni<ISystems<?, ?>> getSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise)
-    {
-        for (IMasterSystem<?> allSystem : IMasterSystem.allSystems())
-        {
-            if (allSystem.getSystemName()
-                        .equals(getSystemName()))
-            {
-                return systemsService.findSystem(session, enterprise, getSystemName());
-            }
-        }
-        return Uni.createFrom().nullItem();
-    }
-
-    public Uni<UUID> getSystemToken(Mutiny.Session session, IEnterprise<?, ?> enterprise)
-    {
-        for (IMasterSystem<?> allSystem : IMasterSystem.allSystems())
-        {
-            if (allSystem.getSystemName()
-                        .equals(getSystemName()))
-            {
-                return getSystem(session,enterprise).chain(system->{
-                    if(system!=null){
-                        return systemsService.getSecurityIdentityToken(session, system);
-                    }else{
-                        return Uni.createFrom().nullItem();
-                    }
-                });
-            }
-        }
-        return Uni.createFrom().nullItem();
-    }
-
     /**
-     * Stateless variant of {@link #getSystem(Mutiny.Session, IEnterprise)} — resolves this system as a
+     * Stateless variant of {@link #getSystem(Mutiny.StatelessSession, IEnterprise)} — resolves this system as a
      * prepped detached {@code Systems} via the {@link ISystemsService} stateless reader.
      */
     public Uni<ISystems<?, ?>> getSystem(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
@@ -116,7 +84,7 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
     }
 
     /**
-     * Stateless variant of {@link IMasterSystem#registerSystem(Mutiny.Session, IEnterprise)} — delegates to the
+     * Stateless variant of {@link IMasterSystem#registerSystem(Mutiny.StatelessSession, IEnterprise)} — delegates to the
      * {@link ISystemsService} stateless create + findSystem + registerNewSystem chain.
      * Concrete subclasses with bespoke registration logic (different description, null-guards, etc.) override this.
      */
@@ -130,7 +98,7 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
     }
 
     /**
-     * Stateless variant of {@link #getSystemToken(Mutiny.Session, IEnterprise)} — resolves this system's
+     * Stateless variant of {@link #getSystemToken(Mutiny.StatelessSession, IEnterprise)} — resolves this system's
      * identity-token UUID via the stateless scalar projection (no link-entity hydration).
      */
     public Uni<UUID> getSystemToken(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)
@@ -156,7 +124,7 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
 
     public abstract String getSystemDescription();
 
-    public Uni<ISystems<?,?>> getSystem(Mutiny.Session session, String enterpriseName)
+    public Uni<ISystems<?,?>> getSystem(Mutiny.StatelessSession session, String enterpriseName)
     {
         log.debug("🔍 Getting system '{}' for enterprise name '{}'", getSystemName(), enterpriseName);
         
@@ -181,7 +149,7 @@ public abstract class MasterDefaultSystem<J extends MasterDefaultSystem<J>>
                 );
     }
 
-    public Uni<UUID> getSystemToken(Mutiny.Session session, String enterpriseName)
+    public Uni<UUID> getSystemToken(Mutiny.StatelessSession session, String enterpriseName)
     {
         log.debug("🔑 Getting system token for '{}' with enterprise name '{}'", getSystemName(), enterpriseName);
         

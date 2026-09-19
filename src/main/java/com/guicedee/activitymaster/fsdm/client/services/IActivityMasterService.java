@@ -24,7 +24,7 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 	 * @param enterpriseName the name of the enterprise
 	 * @return a Uni that completes when the systems are loaded
 	 */
-	Uni<Void> loadSystems(Mutiny.Session session, String enterpriseName);
+	Uni<Void> loadSystems(Mutiny.StatelessSession session, String enterpriseName);
 
 	/**
      * Loads updates for the specified enterprise.
@@ -33,7 +33,7 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
      * @param enterprise the enterprise
      * @return a Uni that completes when the updates are loaded
      */
-	Uni<Void> loadUpdates(Mutiny.Session session, IEnterprise<?,?> enterprise);
+	Uni<Void> loadUpdates(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise);
 
 	/**
 	 * Runs a SQL script.
@@ -52,67 +52,10 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
 	@Deprecated
 	Uni<Void> updatePartitionBases();
 
-	/**
-	 * Gets a system by enumeration name for the specified enterprise.
-	 *
-	 * @param session    The Mutiny session to use
-	 * @param systemName the enum value representing the system name
-	 * @param enterprise the enterprise
-	 * @return a Uni that emits the system
-	 */
-	static Uni<ISystems<?, ?>> getISystem(Mutiny.Session session, Enum systemName, IEnterprise<?,?> enterprise) {
-		return getISystem(session, systemName.toString(), enterprise);
-	}
-
-
-	/**
-	 * Gets a system by name for the specified enterprise.
-	 *
-	 * @param session    The Mutiny session to use
-	 * @param systemName the name of the system
-	 * @param enterprise the enterprise
-	 * @return a Uni that emits the system
-	 */
-	static Uni<ISystems<?, ?>> getISystem(Mutiny.Session session, String systemName, IEnterprise<?,?> enterprise) {
-			ISystemsService<?> systemsService = com.guicedee.client.IGuiceContext.get(ISystemsService.class);
-			return systemsService.findSystem(session,enterprise,systemName);
-	}
-
-
  /**
   * Cache for system tokens, keyed by systemName and enterpriseId
   */
  Map<String, Map<UUID, UUID>> SYSTEM_TOKEN_CACHE = new ConcurrentHashMap<>();
-
-	/**
-	 * Gets a system token by name for the specified enterprise.
-	 * Results are cached per systemName per enterprise.
-	 *
-	 * @param session    The Mutiny session to use
-	 * @param systemName the name of the system
-	 * @param enterprise the enterprise
-	 * @return a Uni that emits the system token
-	 */
-	static Uni<UUID> getISystemToken(Mutiny.Session session, String systemName, IEnterprise<?,?> enterprise) {
- 	// Check if we have a cached token for this system and enterprise
- 	UUID enterpriseId = enterprise.getId();
- 	Map<UUID, UUID> enterpriseTokens = SYSTEM_TOKEN_CACHE.computeIfAbsent(systemName, k -> new ConcurrentHashMap<>());
- 	UUID cachedToken = enterpriseTokens.get(enterpriseId);
-	
- 	if (cachedToken != null) {
- 		return Uni.createFrom().item(cachedToken);
- 	}
-	
- 	// If not cached, fetch from database and cache the result
- 	ISystemsService<?> systemsService = com.guicedee.client.IGuiceContext.get(ISystemsService.class);
- 	return getISystem(session, systemName, enterprise).chain(system -> {
- 		return systemsService.getSecurityIdentityToken(session, system).onItem().invoke(token -> {
- 			if (token != null) {
- 				enterpriseTokens.put(enterpriseId, token);
- 			}
- 		});
- 	});
- }
 
  // ---- Stateless (Mutiny.StatelessSession) twins of the system/token lookups ----
 
@@ -130,12 +73,12 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
   */
  Map<String, IEnterprise<?, ?>> ENTERPRISE_CACHE = new ConcurrentHashMap<>();
 
- /** Stateless variant of {@link #getISystem(Mutiny.Session, Enum, IEnterprise)}. */
+ /** Stateless variant of {@link #getISystem(Mutiny.StatelessSession, Enum, IEnterprise)}. */
  static Uni<ISystems<?, ?>> getISystem(Mutiny.StatelessSession session, Enum systemName, IEnterprise<?, ?> enterprise) {
  	return getISystem(session, systemName.toString(), enterprise);
  }
 
- /** Stateless variant of {@link #getISystem(Mutiny.Session, String, IEnterprise)} — prepped {@code findSystem}, cached (detached). */
+ /** Stateless variant of {@link #getISystem(Mutiny.StatelessSession, String, IEnterprise)} — prepped {@code findSystem}, cached (detached). */
  static Uni<ISystems<?, ?>> getISystem(Mutiny.StatelessSession session, String systemName, IEnterprise<?, ?> enterprise) {
  	UUID enterpriseId = enterprise.getId();
  	Map<UUID, ISystems<?, ?>> bySystem = SYSTEM_CACHE.computeIfAbsent(systemName, k -> new ConcurrentHashMap<>());
@@ -167,7 +110,7 @@ public interface IActivityMasterService<J extends IActivityMasterService<J>>
  			});
  }
 
- /** Stateless variant of {@link #getISystemToken(Mutiny.Session, String, IEnterprise)} (same per-enterprise cache). */
+ /** Stateless variant of {@link #getISystemToken(Mutiny.StatelessSession, String, IEnterprise)} (same per-enterprise cache). */
  static Uni<UUID> getISystemToken(Mutiny.StatelessSession session, String systemName, IEnterprise<?, ?> enterprise) {
  	UUID enterpriseId = enterprise.getId();
  	Map<UUID, UUID> enterpriseTokens = SYSTEM_TOKEN_CACHE.computeIfAbsent(systemName, k -> new ConcurrentHashMap<>());

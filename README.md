@@ -16,6 +16,10 @@
 
 Client Library for the Activity Master.
 
+Public persistence APIs accept `Mutiny.StatelessSession`. Stateful
+`Mutiny.Session` methods are internal implementation details. See
+[Session API visibility](docs/architecture/session-api.md).
+
 ## ✨ Features
 - GuicedEE-based client services for Activity Master FSDM operations
 - CRTP-style fluent builders and DTOs for type-safe request composition

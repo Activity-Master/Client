@@ -249,7 +249,7 @@ public class ActivityMasterConfiguration
 	 * Reactive version of isEnterpriseReady
 	 * @return Uni<Boolean> indicating whether the enterprise is ready
 	 */
-	public Uni<IEnterprise<?,?>> isEnterpriseReady(Mutiny.Session session)
+	public Uni<IEnterprise<?,?>> isEnterpriseReady(Mutiny.StatelessSession session)
 	{
 		if (!Strings.isNullOrEmpty(applicationEnterpriseName))
 		{

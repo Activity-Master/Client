@@ -27,7 +27,7 @@ public final class NameIdCache {
         if (maxSize > 0) maxEntries = maxSize;
     }
 
-    public static Uni<UUID> getEnterpriseId(Mutiny.Session session,
+    public static Uni<UUID> getEnterpriseId(Mutiny.StatelessSession session,
                                             String enterpriseName,
                                             Resolver resolver) {
         String norm = normalize(enterpriseName);
@@ -46,7 +46,7 @@ public final class NameIdCache {
     /**
      * Resolve ActiveFlag ID by (enterpriseId, flagName) with caching.
      */
-    public static Uni<UUID> getActiveFlagId(Mutiny.Session session,
+    public static Uni<UUID> getActiveFlagId(Mutiny.StatelessSession session,
                                             UUID enterpriseId,
                                             String flagName,
                                             Resolver resolver) {
@@ -66,7 +66,7 @@ public final class NameIdCache {
     /**
      * Resolve Systems ID by (enterpriseId, systemName) with caching.
      */
-    public static Uni<UUID> getSystemId(Mutiny.Session session,
+    public static Uni<UUID> getSystemId(Mutiny.StatelessSession session,
                                         UUID enterpriseId,
                                         String systemName,
                                         Resolver resolver) {
@@ -86,7 +86,7 @@ public final class NameIdCache {
     /**
      * Resolve Classification Data Concept ID by (enterpriseId, systemId, conceptName) with caching.
      */
-    public static Uni<UUID> getClassificationDataConceptId(Mutiny.Session session,
+    public static Uni<UUID> getClassificationDataConceptId(Mutiny.StatelessSession session,
                                                            UUID enterpriseId,
                                                            UUID systemId,
                                                            String conceptName,
@@ -108,7 +108,7 @@ public final class NameIdCache {
      * Resolve Classification ID by (enterpriseId, systemId, conceptId, classificationName) with caching.
      * Any of systemId or conceptId may be null to allow broader lookups; the cache key will reflect nulls.
      */
-    public static Uni<UUID> getClassificationId(Mutiny.Session session,
+    public static Uni<UUID> getClassificationId(Mutiny.StatelessSession session,
                                                 UUID enterpriseId,
                                                 UUID systemId,
                                                 UUID conceptId,
@@ -133,7 +133,7 @@ public final class NameIdCache {
     /**
      * Resolve ArrangementType ID by (enterpriseId, arrangementTypeName) with caching.
      */
-    public static Uni<UUID> getArrangementTypeId(Mutiny.Session session,
+    public static Uni<UUID> getArrangementTypeId(Mutiny.StatelessSession session,
                                                  UUID enterpriseId,
                                                  String arrangementTypeName,
                                                  Resolver resolver) {
@@ -153,7 +153,7 @@ public final class NameIdCache {
     /**
      * Resolve EventType ID by (enterpriseId, eventTypeName) with caching.
      */
-    public static Uni<UUID> getEventTypeId(Mutiny.Session session,
+    public static Uni<UUID> getEventTypeId(Mutiny.StatelessSession session,
                                            UUID enterpriseId,
                                            String eventTypeName,
                                            Resolver resolver) {
@@ -173,7 +173,7 @@ public final class NameIdCache {
     /**
      * Resolve ProductType ID by (enterpriseId, productTypeName) with caching.
      */
-    public static Uni<UUID> getProductTypeId(Mutiny.Session session,
+    public static Uni<UUID> getProductTypeId(Mutiny.StatelessSession session,
                                              UUID enterpriseId,
                                              String productTypeName,
                                              Resolver resolver) {
@@ -193,7 +193,7 @@ public final class NameIdCache {
     /**
      * Resolve ResourceItemType ID by (enterpriseId, resourceItemTypeName) with caching.
      */
-    public static Uni<UUID> getResourceItemTypeId(Mutiny.Session session,
+    public static Uni<UUID> getResourceItemTypeId(Mutiny.StatelessSession session,
                                                   UUID enterpriseId,
                                                   String resourceItemTypeName,
                                                   Resolver resolver) {
@@ -213,7 +213,7 @@ public final class NameIdCache {
     /**
      * Resolve InvolvedPartyType ID by (enterpriseId, name) with caching.
      */
-    public static Uni<UUID> getInvolvedPartyTypeId(Mutiny.Session session,
+    public static Uni<UUID> getInvolvedPartyTypeId(Mutiny.StatelessSession session,
                                                    UUID enterpriseId,
                                                    String involvedPartyTypeName,
                                                    Resolver resolver) {
@@ -233,7 +233,7 @@ public final class NameIdCache {
     /**
      * Resolve InvolvedPartyNameType ID by (enterpriseId, name) with caching.
      */
-    public static Uni<UUID> getInvolvedPartyNameTypeId(Mutiny.Session session,
+    public static Uni<UUID> getInvolvedPartyNameTypeId(Mutiny.StatelessSession session,
                                                        UUID enterpriseId,
                                                        String involvedPartyNameTypeName,
                                                        Resolver resolver) {
@@ -253,7 +253,7 @@ public final class NameIdCache {
     /**
      * Resolve InvolvedPartyIdentificationType ID by (enterpriseId, name) with caching.
      */
-    public static Uni<UUID> getInvolvedPartyIdentificationTypeId(Mutiny.Session session,
+    public static Uni<UUID> getInvolvedPartyIdentificationTypeId(Mutiny.StatelessSession session,
                                                                  UUID enterpriseId,
                                                                  String involvedPartyIdentificationTypeName,
                                                                  Resolver resolver) {
@@ -309,89 +309,7 @@ public final class NameIdCache {
 
     @FunctionalInterface
     public interface Resolver {
-        Uni<UUID> resolve(Mutiny.Session session, String name);
-    }
-
-    /** Stateless-session counterpart of {@link Resolver}. */
-    @FunctionalInterface
-    public interface StatelessResolver {
         Uni<UUID> resolve(Mutiny.StatelessSession session, String name);
     }
 
-    /** Stateless variant of {@link #getActiveFlagId(Mutiny.Session, UUID, String, Resolver)}. */
-    public static Uni<UUID> getActiveFlagId(Mutiny.StatelessSession session,
-                                            UUID enterpriseId,
-                                            String flagName,
-                                            StatelessResolver resolver) {
-        String norm = normalize(flagName);
-        String domainKey = "activeflag|" + (enterpriseId == null ? "" : enterpriseId.toString());
-        Key key = new Key(domainKey, norm);
-
-        UUID cached = getIfPresent(key);
-        if (cached != null) {
-            return Uni.createFrom().item(cached);
-        }
-
-        return resolver.resolve(session, flagName)
-                .invoke(id -> put(key, id));
-    }
-
-    /** Stateless variant of {@link #getSystemId(Mutiny.Session, UUID, String, Resolver)}. */
-    public static Uni<UUID> getSystemId(Mutiny.StatelessSession session,
-                                        UUID enterpriseId,
-                                        String systemName,
-                                        StatelessResolver resolver) {
-        String norm = normalize(systemName);
-        String domainKey = "systems|" + (enterpriseId == null ? "" : enterpriseId.toString());
-        Key key = new Key(domainKey, norm);
-
-        UUID cached = getIfPresent(key);
-        if (cached != null) {
-            return Uni.createFrom().item(cached);
-        }
-
-        return resolver.resolve(session, systemName)
-                .invoke(id -> put(key, id));
-    }
-
-    /** Stateless variant of {@link #getClassificationId(Mutiny.Session, UUID, UUID, UUID, String, Resolver)}. */
-    public static Uni<UUID> getClassificationId(Mutiny.StatelessSession session,
-                                                UUID enterpriseId,
-                                                UUID systemId,
-                                                UUID conceptId,
-                                                String classificationName,
-                                                StatelessResolver resolver) {
-        String norm = normalize(classificationName);
-        String domainKey = "classification|" +
-                (enterpriseId == null ? "" : enterpriseId.toString()) + "|" +
-                (systemId == null ? "" : systemId.toString()) + "|" +
-                (conceptId == null ? "" : conceptId.toString());
-        Key key = new Key(domainKey, norm);
-
-        UUID cached = getIfPresent(key);
-        if (cached != null) {
-            return Uni.createFrom().item(cached);
-        }
-
-        return resolver.resolve(session, classificationName)
-                .invoke(id -> put(key, id));
-    }
-
-    /** Stateless variant of {@link #getResourceItemTypeId(Mutiny.Session, UUID, String, Resolver)}. */
-    public static Uni<UUID> getResourceItemTypeId(Mutiny.StatelessSession session,
-                                                  UUID enterpriseId,
-                                                  String resourceItemTypeName,
-                                                  StatelessResolver resolver) {
-        String norm = normalize(resourceItemTypeName);
-        String domainKey = "resourceitemtype|" + (enterpriseId == null ? "" : enterpriseId.toString());
-        Key key = new Key(domainKey, norm);
-
-        UUID cached = getIfPresent(key);
-        if (cached != null) {
-            return Uni.createFrom().item(cached);
-        }
-
-        return resolver.resolve(session, resourceItemTypeName)
-                .invoke(id -> put(key, id));
-    }
 }

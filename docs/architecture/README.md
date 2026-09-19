@@ -2,6 +2,7 @@
 Architecture artifacts live under `docs/architecture/` and are produced as modular Mermaid sources rendered against the [`Mermaid MCP server`](https://mcp.mermaidchart.com/mcp). Each file contains diagrams plus narrative that closes the traceability loop from CODE ƒ+' RULES ƒ+' GUIDES ƒ+' IMPLEMENTATION.
 
 ## Diagram artifacts
+- [Session API visibility](session-api.md): public stateless APIs and non-public stateful helpers.
 - [C4 Context](docs/architecture/c4-context.md) ƒ?" Level 1 view showing the Activity Master Client library and its external dependencies.
 - [C4 Container](docs/architecture/c4-container.md) ƒ?" Level 2 view detailing the runtime containers, database, and dependency injectors.
 - [C4 Component: Client Services](docs/architecture/c4-component-client.md) ƒ?" Level 3 view for the critical bounded context around `IActivityMasterService` and SPI components.

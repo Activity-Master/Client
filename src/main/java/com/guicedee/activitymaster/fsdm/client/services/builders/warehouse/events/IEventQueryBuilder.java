@@ -39,65 +39,6 @@ public interface IEventQueryBuilder<J extends IEventQueryBuilder<J, E>, E extend
 		}
 	}
 
-	/**
-	 * Filters events by a specific event type classification and value.
-	 *
-	 * @param session        The reactive session
-	 * @param classification The classification to filter by
-	 * @param value          The value of the classification
-	 * @param identityToken  Security tokens
-	 * @return A Uni containing the query builder
-	 */
-	default Uni<J> hasEventType(Mutiny.Session session, IClassification<?,?> classification, String value, UUID... identityToken)
-	{
-		ISystems<?,?> systemID = classification.getSystemID();
-		return hasEventType(session, classification.getName(), value, systemID, identityToken);
-	}
-
-	/**
-	 * Filters events by an event type classification name and system.
-	 *
-	 * @param session        The reactive session
-	 * @param classification The classification name
-	 * @param system         The system context
-	 * @param identityToken  Security tokens
-	 * @return A Uni containing the query builder
-	 */
-	default Uni<J> hasEventType(Mutiny.Session session, String classification, ISystems<?,?> system, UUID... identityToken)
-	{
-		return hasEventType(session, classification, null, system, identityToken);
-	}
-
-	/**
-	 * Filters events by an event type classification name, value, and system.
-	 *
-	 * @param session            The reactive session
-	 * @param classificationName The classification name
-	 * @param value              The value of the classification
-	 * @param system             The system context
-	 * @param identityToken      Security tokens
-	 * @return A Uni containing the query builder
-	 */
-	default Uni<J> hasEventType(Mutiny.Session session, String classificationName, String value, ISystems<?,?> system, UUID... identityToken)
-	{
-		Class<? extends IWarehouseRelationshipTable<?, ?, E, IEventType<?, ?>, java.util.UUID, ?>> relationshipTable = getEventTypeRelationshipClass();
-		IWarehouseRelationshipTable<?, ?, E, IEventType<?, ?>, java.util.UUID, ?> instance = com.guicedee.client.IGuiceContext.get(relationshipTable);
-		IQueryBuilderRelationships qbr
-				= instance.builder(session);
-
-		// Since we can't chain methods, we'll call them directly
-		qbr.withClassification(classificationName, system);
-		qbr.inActiveRange();
-		qbr.inDateRange();
-		qbr.withValue(value);
-
-		Attribute<E,IQueryBuilderRelationships> joinColumn = getAttribute("eventTypes");
-		join(joinColumn, (QueryBuilder) qbr);
-
-		//noinspection unchecked
-		return Uni.createFrom().item((J) this);
-	}
-
 	// ---- Stateless (Mutiny.StatelessSession) twins. The relationship builder is session-polymorphic; the
 	// join wiring carries no session, so these mirror the managed convenience filters verbatim. ----
 

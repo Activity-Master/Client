@@ -28,27 +28,10 @@ public interface IResourceItem<J extends IResourceItem<J, Q>,
 		        IManageResourceItemTypes<J>
 {
 
-	/**
-	 * Retrieves the filename associated with this resource item.
-	 *
-	 * @param session The reactive session
-	 * @return A Uni containing the filename
-	 */
-	Uni<String> getFilename(Mutiny.Session session);
-
-	/** Stateless variant of {@link #getFilename(Mutiny.Session)}. */
+	/** Stateless variant of {@link #getFilename(Mutiny.StatelessSession)}. */
 	Uni<String> getFilename(Mutiny.StatelessSession session);
 
-	/**
-	 * Retrieves the data row for this resource item.
-	 *
-	 * @param session       The reactive session
-	 * @param identityToken Security tokens
-	 * @return A Uni containing the resource data
-	 */
-	Uni<IResourceData<?,?,?>> getDataRow(Mutiny.Session session, UUID... identityToken);
-
-	/** Stateless variant of {@link #getDataRow(Mutiny.Session, UUID...)}. */
+	/** Stateless variant of {@link #getDataRow(Mutiny.StatelessSession, UUID...)}. */
 	Uni<IResourceData<?,?,?>> getDataRow(Mutiny.StatelessSession session, UUID... identityToken);
 
 	/**

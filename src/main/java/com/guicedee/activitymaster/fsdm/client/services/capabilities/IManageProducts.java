@@ -46,72 +46,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 		}
 	}
 	
-	/**
-	 * Finds a product with the given product, classification, value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<IRelationshipValue<J, IProduct<?,?>, ?>> findByProduct(Mutiny.Session session, IProduct<?,?> allWithProduct, String classification, String value, boolean first, boolean latest, ISystems<?,?> system, UUID... identityToken)
-	{
-		IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> relationshipTable = get(getProductRelationshipClass());
-		IClassificationService<?> classificationService = get(IClassificationService.class);
-		IEnterprise<?,?> enterprise = system.getEnterprise();
-		
-		return classificationService.find(session, classification, system, identityToken)
-			.chain(iClassification -> {
-				IQueryBuilderRelationships<?, ?, J, IProduct<?, ?>, java.util.UUID> queryBuilderRelationshipClassification
-						= relationshipTable.builder(session)
-						                   .findLink(null, allWithProduct, null)
-						                   .inActiveRange()
-						                   .withClassification(classification, system)
-						                   .withValue(value)
-						                   .inDateRange()
-						                   .withEnterprise(enterprise)
-						                   .canRead(system, identityToken);
-				if (first)
-				{ 
-					queryBuilderRelationshipClassification.setMaxResults(1); 
-				}
-				if (latest)
-				{ 
-					queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"), OrderByType.DESC); 
-				}
-				
-				return queryBuilderRelationshipClassification.get()
-					.onItem().ifNull().failWith(() -> new NoSuchElementException("Product not found"))
-					.map(item -> (IRelationshipValue<J, IProduct<?,?>, ?>) item);
-			});
-	}
 	
-	/**
-	 * Finds all products with the given product, classification, value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<List<IRelationshipValue<J, IProduct<?,?>, ?>>> findAllByProduct(Mutiny.Session session, IProduct<?,?> byType, String classification, String value, boolean first, boolean latest, ISystems<?,?> system, UUID... identityToken)
-	{
-		IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> relationshipTable = get(getProductRelationshipClass());
-		IEnterprise<?,?> enterprise = system.getEnterprise();
-		
-		IQueryBuilderRelationships<?, ?, J, IProduct<?, ?>, java.util.UUID> queryBuilderRelationshipClassification
-				= relationshipTable.builder(session)
-				                   .findLink(null, byType, null)
-				                   .inActiveRange()
-				                   .withClassification(classification, system)
-				                   .withValue(value)
-				                   .inDateRange()
-				                   .withEnterprise(enterprise)
-				                   .canRead(system, identityToken);
-		if (first)
-		{ 
-			queryBuilderRelationshipClassification.setMaxResults(1); 
-		}
-		if (latest)
-		{ 
-			queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"), OrderByType.DESC); 
-		}
-		
-		return queryBuilderRelationshipClassification.getAll()
-			.map(list -> (List<IRelationshipValue<J, IProduct<?,?>, ?>>) list);
-	}
 	
 	/**
 	 * Configures a product.
@@ -120,267 +55,18 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 	 * It doesn't need to return a Uni as it's a synchronous operation.
 	 */
 	@SuppressWarnings("rawtypes")
-	void configureProductAddable(Mutiny.Session session, IWarehouseRelationshipTable linkTable, J primary, IProduct<?,?> secondary, IClassification<?,?> classificationValue, String value, ISystems<?,?> system);
+	void configureProductAddable(Mutiny.StatelessSession session, IWarehouseRelationshipTable linkTable, J primary, IProduct<?,?> secondary, IClassification<?,?> classificationValue, String value, ISystems<?,?> system);
 	
-	/**
-	 * Finds a product with the given classification, search value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<IRelationshipValue<J, IProduct<?, ?>, ?>> findProduct(Mutiny.Session session, String classification, String searchValue, ISystems<?,?> system, boolean first, boolean latest, UUID... identityToken)
-	{
-		IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> relationshipTable = get(getProductRelationshipClass());
-		
-		IQueryBuilderRelationships<?, ?, J, IProduct<?, ?>, java.util.UUID> queryBuilderRelationshipClassification
-				= relationshipTable.builder(session)
-				                   .findLink((J) this, null, null)
-				                   .inActiveRange()
-				                   .withClassification(classification, system)
-				                   .withValue(searchValue)
-				                   .inDateRange()
-				                   .withEnterprise(system.getEnterprise())
-				                   .canRead(system, identityToken);
-		if (first)
-		{
-			queryBuilderRelationshipClassification.setMaxResults(1);
-		}
-		if (latest)
-		{
-			queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"));
-		}
-		
-		return queryBuilderRelationshipClassification.get()
-			.onItem().ifNull().failWith(() -> new NoSuchElementException("Product not found"))
-			.map(item -> (IRelationshipValue<J, IProduct<?, ?>, ?>) item);
-	}
 	
-	/**
-	 * Finds all products with the given classification, search value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<List<IRelationshipValue<J, IProduct<?, ?>, ?>>> findProductsAll(Mutiny.Session session, String classification, String searchValue, ISystems<?,?> system, boolean latest, UUID... identityToken)
-	{
-		IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> relationshipTable = get(getProductRelationshipClass());
-		
-		IQueryBuilderRelationships<?, ?, J, IProduct<?, ?>, java.util.UUID> queryBuilderRelationshipClassification
-				= relationshipTable.builder(session)
-				                   .findLink((J) this, null, null)
-				                   .inActiveRange()
-				                   .withClassification(classification, system)
-				                   .withValue(searchValue)
-				                   .inDateRange()
-				                   .withEnterprise(system.getEnterprise())
-				                   .canRead(system, identityToken);
-		if (latest)
-		{
-			queryBuilderRelationshipClassification.orderBy(queryBuilderRelationshipClassification.getAttribute("effectiveFromDate"));
-		}
-		
-		return queryBuilderRelationshipClassification.getAll()
-			.map(list -> (List<IRelationshipValue<J, IProduct<?, ?>, ?>>) list);
-	}
 	
-	/**
-	 * Gets the number of products with the given classification value, value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<Long> numberOfProducts(Mutiny.Session session, String classificationValue, String value, ISystems<?,?> system, UUID... identityToken)
-	{
-		IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> relationshipTable = get(getProductRelationshipClass());
-		
-		if (classificationValue == null)
-		{
-			classificationValue = DefaultClassifications.NoClassification.classificationValue();
-		}
-		
-		final String finalClassificationValue = classificationValue;
-		
-		return relationshipTable.builder(session)
-		                        .findLink((J) this, null, value)
-		                        .withClassification(finalClassificationValue, system)
-		                        .inActiveRange()
-		                        .inDateRange()
-		                        .canRead(system, identityToken)
-		                        .getCount();
-	}
 	
-	/**
-	 * Checks if the entity has products with the given product type name, search value, and system.
-	 */
-	default Uni<Boolean> hasProducts(Mutiny.Session session, String productTypeName, String searchValue, ISystems<?,?> system, UUID... identityToken)
-	{
-		return numberOfProducts(session, productTypeName, searchValue, system, identityToken)
-			.map(count -> count > 0);
-	}
 	
-	/**
-	 * Adds a product with the given product, classification name, value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<IRelationshipValue<J, IProduct<?, ?>, ?>> addProduct(Mutiny.Session session, IProduct<?,?> product,
-																	 String classificationName,
-																	 String value,
-																	 ISystems<?,?> system,
-																	 UUID... identityToken)
-	{
-			IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> tableForClassification = get(getProductRelationshipClass());
-			IClassificationService<?> classificationService = com.guicedee.client.IGuiceContext.get(IClassificationService.class);
-			
-		return classificationService.find(session, classificationName, system, identityToken)
-			.chain(classification -> session.fetch(system)
-				.chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
-					.chain(enterprise -> {
-						tableForClassification.setEnterpriseID(enterprise);
-						IActiveFlagService<?> activeFlagSvc = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
-						return activeFlagSvc.getActiveFlag(session, enterprise);
-					})
-						.map(activeFlag -> {
-
-						tableForClassification.setValue(Strings.nullToEmpty(value));
-						tableForClassification.setSystemID(fetchedSystem);
-						tableForClassification.setOriginalSourceSystemID(fetchedSystem.getId());
-						tableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-						tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
-						tableForClassification.setActiveFlagID(activeFlag);
-						tableForClassification.setClassificationID(classification);
-
-						configureProductAddable(session, tableForClassification, (J) this,
-								product,
-								classification, value, system);
-
-						return tableForClassification;
-					})))
-				.chain(table -> session.persist(table).replaceWith(Uni.createFrom().item(table)))
-				.chain(table -> {
-					// Chain the security setup operation
-					return table.createDefaultSecurity(session, system, identityToken)
-						.onFailure().recoverWithNull()  // Continue even if security setup fails
-						.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProduct<?, ?>, ?>) table));
-				});
-	}
 	
-	/**
-	 * Adds or updates a product with the given classification value, product type, search value, store value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<IRelationshipValue<J, IProduct<?, ?>, ?>> addOrUpdateProduct(Mutiny.Session session, String classificationValue,
-																			 IProduct<?,?> product,
-																			 String searchValue,
-																			 String storeValue,
-																			 ISystems<?,?> system,
-																			 UUID... identityToken)
-	{
-			IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> tableForClassification = get(getProductRelationshipClass());
-			IClassificationService<?> classificationService = get(IClassificationService.class);
-			
-			return classificationService.find(session, classificationValue, system, identityToken)
-				.chain(classification -> {
-					// Create a query to find the existing relationship
-					return tableForClassification.builder(session)
-						.findLink((J) this, null, null)
-						.withValue(searchValue)
-						.inActiveRange()
-						.inDateRange()
-						.withClassification(classificationValue, system)
-						//.canCreate(system.getEnterpriseID(), identityToken)
-						.get()
-						.onFailure(NoResultException.class)
-						.recoverWithUni(() -> {
-							return (Uni) addProduct(session, product, classificationValue, storeValue, system, identityToken);
-						})
-						.chain(result -> {
-							
-							// Cast the result to the correct type
-							IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> existingTable = 
-								(IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?>) result;
-							
-							// If the value is the same, return the existing relation
-							if (Strings.nullToEmpty(storeValue).equals(existingTable.getValue())) {
-								return Uni.createFrom().item((IRelationshipValue<J, IProduct<?, ?>, ?>) existingTable);
-							}
-							
-							// Otherwise, update the relation
-							IActiveFlagService<?> flagService = get(IActiveFlagService.class);
-							
-						return session.fetch(system)
-							.chain(fetchedSystem -> session.fetch(fetchedSystem.getEnterpriseID())
-								.chain(enterprise -> flagService.getArchivedFlag(session, enterprise, identityToken)
-								.chain(archivedFlag -> {
-									// Retire the current active row via a bulk UPDATE (bypasses the persistence context) so it
-									// is closed without detaching the managed entity, which would corrupt the following insert.
-									return SCDLinkMaintenance.retireActiveRow(session, existingTable, existingTable.getId(), archivedFlag,
-									        convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-								})
-								.chain(() -> {
-									IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> newTableForClassification = get(getProductRelationshipClass());
-									newTableForClassification.setId(null);
-									newTableForClassification.setClassificationID(existingTable.getClassificationID());
-									newTableForClassification.setSystemID(system);
-									newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
-									newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
-									newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									newTableForClassification.setEffectiveFromDate(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
-									newTableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
-									
-									return flagService.getActiveFlag(session, enterprise, identityToken)
-										.map(activeFlag -> {
-											newTableForClassification.setActiveFlagID(activeFlag);
-											newTableForClassification.setValue(storeValue == null ? "" : storeValue);
-											newTableForClassification.setEnterpriseID(enterprise);
-											configureProductAddable(session, newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(),
-													classification, storeValue, system);
-											return newTableForClassification;
-										});
-								})
-								.chain(newTable -> {
-									return session.persist(newTable).replaceWith(Uni.createFrom().item(newTable));
-								})
-								.chain(newTable -> {
-									// Chain the security setup operation
-									return newTable.createDefaultSecurity(session, system, identityToken)
-										.onFailure().recoverWithNull()  // Continue even if security setup fails
-										.replaceWith(Uni.createFrom().item((IRelationshipValue<J, IProduct<?, ?>, ?>) newTable));
-								})));
-						});
-				});
-	}
 	
-	/**
-	 * Adds or reuses a product with the given classification value, product type, search value, and system.
-	 */
-	@SuppressWarnings("unchecked")
-	default Uni<IRelationshipValue<J, IProduct<?, ?>, ?>> addOrReuseProduct(Mutiny.Session session, String classificationValue,
-																			IProduct<?,?> product,
-																			String searchValue,
-																			ISystems<?,?> system,
-																			UUID... identityToken)
-	{
-			IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> tableForClassification = get(getProductRelationshipClass());
-			
-			// Create a query to find the existing relationship
-			return tableForClassification.builder(session)
-				.findLink((J) this, null, null)
-				.withValue(searchValue)
-				.inActiveRange()
-				.inDateRange()
-				.withClassification(classificationValue, system)
-				//.canCreate(system.getEnterpriseID(), identityToken)
-				.get()
-				.onFailure(NoResultException.class)
-				.recoverWithUni(() -> {
-					return (Uni) addProduct(session, product, classificationValue, searchValue, system, identityToken);
-				})
-				.chain(result -> {
-					
-					// Otherwise, return the existing relation
-					return Uni.createFrom().item((IRelationshipValue<J, IProduct<?, ?>, ?>) result);
-				});
-	}
-
 	// =============================================================================================
 	// Stateless (Mutiny.StatelessSession) twins of the above. Reads are verbatim (the query builder is
 	// session-polymorphic); writes swap session.fetch→system.getEnterprise(), session.persist→session.insert,
-	// configure*Addable(session,…)→configure*Addable((Mutiny.Session) null,…) (the hook ignores the session),
+	// configure*Addable(session,…)→configure*Addable((Mutiny.StatelessSession) null,…) (the hook ignores the session),
 	// and the managed per-row createDefaultSecurity→the stateless resolveDefaultGroupFolderTokens +
 	// createDefaultSecurity path (tolerant). Same signatures/return types, first parameter only changed.
 	// =============================================================================================
@@ -507,7 +193,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 					tableForClassification.setEffectiveToDate(EndOfTime.atOffset(java.time.ZoneOffset.UTC));
 					tableForClassification.setActiveFlagID(activeFlag);
 					tableForClassification.setClassificationID(classification);
-					configureProductAddable((Mutiny.Session) null, tableForClassification, (J) this, product, classification, value, system);
+					configureProductAddable((Mutiny.StatelessSession) null, tableForClassification, (J) this, product, classification, value, system);
 					com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 							(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) tableForClassification;
 					if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
@@ -577,7 +263,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 									newTableForClassification.setActiveFlagID(activeFlag);
 									newTableForClassification.setValue(storeValue == null ? "" : storeValue);
 									newTableForClassification.setEnterpriseID(enterprise);
-									configureProductAddable((Mutiny.Session) null, newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
+									configureProductAddable((Mutiny.StatelessSession) null, newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
 									com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 											(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
 									return session.insert(newTableForClassification)

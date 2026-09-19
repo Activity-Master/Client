@@ -36,7 +36,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
      * @param identityToken Optional security identity tokens
      * @return A Uni emitting the created classification
      */
-    Uni<IClassification<?, ?>> create(Mutiny.Session session,
+    Uni<IClassification<?, ?>> create(Mutiny.StatelessSession session,
                                       String name,
                                       String description,
                                       EnterpriseClassificationDataConcepts concept,
@@ -44,22 +44,6 @@ public interface IClassificationService<J extends IClassificationService<J>> {
                                       Integer sequenceOrder,
                                       String parentName,
                                       UUID... identityToken);
-
-    /**
-     * Creates a new classification using an enum for the name.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The enum value for the name
-     * @param system        The system creating the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    default Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                              Enum<?> name,
-                                              ISystems<?, ?> system,
-                                              UUID... identityToken) {
-        return create(session, name.toString(), system, identityToken);
-    }
 
     /**
      * Creates a new classification using an enum for the name and a description.
@@ -71,64 +55,12 @@ public interface IClassificationService<J extends IClassificationService<J>> {
      * @param identityToken Optional security identity tokens
      * @return A Uni emitting the created classification
      */
-    default Uni<IClassification<?, ?>> create(Mutiny.Session session,
+    default Uni<IClassification<?, ?>> create(Mutiny.StatelessSession session,
                                               Enum<?> name,
                                               String description,
                                               ISystems<?, ?> system,
                                               UUID... identityToken) {
         return create(session, name.toString(), description, system, identityToken);
-    }
-
-    /**
-     * Creates a new classification using an enum for the name and a data concept.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The enum value for the name
-     * @param concept       The data concept
-     * @param system        The system creating the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    default Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                              Enum<?> name,
-                                              EnterpriseClassificationDataConcepts concept,
-                                              ISystems<?, ?> system,
-                                              UUID... identityToken) {
-        return create(session, name.toString(), name.toString(), concept, system, identityToken);
-    }
-
-    /**
-     * Creates a new classification with a parent enum.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The enum value for the name
-     * @param system        The system creating the classification
-     * @param parent        The parent classification enum
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    default Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                              Enum<?> name,
-                                              ISystems<?, ?> system,
-                                              Enum<?> parent,
-                                              UUID... identityToken) {
-        if (parent == null) {
-            return create(session,
-                          name.toString(),
-                          name.toString(),
-                          EnterpriseClassificationDataConcepts.NoClassificationDataConceptName,
-                          system,
-                          0,
-                          identityToken);
-        }
-        return create(session, parent.toString(), system, identityToken).chain(classification -> create(session,
-                                                                                                        name.toString(),
-                                                                                                        name.toString(),
-                                                                                                        EnterpriseClassificationDataConcepts.NoClassificationDataConceptName,
-                                                                                                        system,
-                                                                                                        0,
-                                                                                                        classification,
-                                                                                                        identityToken));
     }
 
     /**
@@ -142,7 +74,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
      * @param identityToken Optional security identity tokens
      * @return A Uni emitting the created classification
      */
-    default Uni<IClassification<?, ?>> create(Mutiny.Session session,
+    default Uni<IClassification<?, ?>> create(Mutiny.StatelessSession session,
                                               Enum<?> name,
                                               String description,
                                               ISystems<?, ?> system,
@@ -178,7 +110,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
      * @param identityToken Optional security identity tokens
      * @return A Uni emitting the created classification
      */
-    default Uni<IClassification<?, ?>> create(Mutiny.Session session,
+    default Uni<IClassification<?, ?>> create(Mutiny.StatelessSession session,
                                               Enum<?> name,
                                               ISystems<?, ?> system,
                                               Enum<?> parent,
@@ -198,40 +130,6 @@ public interface IClassificationService<J extends IClassificationService<J>> {
     }
 
     /**
-     * Creates a new classification with a parent name.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The enum value for the name
-     * @param system        The system creating the classification
-     * @param parent        The name of the parent classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    default Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                              Enum<?> name,
-                                              ISystems<?, ?> system,
-                                              String parent,
-                                              UUID... identityToken) {
-        if (parent == null || parent.isBlank()) {
-            return create(session,
-                          name.toString(),
-                          name.toString(),
-                          EnterpriseClassificationDataConcepts.NoClassificationDataConceptName,
-                          system,
-                          0,
-                          identityToken);
-        }
-        return create(session, parent, system, identityToken).chain(classification -> create(session,
-                                                                                             name.toString(),
-                                                                                             name.toString(),
-                                                                                             EnterpriseClassificationDataConcepts.NoClassificationDataConceptName,
-                                                                                             system,
-                                                                                             0,
-                                                                                             classification,
-                                                                                             identityToken));
-    }
-
-    /**
      * Creates a new classification by name.
      *
      * @param session       The Mutiny session to use
@@ -240,24 +138,8 @@ public interface IClassificationService<J extends IClassificationService<J>> {
      * @param identityToken Optional security identity tokens
      * @return A Uni emitting the created classification
      */
-    Uni<IClassification<?, ?>> create(Mutiny.Session session,
+    Uni<IClassification<?, ?>> create(Mutiny.StatelessSession session,
                                       String name,
-                                      ISystems<?, ?> system,
-                                      UUID... identityToken);
-
-    /**
-     * Creates a new classification by name and description.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The name of the classification
-     * @param description   The description
-     * @param system        The system creating the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                      String name,
-                                      String description,
                                       ISystems<?, ?> system,
                                       UUID... identityToken);
 
@@ -330,7 +212,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
 
     /**
      * Stateless opt-in <strong>scope-restricted</strong> classification create — the stateless twin of
-     * {@link #createScopeRestricted(Mutiny.Session, String, String, EnterpriseClassificationDataConcepts, ISystems, Integer,
+     * {@link #createScopeRestricted(Mutiny.StatelessSession, String, String, EnterpriseClassificationDataConcepts, ISystems, Integer,
      * IClassification, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}.
      * The new row is secured with the restricted matrix (no Everyone/Everywhere/Guests; {@code scopeToken}=read).
      * Each create runs on its own stateless unit with pre-resolved references, so multiple records can be
@@ -379,7 +261,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
 
     /**
      * Enum-name stateless create with a parent <em>name</em> (the parent is found/created by that name,
-     * then the child is linked beneath it) — mirrors the managed {@code create(Mutiny.Session, Enum,
+     * then the child is linked beneath it) — mirrors the managed {@code create(Mutiny.StatelessSession, Enum,
      * ISystems, String, …)}.
      */
     default Uni<IClassification<?, ?>> create(Mutiny.StatelessSession session,
@@ -432,7 +314,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
 
     /**
      * Enum-name stateless create with an enum parent — resolves/creates the parent first, then creates the
-     * child linked beneath it (mirrors the managed {@code create(Mutiny.Session, Enum, ISystems, Enum, …)}).
+     * child linked beneath it (mirrors the managed {@code create(Mutiny.StatelessSession, Enum, ISystems, Enum, …)}).
      */
     default Uni<IClassification<?, ?>> create(Mutiny.StatelessSession session,
                                               Enum<?> name,
@@ -455,122 +337,6 @@ public interface IClassificationService<J extends IClassificationService<J>> {
     }
 
     /**
-     * Creates a new classification by name, description, and concept.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The name of the classification
-     * @param description   The description
-     * @param conceptName   The data concept
-     * @param system        The system creating the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                      String name,
-                                      String description,
-                                      EnterpriseClassificationDataConcepts conceptName,
-                                      ISystems<?, ?> system,
-                                      UUID... identityToken);
-
-    /**
-     * Creates a new classification with sequence number.
-     *
-     * @param session        The Mutiny session to use
-     * @param name           The name of the classification
-     * @param description    The description
-     * @param conceptName    The data concept
-     * @param system         The system creating the classification
-     * @param sequenceNumber The sequence number for ordering
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                      String name,
-                                      String description,
-                                      EnterpriseClassificationDataConcepts conceptName,
-                                      ISystems<?, ?> system,
-                                      Integer sequenceNumber,
-                                      UUID... identityToken);
-
-    /**
-     * Creates a new classification with sequence number and parent classification object.
-     *
-     * @param session        The Mutiny session to use
-     * @param name           The name of the classification
-     * @param description    The description
-     * @param conceptName    The data concept
-     * @param system         The system creating the classification
-     * @param sequenceNumber The sequence number for ordering
-     * @param parent         The parent classification instance
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting the created classification
-     */
-    Uni<IClassification<?, ?>> create(Mutiny.Session session,
-                                      String name,
-                                      String description,
-                                      EnterpriseClassificationDataConcepts conceptName,
-                                      ISystems<?, ?> system,
-                                      Integer sequenceNumber,
-                                      IClassification<?, ?> parent,
-                                      UUID... identityToken);
-
-    /**
-     * Creates a new classification that is <strong>scope-restricted</strong> rather than world-readable.
-     * Identical to {@link #create(Mutiny.Session, String, String, EnterpriseClassificationDataConcepts, ISystems, Integer, IClassification, UUID...)}
-     * except the classification is secured with the restricted matrix: only Administrators / Systems /
-     * Applications / Plugins retain access, plus a <em>read</em> grant for {@code scopeToken}. Because the
-     * applicable-token climb is child&rarr;parent, only identity tokens located at the {@code scopeToken}
-     * node <em>or below it</em> may read the classification.
-     *
-     * @param session        The Mutiny session to use
-     * @param name           The name of the classification
-     * @param description    The description
-     * @param conceptName    The data concept
-     * @param system         The system creating the classification
-     * @param sequenceNumber The sequence number for ordering
-     * @param parent         The parent classification instance, or {@code null}
-     * @param scopeToken     The scope token granted read on the new classification
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting the created (scope-restricted) classification
-     */
-    Uni<IClassification<?, ?>> createScopeRestricted(Mutiny.Session session,
-                                                     String name,
-                                                     String description,
-                                                     EnterpriseClassificationDataConcepts conceptName,
-                                                     ISystems<?, ?> system,
-                                                     Integer sequenceNumber,
-                                                     IClassification<?, ?> parent,
-                                                     com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
-                                                     UUID... identityToken);
-
-    /**
-     * Finds a classification by enum name.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The enum value for the name
-     * @param system        The system searching for the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the found classification
-     */
-    default Uni<IClassification<?, ?>> find(Mutiny.Session session,
-                                            Enum<?> name,
-                                            ISystems<?, ?> system,
-                                            UUID... identityToken) {
-        return find(session, name.toString(), system, identityToken);
-    }
-
-    /**
-     * Finds a classification by name string.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The name of the classification
-     * @param system        The system searching for the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the found classification
-     */
-    Uni<IClassification<?, ?>> find(Mutiny.Session session, String name, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
      * Finds a classification by enum name and data concept.
      *
      * @param session       The Mutiny session to use
@@ -580,7 +346,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
      * @param identityToken Optional security identity tokens
      * @return A Uni emitting the found classification
      */
-    default Uni<IClassification<?, ?>> find(Mutiny.Session session,
+    default Uni<IClassification<?, ?>> find(Mutiny.StatelessSession session,
                                             Enum<?> name,
                                             EnterpriseClassificationDataConcepts concept,
                                             ISystems<?, ?> system,
@@ -589,55 +355,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
     }
 
     /**
-     * Finds a classification by name string and data concept.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The name of the classification
-     * @param concept       The data concept
-     * @param system        The system searching for the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the found classification
-     */
-    Uni<IClassification<?, ?>> find(Mutiny.Session session,
-                                    String name,
-                                    EnterpriseClassificationDataConcepts concept,
-                                    ISystems<?, ?> system,
-                                    UUID... identityToken);
-
-    /**
-     * Gets the classification for hierarchy types.
-     *
-     * @param session       The Mutiny session to use
-     * @param system        The system searching for the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the hierarchy type classification
-     */
-    Uni<IClassification<?, ?>> getHierarchyType(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
-     * Gets the default 'No Classification' instance.
-     *
-     * @param session       The Mutiny session to use
-     * @param system        The system searching for the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the 'No Classification' instance
-     */
-    Uni<IClassification<?, ?>> getNoClassification(Mutiny.Session session,
-                                                   ISystems<?, ?> system,
-                                                   UUID... identityToken);
-
-    /**
-     * Gets the classification for identity types.
-     *
-     * @param session       The Mutiny session to use
-     * @param system        The system searching for the classification
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the identity type classification
-     */
-    Uni<IClassification<?, ?>> getIdentityType(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
-     * Stateless "fetch ids/scalars + prep" variant of {@link #find(Mutiny.Session, String, ISystems, UUID...)}.
+     * Stateless "fetch ids/scalars + prep" variant of {@link #find(Mutiny.StatelessSession, String, ISystems, UUID...)}.
      * <p>
      * {@code Classification} is {@code @Cacheable} with an eager {@code @ManyToOne concept}, so it cannot be
      * hydrated as a managed entity on a {@link Mutiny.StatelessSession}. Instead this projects the row's own
@@ -703,21 +421,21 @@ public interface IClassificationService<J extends IClassificationService<J>> {
     }
 
     /**
-     * Stateless prepped variant of {@link #getHierarchyType(Mutiny.Session, ISystems, UUID...)}.
+     * Stateless prepped variant of {@link #getHierarchyType(Mutiny.StatelessSession, ISystems, UUID...)}.
      */
     Uni<IClassification<?, ?>> getHierarchyType(Mutiny.StatelessSession session,
                                                 ISystems<?, ?> system,
                                                 UUID... identityToken);
 
     /**
-     * Stateless prepped variant of {@link #getNoClassification(Mutiny.Session, ISystems, UUID...)}.
+     * Stateless prepped variant of {@link #getNoClassification(Mutiny.StatelessSession, ISystems, UUID...)}.
      */
     Uni<IClassification<?, ?>> getNoClassification(Mutiny.StatelessSession session,
                                                    ISystems<?, ?> system,
                                                    UUID... identityToken);
 
     /**
-     * Stateless prepped variant of {@link #getIdentityType(Mutiny.Session, ISystems, UUID...)}.
+     * Stateless prepped variant of {@link #getIdentityType(Mutiny.StatelessSession, ISystems, UUID...)}.
      */
     Uni<IClassification<?, ?>> getIdentityType(Mutiny.StatelessSession session,
                                                ISystems<?, ?> system,
@@ -725,66 +443,7 @@ public interface IClassificationService<J extends IClassificationService<J>> {
 
 
     /**
-     * Resolves a Classification ID (UUID) by its unique name using a lightweight native SQL lookup
-     * with a small in-memory cache to reduce database load. When systemId/conceptId are provided, the
-     * lookup is further constrained; otherwise, it falls back to an enterprise+name lookup.
-     */
-    default Uni<UUID> resolveClassificationIdByName(Mutiny.Session session,
-                                                    UUID enterpriseId,
-                                                    UUID systemId,
-                                                    UUID conceptId,
-                                                    String classificationName) {
-        // When either systemId or conceptId is missing, resolve by enterprise+name only
-        if (systemId == null || conceptId == null) {
-            return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache.getClassificationId(session,
-                                                                                                          enterpriseId,
-                                                                                                          null,
-                                                                                                          null,
-                                                                                                          classificationName,
-                                                                                                          (sess, name) -> {
-                                                                                                              String sql = "select classificationid from classification.classification " + "where enterpriseid = :ent and classificationname = :name " + "and (effectivefromdate <= current_timestamp) " + "and (effectivetodate > current_timestamp) " + "and activeflagid = (select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = 'Active')";
-                                                                                                              return sess
-                                                                                                                      .createNativeQuery(
-                                                                                                                              sql)
-                                                                                                                      .setParameter(
-                                                                                                                              "ent",
-                                                                                                                              enterpriseId)
-                                                                                                                      .setParameter(
-                                                                                                                              "name",
-                                                                                                                              name)
-                                                                                                                      .getSingleResult()
-                                                                                                                      .map(result -> (UUID) result);
-                                                                                                          });
-        }
-
-        // Full scope: enterprise + system + concept + name
-        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache.getClassificationId(session,
-                                                                                                      enterpriseId,
-                                                                                                      systemId,
-                                                                                                      conceptId,
-                                                                                                      classificationName,
-                                                                                                      (sess, name) -> {
-                                                                                                          String sql = "select classificationid from classification.classification " + "where enterpriseid = :ent and classificationdataconceptid = :cdc and classificationname = :name " + "and (effectivefromdate <= current_timestamp) " + "and (effectivetodate > current_timestamp) " + "and activeflagid = (select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = 'Active')";
-                                                                                                          return sess
-                                                                                                                  .createNativeQuery(
-                                                                                                                          sql)
-                                                                                                                  .setParameter(
-                                                                                                                          "ent",
-                                                                                                                          enterpriseId)
-                                                                                                                  // .setParameter("sys", systemId)
-                                                                                                                  .setParameter(
-                                                                                                                          "cdc",
-                                                                                                                          conceptId)
-                                                                                                                  .setParameter(
-                                                                                                                          "name",
-                                                                                                                          name)
-                                                                                                                  .getSingleResult()
-                                                                                                                  .map(result -> (UUID) result);
-                                                                                                      });
-    }
-
-    /**
-     * Stateless variant of {@link #resolveClassificationIdByName(Mutiny.Session, UUID, UUID, UUID, String)}.
+     * Stateless variant of {@link #resolveClassificationIdByName(Mutiny.StatelessSession, UUID, UUID, UUID, String)}.
      * <p>
      * Resolves the classification id via a scalar native-SQL lookup (never hydrating the {@code @Cacheable}
      * {@code Classification} entity, which carries an eager {@code concept} association), so it is safe on a

@@ -31,28 +31,10 @@ public interface IProductService<J extends IProductService<J>>
 	 */
 	IProduct<?,?> get();
 
-	/**
-	 * Finds a product by its unique ID.
-	 *
-	 * @param session The Mutiny session to use
-	 * @param id      The UUID of the product
-	 * @return A Uni emitting the found product
-	 */
-	Uni<IProduct<?,?>> find(Mutiny.Session session, UUID id);
-
-	/** Stateless variant of {@link #find(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #find(Mutiny.StatelessSession, UUID)}. */
 	Uni<IProduct<?,?>> find(Mutiny.StatelessSession session, UUID id);
 
-	/**
-	 * Finds a product type by its unique ID.
-	 *
-	 * @param session The Mutiny session to use
-	 * @param id      The UUID of the product type
-	 * @return A Uni emitting the found product type
-	 */
-	Uni<IProductType<?,?>> findType(Mutiny.Session session, UUID id);
-
-	/** Stateless variant of {@link #findType(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #findType(Mutiny.StatelessSession, UUID)}. */
 	Uni<IProductType<?,?>> findType(Mutiny.StatelessSession session, UUID id);
 
 	/**
@@ -62,157 +44,16 @@ public interface IProductService<J extends IProductService<J>>
 	 */
 	IProductType<?,?> getType();
 
-	/**
-	 * Creates a new product.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productType    The name of the product type
-	 * @param name           The name of the product
-	 * @param description    The description of the product
-	 * @param code           The code for the product
-	 * @param system         The system creating the product
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created product
-	 */
-	Uni<IProduct<?,?>> createProduct(Mutiny.Session session, String productType, String name, String description, String code, ISystems<?,?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new product with a specific key.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productType    The name of the product type
-	 * @param key            The UUID key for the product
-	 * @param name           The name of the product
-	 * @param description    The description of the product
-	 * @param code           The code for the product
-	 * @param system         The system creating the product
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created product
-	 */
-	Uni<IProduct<?, ?>> createProduct(Mutiny.Session session, String productType, UUID key, String name, String description, String code, ISystems<?, ?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new product that is <strong>scope-restricted</strong> rather than world-readable. Identical to
-	 * {@link #createProduct(Mutiny.Session, String, UUID, String, String, String, ISystems, UUID...)} except the
-	 * product is secured with the restricted matrix: only Administrators / Systems / Applications / Plugins retain
-	 * access, plus a <em>read</em> grant for {@code scopeToken}. Because the applicable-token climb is
-	 * child&rarr;parent, only identity tokens located at the {@code scopeToken} node <em>or below it</em> may read.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productType    The name of the product type
-	 * @param key            The UUID key for the product, or {@code null} to generate one
-	 * @param name           The name of the product
-	 * @param description    The description of the product
-	 * @param code           The code for the product
-	 * @param system         The system creating the product
-	 * @param scopeToken     The scope token granted read on the new product
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created (scope-restricted) product
-	 */
-	Uni<IProduct<?, ?>> createProductScopeRestricted(Mutiny.Session session, String productType, UUID key, String name, String description, String code, ISystems<?, ?> system,
-													 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
-													 UUID... identityToken);
-
-	/**
-	 * Finds a product by name.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param name           The name of the product
-	 * @param system         The system searching for the product
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found product
-	 */
-	Uni<IProduct<?,?>> findProduct(Mutiny.Session session, String name, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findProduct(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findProduct(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<IProduct<?,?>> findProduct(Mutiny.StatelessSession session, String name, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds a product associated with a specific resource item and classification.
-	 *
-	 * @param session            The Mutiny session to use
-	 * @param resourceItem       The resource item
-	 * @param classificationName The classification name
-	 * @param value              The classification value
-	 * @param system             The system searching for the product
-	 * @param identityToken      Optional security identity tokens
-	 * @return A Uni emitting a list of relationship values containing the product
-	 */
-	Uni<List<IRelationshipValue<IProduct<?,?>,IResourceItem<?,?>,?>>> findProductByResourceItem(Mutiny.Session session, IResourceItem<?, ?> resourceItem, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findProductByResourceItem(Mutiny.Session, IResourceItem, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findProductByResourceItem(Mutiny.StatelessSession, IResourceItem, String, String, ISystems, UUID...)}. */
 	Uni<List<IRelationshipValue<IProduct<?,?>,IResourceItem<?,?>,?>>> findProductByResourceItem(Mutiny.StatelessSession session, IResourceItem<?, ?> resourceItem, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
 
-	/**
-	 * Creates a new product type.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productType    The name of the product type
-	 * @param description    The description
-	 * @param system         The system creating the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created product type
-	 */
-	Uni<IProductType<?,?>> createProductType(Mutiny.Session session, String productType, String description, ISystems<?,?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new product type with a specific key.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productsType   The name of the product type
-	 * @param key            The UUID key for the type
-	 * @param description    The description
-	 * @param system         The system creating the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created product type
-	 */
-	Uni<IProductType<?, ?>> createProductType(Mutiny.Session session, String productsType, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new product type that is <strong>scope-restricted</strong>. Same as
-	 * {@link #createProductType(Mutiny.Session, String, UUID, String, ISystems, UUID...)} but secured with the
-	 * restricted matrix plus a <em>read</em> grant for {@code scopeToken}.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productsType   The name of the product type
-	 * @param key            The UUID key for the type, or {@code null} to generate one
-	 * @param description    The description
-	 * @param system         The system creating the type
-	 * @param scopeToken     The scope token granted read on the new product type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created (scope-restricted) product type
-	 */
-	Uni<IProductType<?, ?>> createProductTypeScopeRestricted(Mutiny.Session session, String productsType, UUID key, String description, ISystems<?, ?> system,
-															 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
-															 UUID... identityToken);
-
-	/**
-	 * Finds the product type for a specific product type name.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productType    The name of the product type
-	 * @param system         The system searching for the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found product type
-	 */
-	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.Session session, String productType, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless "fetch ids/scalars + prep" variant of {@link #findProductTypeForProduct(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless "fetch ids/scalars + prep" variant of {@link #findProductTypeForProduct(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.StatelessSession session, String productType, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds a product by name and classification data concept.
-	 *
-	 * @param session                           The Mutiny session to use
-	 * @param productName                      The name of the product
-	 * @param classificationDataConceptType    The data concept type classification
-	 * @param system                            The system searching for the product
-	 * @param identityToken                     Optional security identity tokens
-	 * @return A Uni emitting the found product
-	 */
-	Uni<IProduct<?,?>> findProduct(Mutiny.Session session, String productName, IClassification<?,?> classificationDataConceptType, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findProduct(Mutiny.Session, String, IClassification, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findProduct(Mutiny.StatelessSession, String, IClassification, ISystems, UUID...)}. */
 	Uni<IProduct<?,?>> findProduct(Mutiny.StatelessSession session, String productName, IClassification<?,?> classificationDataConceptType, ISystems<?,?> system, UUID... identityToken);
 
 	/**
@@ -225,7 +66,7 @@ public interface IProductService<J extends IProductService<J>>
 	 * @param identityToken  Optional security identity tokens
 	 * @return A Uni emitting the found product type
 	 */
-	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.Session session, IProduct<?,?> product, IClassification<?,?> classification, ISystems<?,?> system, UUID... identityToken);
+	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.StatelessSession session, IProduct<?,?> product, IClassification<?,?> classification, ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Finds the product type for a specific product and classification name.
@@ -237,62 +78,18 @@ public interface IProductService<J extends IProductService<J>>
 	 * @param identityToken  Optional security identity tokens
 	 * @return A Uni emitting the found product type
 	 */
-	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.Session session, IProduct<?,?> product, String classification, ISystems<?,?> system, UUID... identityToken);
+	Uni<IProductType<?,?>> findProductTypeForProduct(Mutiny.StatelessSession session, IProduct<?,?> product, String classification, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds product types by classification.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param classification The classification
-	 * @param system         The system searching for product types
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting a list of found product types
-	 */
-	Uni<List<IProductType<?,?>>> findProductTypes(Mutiny.Session session, IClassification<?,?> classification, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findProductTypes(Mutiny.Session, IClassification, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findProductTypes(Mutiny.StatelessSession, IClassification, ISystems, UUID...)}. */
 	Uni<List<IProductType<?,?>>> findProductTypes(Mutiny.StatelessSession session, IClassification<?,?> classification, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds product types by classification name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param classification The name of the classification
-	 * @param system         The system searching for product types
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting a list of found product types
-	 */
-	Uni<List<IProductType<?,?>>> findProductTypes(Mutiny.Session session, String classification, ISystems<?, ?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findProductTypes(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findProductTypes(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<List<IProductType<?,?>>> findProductTypes(Mutiny.StatelessSession session, String classification, ISystems<?, ?> system, UUID... identityToken);
 
-	/**
-	 * Finds products by product type.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param type           The product type
-	 * @param system         The system searching for products
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting a list of found products
-	 */
-	Uni<List<IProduct<?,?>>> findByProductTypes(Mutiny.Session session, IProductType<?,?> type, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByProductTypes(Mutiny.Session, IProductType, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findByProductTypes(Mutiny.StatelessSession, IProductType, ISystems, UUID...)}. */
 	Uni<List<IProduct<?,?>>> findByProductTypes(Mutiny.StatelessSession session, IProductType<?,?> type, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds products by product type name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param type           The name of the product type
-	 * @param system         The system searching for products
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting a list of found products
-	 */
-	Uni<List<IProduct<?,?>>> findByProductTypes(Mutiny.Session session, String type, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByProductTypes(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findByProductTypes(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<List<IProduct<?,?>>> findByProductTypes(Mutiny.StatelessSession session, String type, ISystems<?,?> system, UUID... identityToken);
 
 	// ============================================================================================
@@ -301,24 +98,24 @@ public interface IProductService<J extends IProductService<J>>
 	// matrix), so independent stateless sessions can provision products in parallel.
 	// ============================================================================================
 
-	/** Stateless variant of {@link #createProduct(Mutiny.Session, String, String, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createProduct(Mutiny.StatelessSession, String, String, String, String, ISystems, UUID...)}. */
 	Uni<IProduct<?,?>> createProduct(Mutiny.StatelessSession session, String productType, String name, String description, String code, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless variant of {@link #createProduct(Mutiny.Session, String, UUID, String, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createProduct(Mutiny.StatelessSession, String, UUID, String, String, String, ISystems, UUID...)}. */
 	Uni<IProduct<?,?>> createProduct(Mutiny.StatelessSession session, String productType, UUID key, String name, String description, String code, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless scope-restricted variant of {@link #createProductScopeRestricted(Mutiny.Session, String, UUID, String, String, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+	/** Stateless scope-restricted variant of {@link #createProductScopeRestricted(Mutiny.StatelessSession, String, UUID, String, String, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
 	Uni<IProduct<?,?>> createProductScopeRestricted(Mutiny.StatelessSession session, String productType, UUID key, String name, String description, String code, ISystems<?,?> system,
 													com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?,?> scopeToken,
 													UUID... identityToken);
 
-	/** Stateless variant of {@link #createProductType(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createProductType(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
 	Uni<IProductType<?,?>> createProductType(Mutiny.StatelessSession session, String productType, String description, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless variant of {@link #createProductType(Mutiny.Session, String, UUID, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createProductType(Mutiny.StatelessSession, String, UUID, String, ISystems, UUID...)}. */
 	Uni<IProductType<?,?>> createProductType(Mutiny.StatelessSession session, String productsType, UUID key, String description, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless scope-restricted variant of {@link #createProductTypeScopeRestricted(Mutiny.Session, String, UUID, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+	/** Stateless scope-restricted variant of {@link #createProductTypeScopeRestricted(Mutiny.StatelessSession, String, UUID, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
 	Uni<IProductType<?,?>> createProductTypeScopeRestricted(Mutiny.StatelessSession session, String productsType, UUID key, String description, ISystems<?,?> system,
 														   com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?,?> scopeToken,
 														   UUID... identityToken);

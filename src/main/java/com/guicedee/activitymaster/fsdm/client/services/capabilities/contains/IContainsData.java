@@ -12,12 +12,6 @@ import java.util.UUID;
  */
 public interface IContainsData<J extends IContainsData<J>>
 {
-	/**
-	 * Returns the data
-	 * @return A Uni emitting the byte[] of data
-	 */
-	Uni<byte[]> getData(Mutiny.Session session, UUID... identityToken);
-
-	/** Stateless variant of {@link #getData(Mutiny.Session, UUID...)}. */
+	/** Stateless variant of {@link #getData(Mutiny.StatelessSession, UUID...)}. */
 	Uni<byte[]> getData(Mutiny.StatelessSession session, UUID... identityToken);
 }

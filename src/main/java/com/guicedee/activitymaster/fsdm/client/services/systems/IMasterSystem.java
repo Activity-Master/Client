@@ -22,15 +22,8 @@ import java.util.*;
 public interface IMasterSystem<J extends IMasterSystem<J>>
         extends IDefaultService<J>, IProgressable
 {
-    default Uni<ISystems<?, ?>> registerSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise)
-    {
-        return Uni.createFrom()
-                  .failure(new UnsupportedOperationException(
-                          "System '" + getSystemName() + "' has no session registerSystem. You are using the session pipeline which is incorrect. Either be session, or be stateless"));
-    }
-
     /**
-     * Stateless variant of {@link #registerSystem(Mutiny.Session, IEnterprise)} — find-or-creates this
+     * Stateless variant of {@link #registerSystem(Mutiny.StatelessSession, IEnterprise)} — find-or-creates this
      * system's {@code Systems} row and registers it (security token + system involved party) entirely on a
      * {@link Mutiny.StatelessSession}, composing the stateless {@code ISystemsService.create} +
      * {@code findSystem} + {@code registerNewSystem}. Systems that need bespoke registration logic override.
@@ -44,26 +37,14 @@ public interface IMasterSystem<J extends IMasterSystem<J>>
                                                             .replaceWith(system));
     }
 
-    default Uni<Void> createDefaults(Mutiny.Session session, IEnterprise<?, ?> enterprise)
-    {
-        // Base no-op + fallback target: a system that provisions no default data (or whose defaults live only
-        // on the stateless overload, reached via the install-loop bridge) leaves this unimplemented. Logged at
-        // debug — an unimplemented managed createDefaults is a valid "nothing to provision" case, not an error.
-        LogManager.getLogger()
-                  .debug("System '{}' has no managed createDefaults; nothing to provision on the Mutiny.Session path", getSystemName());
-        return Uni.createFrom()
-                  .failure(new UnsupportedOperationException(
-                          "System '" + getSystemName() + "' has no stateless createDefaults; falling back to the Mutiny.Session overload"));
-    }
-
     /**
-     * Stateless variant of {@link #createDefaults(Mutiny.Session, IEnterprise)}.
+     * Stateless variant of {@link #createDefaults(Mutiny.StatelessSession, IEnterprise)}.
      * <p>
      * Default implementation signals <em>"this system has no stateless default-provisioning path"</em> by
      * failing with {@link UnsupportedOperationException}. The install loop
      * ({@code EnterpriseService.performSystemInstall}) treats that as the <strong>either/or</strong> seam:
      * it prefers this stateless overload and, when it is not implemented, falls back to running the managed
-     * {@link #createDefaults(Mutiny.Session, IEnterprise)} overload on a bridged {@code Mutiny.Session}. A
+     * {@link #createDefaults(Mutiny.StatelessSession, IEnterprise)} overload on a bridged {@code Mutiny.StatelessSession}. A
      * system therefore implements <em>either</em> the managed overload <em>or</em> this stateless overload
      * (or both) — it must override this only when it has a genuine stateless provisioning path (composed from
      * the prepped stateless readers, the stateless {@code IClassificationService.create}, and the stateless
@@ -76,19 +57,13 @@ public interface IMasterSystem<J extends IMasterSystem<J>>
     {
         return Uni.createFrom()
                   .failure(new UnsupportedOperationException(
-                          "System '" + getSystemName() + "' has no stateless createDefaults; falling back to the Mutiny.Session overload"));
+                          "System '" + getSystemName() + "' has no stateless createDefaults; falling back to the Mutiny.StatelessSession overload"));
     }
 
     int totalTasks();
 
-    default Uni<Void> postStartup(Mutiny.Session session, IEnterprise<?, ?> enterprise)
-    {
-        return Uni.createFrom()
-                  .voidItem();
-    }
-
     /**
-     * Stateless variant of {@link #postStartup(Mutiny.Session, IEnterprise)} — validates the system resolves
+     * Stateless variant of {@link #postStartup(Mutiny.StatelessSession, IEnterprise)} — validates the system resolves
      * on a {@link Mutiny.StatelessSession} via the scalar id projection. Systems with reactive post-startup
      * work override this.
      */
@@ -110,14 +85,12 @@ public interface IMasterSystem<J extends IMasterSystem<J>>
                                                        .replaceWithVoid());
     }
 
-    Uni<ISystems<?, ?>> getSystem(Mutiny.Session session, String enterpriseName);
+    Uni<ISystems<?, ?>> getSystem(Mutiny.StatelessSession session, String enterpriseName);
 
-    Uni<UUID> getSystemToken(Mutiny.Session session, String enterpriseName);
-
-    Uni<Boolean> hasSystemInstalled(Mutiny.Session session, IEnterprise<?, ?> enterprise);
+    Uni<UUID> getSystemToken(Mutiny.StatelessSession session, String enterpriseName);
 
     /**
-     * Stateless-session variant of {@link #hasSystemInstalled(Mutiny.Session, IEnterprise)}.
+     * Stateless-session variant of {@link #hasSystemInstalled(Mutiny.StatelessSession, IEnterprise)}.
      * <p>
      * Resolves through the {@link ISystemsService} stateless system-existence lookup (a pure
      * {@code Systems}-entity query), so it needs no persistence context.
@@ -134,7 +107,7 @@ public interface IMasterSystem<J extends IMasterSystem<J>>
      * {@link ISystemsService#findSystemId(Mutiny.StatelessSession, IEnterprise, String, java.util.UUID...)}.
      * <p>
      * A managed {@code Systems} entity cannot be returned on a stateless session (it is {@code @Cacheable}
-     * with eager associations); use a {@link Mutiny.Session} via {@link #getSystem(Mutiny.Session, String)}
+     * with eager associations); use a {@link Mutiny.StatelessSession} via {@link #getSystem(Mutiny.StatelessSession, String)}
      * when the entity itself is required.
      */
     default Uni<UUID> getSystemId(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise)

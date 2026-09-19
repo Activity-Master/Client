@@ -3,11 +3,11 @@ package com.guicedee.activitymaster.fsdm.client.services;
 /**
  * Reactivity Migration Checklist:
  * 
- * [✓] One action per Mutiny.Session at a time
+ * [✓] One action per Mutiny.StatelessSession at a time
  *     - All operations on a session are sequential
  *     - No parallel operations on the same session
  * 
- * [✓] Pass Mutiny.Session through the chain
+ * [✓] Pass Mutiny.StatelessSession through the chain
  *     - All methods accept session as parameter
  *     - Session is passed to all dependent operations
  * 
@@ -53,17 +53,7 @@ public interface ISystemsService<J extends ISystemsService<J>> {
      * @param identityToken  Optional security identity tokens
      * @return A Uni emitting the Activity Master system
      */
-    Uni<ISystems<?, ?>> getActivityMaster(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
-     * Gets the Activity Master system for a specific enterprise.
-     *
-     * @param session           The Mutiny session to use
-     * @param requestingSystem  The enterprise requesting the system
-     * @param identityToken     Optional security identity tokens
-     * @return A Uni emitting the Activity Master system
-     */
-    Uni<ISystems<?, ?>> getActivityMaster(Mutiny.Session session, IEnterprise<?, ?> requestingSystem, UUID... identityToken);
+    Uni<ISystems<?, ?>> getActivityMaster(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken);
 
     /**
      * Stateless-safe resolution of the Activity Master <em>system id</em>.
@@ -72,7 +62,7 @@ public interface ISystemsService<J extends ISystemsService<J>> {
      * {@code @Cacheable} with eager {@code @ManyToOne} associations, which Hibernate Reactive's
      * stateless session cannot hydrate (criteria-query LoadContexts underflow / L2-cache reactive
      * association assembly failure). Stateless callers use the id for tokens/FKs; callers needing the
-     * managed entity must use a {@link Mutiny.Session}.
+     * managed entity must use a {@link Mutiny.StatelessSession}.
      *
      * @param session          The stateless session to use
      * @param requestingSystem The enterprise requesting the system
@@ -101,18 +91,7 @@ public interface ISystemsService<J extends ISystemsService<J>> {
     Uni<ISystems<?, ?>> getActivityMaster(Mutiny.StatelessSession session, IEnterprise<?, ?> requestingSystem, UUID... identityToken);
 
     /**
-     * Checks if a system with the specified name exists within an enterprise.
-     *
-     * @param session        The Mutiny session to use
-     * @param enterprise     The enterprise to search within
-     * @param systemName     The name of the system to check
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting true if the system exists, false otherwise
-     */
-    Uni<Boolean> doesSystemExist(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, UUID... identityToken);
-
-    /**
-     * Stateless-session variant of {@link #doesSystemExist(Mutiny.Session, IEnterprise, String, UUID...)}.
+     * Stateless-session variant of {@link #doesSystemExist(Mutiny.StatelessSession, IEnterprise, String, UUID...)}.
      *
      * @param session        The stateless session to use
      * @param enterprise     The enterprise to search within
@@ -121,17 +100,6 @@ public interface ISystemsService<J extends ISystemsService<J>> {
      * @return A Uni emitting true if the system exists, false otherwise
      */
     Uni<Boolean> doesSystemExist(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise, String systemName, UUID... identityToken);
-
-    /**
-     * Finds a system by enterprise and system name.
-     *
-     * @param session        The Mutiny session to use
-     * @param enterprise     The enterprise to search within
-     * @param systemName     The name of the system to find
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting the found system
-     */
-    Uni<ISystems<?, ?>> findSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, UUID... identityToken);
 
     /**
      * Stateless-safe resolution of a system <em>id</em> by name within an enterprise.
@@ -175,51 +143,16 @@ public interface ISystemsService<J extends ISystemsService<J>> {
      * @param identityToken  Optional security identity tokens
      * @return A Uni emitting the found system
      */
-    Uni<ISystems<?, ?>> findSystem(Mutiny.Session session, ISystems<?, ?> system, String token, UUID... identityToken);
+    Uni<ISystems<?, ?>> findSystem(Mutiny.StatelessSession session, ISystems<?, ?> system, String token, UUID... identityToken);
 
     /**
-     * Registers a new system for an enterprise.
-     *
-     * @param session    The Mutiny session to use
-     * @param enterprise The enterprise to register the system for
-     * @param newSystem  The system object to register
-     * @return A Uni emitting the registration result string
-     */
-    Uni<String> registerNewSystem(Mutiny.Session session, IEnterprise<?, ?> enterprise, ISystems<?, ?> newSystem);
-
-    /**
-     * Stateless variant of {@link #registerNewSystem(Mutiny.Session, IEnterprise, ISystems)} — provisions the
+     * Stateless variant of {@link #registerNewSystem(Mutiny.StatelessSession, IEnterprise, ISystems)} — provisions the
      * new system's identity security token + the Systems-group token, links them, tags the system with its
      * {@code SystemIdentity} classification, secures both tokens, and creates the system involved party —
      * entirely on a {@link Mutiny.StatelessSession} (prepped reads + {@code session.insert} + the stateless
      * default-security path).
      */
     Uni<String> registerNewSystem(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise, ISystems<?, ?> newSystem);
-
-    /**
-     * Creates a new system within an enterprise.
-     *
-     * @param session        The Mutiny session to use
-     * @param enterprise     The enterprise to create the system for
-     * @param systemName     The name of the new system
-     * @param systemDesc     The description of the new system
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting the created system
-     */
-    Uni<ISystems<?, ?>> create(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, String systemDesc, UUID... identityToken);
-
-    /**
-     * Creates a new system with a specific history name.
-     *
-     * @param session        The Mutiny session to use
-     * @param enterprise     The enterprise to create the system for
-     * @param systemName     The name of the new system
-     * @param systemDesc     The description of the new system
-     * @param historyName    The history name for the system
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting the created system
-     */
-    Uni<ISystems<?, ?>> create(Mutiny.Session session, IEnterprise<?, ?> enterprise, String systemName, String systemDesc, String historyName, UUID... identityToken);
 
     /**
      * Stateless find-or-create of a {@code Systems} row (no security writes — the system row is created
@@ -229,18 +162,8 @@ public interface ISystemsService<J extends ISystemsService<J>> {
      */
     Uni<ISystems<?, ?>> create(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise, String systemName, String systemDesc, UUID... identityToken);
 
-    /** Stateless variant of {@link #create(Mutiny.Session, IEnterprise, String, String, String, UUID...)}. */
+    /** Stateless variant of {@link #create(Mutiny.StatelessSession, IEnterprise, String, String, String, UUID...)}. */
     Uni<ISystems<?, ?>> create(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise, String systemName, String systemDesc, String historyName, UUID... identityToken);
-
-    /**
-     * Gets the security identity token for a system.
-     *
-     * @param session        The Mutiny session to use
-     * @param system         The system to get the token for
-     * @param identityToken  Optional security identity tokens
-     * @return A Uni emitting the security identity token UUID
-     */
-    Uni<UUID> getSecurityIdentityToken(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
 
     /**
      * Stateless-safe resolution of a system's security identity token UUID.
@@ -258,26 +181,7 @@ public interface ISystemsService<J extends ISystemsService<J>> {
     Uni<UUID> getSecurityIdentityToken(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken);
 
     /**
-     * Resolves a Systems ID (UUID) by its unique name within an enterprise using a lightweight native SQL lookup
-     * with a small in-memory cache to reduce database load.
-     */
-    default Uni<UUID> resolveSystemIdByName(Mutiny.Session session, UUID enterpriseId, String systemName) {
-        return com.guicedee.activitymaster.fsdm.client.services.cache.NameIdCache
-                .getSystemId(session, enterpriseId, systemName, (sess, name) -> {
-                    String sql = "select systemid from dbo.systems where enterpriseid = :ent and systemname = :name " +
-                                 "and (effectivefromdate <= current_timestamp) " +
-                                 "and (effectivetodate > current_timestamp) " +
-                                 "and activeflagid = (select activeflagid from dbo.activeflag where enterpriseid = :ent and activeflagname = 'Active')";
-                    return sess.createNativeQuery(sql)
-                               .setParameter("ent", enterpriseId)
-                               .setParameter("name", name)
-                               .getSingleResult()
-                               .map(result -> (UUID) result);
-                });
-    }
-
-    /**
-     * Stateless variant of {@link #resolveSystemIdByName(Mutiny.Session, UUID, String)}.
+     * Stateless variant of {@link #resolveSystemIdByName(Mutiny.StatelessSession, UUID, String)}.
      * <p>
      * Resolves the systems id via a scalar native-SQL lookup (never hydrating the {@code @Cacheable}
      * {@code Systems} entity), so it is safe on a {@link Mutiny.StatelessSession}. Shares the same

@@ -34,68 +34,12 @@ public interface IClassificationDataConceptService<J extends IClassificationData
      */
     IClassificationDataConcept<?, ?> get();
 
-    /**
-     * Creates a new classification data concept.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The data concept enum
-     * @param description   The description
-     * @param system        The system creating the concept
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the created data concept
-     */
-    Uni<IClassificationDataConcept<?, ?>> createDataConcept(Mutiny.Session session, EnterpriseClassificationDataConcepts name,
-                                                            String description,
-                                                            ISystems<?, ?> system,
-                                                            UUID... identityToken);
-
-    /**
-     * Gets the global data concept.
-     *
-     * @param session       The Mutiny session to use
-     * @param system        The system searching for the concept
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the global data concept
-     */
-    Uni<IClassificationDataConcept<?, ?>> getGlobalConcept(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
-     * Finds a classification data concept by its name enum.
-     *
-     * @param session       The Mutiny session to use
-     * @param name          The data concept enum
-     * @param system        The system searching for the concept
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the found data concept
-     */
-    Uni<IClassificationDataConcept<?, ?>> find(Mutiny.Session session, EnterpriseClassificationDataConcepts name, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
-     * Gets the default 'No Concept' instance.
-     *
-     * @param session       The Mutiny session to use
-     * @param system        The system searching for the concept
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the 'No Concept' instance
-     */
-    Uni<IClassificationDataConcept<?, ?>> getNoConcept(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
-    /**
-     * Gets the security hierarchy data concept.
-     *
-     * @param session       The Mutiny session to use
-     * @param system        The system searching for the concept
-     * @param identityToken Optional security identity tokens
-     * @return A Uni emitting the security hierarchy data concept
-     */
-    Uni<IClassificationDataConcept<?, ?>> getSecurityHierarchyConcept(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
     // =============================================================================================
     // Stateless (Mutiny.StatelessSession) twins. ClassificationDataConcept is @Cacheable with no eager
     // @ManyToOne, so the prepped scalar-projection reads + session.insert are stateless-safe.
     // =============================================================================================
 
-    /** Stateless prepped variant of {@link #find(Mutiny.Session, EnterpriseClassificationDataConcepts, ISystems, UUID...)} (by name). */
+    /** Stateless prepped variant of {@link #find(Mutiny.StatelessSession, EnterpriseClassificationDataConcepts, ISystems, UUID...)} (by name). */
     Uni<IClassificationDataConcept<?, ?>> find(Mutiny.StatelessSession session, String name, ISystems<?, ?> system, UUID... identityToken);
 
     /** Enum-name stateless variant of {@link #find(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
@@ -103,21 +47,21 @@ public interface IClassificationDataConceptService<J extends IClassificationData
         return find(session, name.classificationValue(), system, identityToken);
     }
 
-    /** Stateless find-or-create variant of {@link #createDataConcept(Mutiny.Session, EnterpriseClassificationDataConcepts, String, ISystems, UUID...)}. */
+    /** Stateless find-or-create variant of {@link #createDataConcept(Mutiny.StatelessSession, EnterpriseClassificationDataConcepts, String, ISystems, UUID...)}. */
     Uni<IClassificationDataConcept<?, ?>> createDataConcept(Mutiny.StatelessSession session, EnterpriseClassificationDataConcepts name,
                                                             String description, ISystems<?, ?> system, UUID... identityToken);
 
-    /** Stateless variant of {@link #getGlobalConcept(Mutiny.Session, ISystems, UUID...)}. */
+    /** Stateless variant of {@link #getGlobalConcept(Mutiny.StatelessSession, ISystems, UUID...)}. */
     default Uni<IClassificationDataConcept<?, ?>> getGlobalConcept(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken) {
         return find(session, EnterpriseClassificationDataConcepts.GlobalClassificationsDataConceptName, system, identityToken);
     }
 
-    /** Stateless variant of {@link #getNoConcept(Mutiny.Session, ISystems, UUID...)}. */
+    /** Stateless variant of {@link #getNoConcept(Mutiny.StatelessSession, ISystems, UUID...)}. */
     default Uni<IClassificationDataConcept<?, ?>> getNoConcept(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken) {
         return find(session, EnterpriseClassificationDataConcepts.NoClassificationDataConceptName, system, identityToken);
     }
 
-    /** Stateless variant of {@link #getSecurityHierarchyConcept(Mutiny.Session, ISystems, UUID...)}. */
+    /** Stateless variant of {@link #getSecurityHierarchyConcept(Mutiny.StatelessSession, ISystems, UUID...)}. */
     default Uni<IClassificationDataConcept<?, ?>> getSecurityHierarchyConcept(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken) {
         return find(session, EnterpriseClassificationDataConcepts.SecurityTokenXSecurityToken, system, identityToken);
     }

@@ -27,7 +27,7 @@ public interface IPasswordsService<J extends IPasswordsService<J>> extends IProg
 	 * @param identityToken  Optional security identity tokens
 	 * @return A Uni emitting the found involved party
 	 */
-	Uni<IInvolvedParty<?, ?>> findByUsername(Mutiny.Session session, String username, ISystems<?, ?> system, UUID... identityToken);
+	Uni<IInvolvedParty<?, ?>> findByUsername(Mutiny.StatelessSession session, String username, ISystems<?, ?> system, UUID... identityToken);
 
 	/**
 	 * Finds an involved party by username and password (authentication).
@@ -40,35 +40,12 @@ public interface IPasswordsService<J extends IPasswordsService<J>> extends IProg
 	 * @param identityToken  Optional security identity tokens
 	 * @return A Uni emitting the found involved party
 	 */
-	Uni<IInvolvedParty<?, ?>> findByUsernameAndPassword(Mutiny.Session session, String username, String password, ISystems<?, ?> system, boolean throwForNoUser, UUID... identityToken);
+	Uni<IInvolvedParty<?, ?>> findByUsernameAndPassword(Mutiny.StatelessSession session, String username, String password, ISystems<?, ?> system, boolean throwForNoUser, UUID... identityToken);
 
-	/**
-	 * Retrieves all users for a system.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system performing the search
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting a list of all users
-	 */
-	Uni<List<IInvolvedParty<?, ?>>> getAllUsers(Mutiny.Session session, ISystems<?, ?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #getAllUsers(Mutiny.Session, ISystems, UUID...)} — projects ids and preps detached parties. */
+	/** Stateless variant of {@link #getAllUsers(Mutiny.StatelessSession, ISystems, UUID...)} — projects ids and preps detached parties. */
 	Uni<List<IInvolvedParty<?, ?>>> getAllUsers(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken);
 
-	/**
-	 * Adds or updates a username and password for an involved party.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param username       The username
-	 * @param password       The password
-	 * @param involvedParty  The involved party to update
-	 * @param system         The system performing the operation
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the updated involved party
-	 */
-	Uni<IInvolvedParty<?, ?>> addUpdateUsernamePassword(Mutiny.Session session, String username, String password, IInvolvedParty<?, ?> involvedParty, ISystems<?, ?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #addUpdateUsernamePassword(Mutiny.Session, String, String, IInvolvedParty, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #addUpdateUsernamePassword(Mutiny.StatelessSession, String, String, IInvolvedParty, ISystems, UUID...)}. */
 	Uni<IInvolvedParty<?, ?>> addUpdateUsernamePassword(Mutiny.StatelessSession session, String username, String password, IInvolvedParty<?, ?> involvedParty, ISystems<?, ?> system, UUID... identityToken);
 
 	/**
@@ -80,23 +57,10 @@ public interface IPasswordsService<J extends IPasswordsService<J>> extends IProg
 	 * @param identityToken  Optional security identity tokens
 	 * @return A Uni emitting true if the username exists, false otherwise
 	 */
-	Uni<Boolean> doesUsernameExist(Mutiny.Session session, String username, ISystems<?, ?> system, UUID... identityToken);
+	Uni<Boolean> doesUsernameExist(Mutiny.StatelessSession session, String username, ISystems<?, ?> system, UUID... identityToken);
 
 	/**
-	 * Creates an administrator and creator user for an enterprise.
-	 *
-	 * @param session         The Mutiny session to use
-	 * @param system          The system performing the operation
-	 * @param adminUserName   The administrator username
-	 * @param adminPassword   The administrator password
-	 * @param existingLocalKey An optional existing key to use
-	 * @return A Uni emitting the created administrator user
-	 */
-	Uni<IInvolvedParty<?, ?>> createAdminAndCreatorUserForEnterprise(Mutiny.Session session, ISystems<?, ?> system, String adminUserName,
-																	 @NotNull String adminPassword, UUID existingLocalKey);
-
-	/**
-	 * Stateless variant of {@link #createAdminAndCreatorUserForEnterprise(Mutiny.Session, ISystems, String, String, UUID)}
+	 * Stateless variant of {@link #createAdminAndCreatorUserForEnterprise(Mutiny.StatelessSession, ISystems, String, String, UUID)}
 	 * — provisions the enterprise creator/administrator involved party, its identification/name/party types,
 	 * identity security token, username + password credential, and default security entirely on a
 	 * {@link Mutiny.StatelessSession}. Idempotent: when the creator user already exists it is a no-op.

@@ -52,7 +52,7 @@ public interface IWarehouseCoreTable<
 	 * @param identityToken Security tokens for the owner
 	 * @return A Uni that completes when the security record is created
 	 */
-	Uni<Void> createDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
+	Uni<Void> createDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
 	/**
 	 * Batch, <strong>stateless-session</strong> variant of default-security creation, intended for the
@@ -159,74 +159,19 @@ public interface IWarehouseCoreTable<
 	 * @param identity   Optional security identity tokens
 	 * @return A Uni that completes when the restricted security rows exist
 	 */
-	Uni<Void> createScopeRestrictedSecurity(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system,
+	Uni<Void> createScopeRestrictedSecurity(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system,
 	                                        ISecurityToken<?,?> scopeToken, UUID... identity);
 
-	/**
-	 * Counts the in-date-range security rows currently linked to this entity. Primarily a verification
-	 * hook for the batch security-creation paths.
-	 *
-	 * @param session The reactive session
-	 * @return A Uni emitting the number of linked security rows
-	 */
-	Uni<Long> countDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.Session session);
-
-	/** Stateless variant of {@link #countDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.Session)} — a scalar COUNT (no hydration). */
+	/** Stateless variant of {@link #countDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.StatelessSession)} — a scalar COUNT (no hydration). */
 	Uni<Long> countDefaultSecurity(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session);
 
-	/**
-	 * Row-level <strong>read</strong> check. Resolves the caller's applicable security-token ids (the
-	 * supplied identity tokens plus every group/folder they are a member of, transitively, via
-	 * {@link com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService#getApplicableSecurityTokenIds})
-	 * and returns {@code true} when this entity carries an in-date-range security row that links one of
-	 * those tokens with {@code ReadAllowed = true}.
-	 *
-	 * @param session       The reactive session
-	 * @param system        The system context (provides the enterprise for token expansion)
-	 * @param identityToken The caller's security identity token(s)
-	 * @return A Uni emitting {@code true} when read access is granted
-	 */
-	Uni<Boolean> canRead(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #canRead(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #canRead(org.hibernate.reactive.mutiny.Mutiny.StatelessSession, ISystems, UUID...)}. */
 	Uni<Boolean> canRead(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Row-level <strong>write</strong> check — write is granted when any applicable security token has
-	 * {@code CreateAllowed = true} or {@code UpdateAllowed = true} on an in-date-range row of this entity.
-	 * See {@link #canRead(Mutiny.Session, ISystems, UUID...)} for how the applicable token set is resolved.
-	 *
-	 * @param session       The reactive session
-	 * @param system        The system context (provides the enterprise for token expansion)
-	 * @param identityToken The caller's security identity token(s)
-	 * @return A Uni emitting {@code true} when write (create or update) access is granted
-	 */
-	Uni<Boolean> canWrite(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #canWrite(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #canWrite(org.hibernate.reactive.mutiny.Mutiny.StatelessSession, ISystems, UUID...)}. */
 	Uni<Boolean> canWrite(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Resolves the set of <strong>this entity type's</strong> ids that the caller may
-	 * <strong>read</strong>, for use as a query-level security trim on list queries.
-	 * <p>
-	 * The caller's identity tokens are first expanded into the full applicable-token set (token plus
-	 * every group/folder it belongs to, transitively) via
-	 * {@link com.guicedee.activitymaster.fsdm.client.services.ISecurityTokenService#getApplicableSecurityTokenIds}.
-	 * Every in-date-range security row of this entity's security table whose {@code SecurityTokenID} is
-	 * in that set <em>and</em> whose {@code ReadAllowed = true} contributes its owning entity id to the
-	 * result. The returned ids are then applied to a query builder with
-	 * {@link com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderDefault#canRead(java.util.Collection)}
-	 * so {@code getAll()} is automatically security-trimmed.
-	 *
-	 * @param session       The reactive session
-	 * @param system        The system context (provides the enterprise for token expansion)
-	 * @param identityToken The caller's security identity token(s)
-	 * @return A Uni emitting the readable entity ids; never {@code null}, empty when nothing is readable
-	 */
-	Uni<java.util.Set<UUID>> readableIds(org.hibernate.reactive.mutiny.Mutiny.Session session, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #readableIds(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #readableIds(org.hibernate.reactive.mutiny.Mutiny.StatelessSession, ISystems, UUID...)}. */
 	Uni<java.util.Set<UUID>> readableIds(org.hibernate.reactive.mutiny.Mutiny.StatelessSession session, ISystems<?,?> system, UUID... identityToken);
 
 }

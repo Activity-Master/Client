@@ -31,14 +31,6 @@ public interface IInvolvedParty<J extends IInvolvedParty<J,Q>, Q extends IInvolv
 		        IManageRules<J>,
 		        IContainsRowRecordInformation<J>
 {
-	/**
-	 * Retrieves the security identity UUID for this party.
-	 *
-	 * @param session The reactive session
-	 * @return A Uni containing the security identity UUID
-	 */
-	Uni<UUID> getSecurityIdentity(Mutiny.Session session);
-
-	/** Stateless variant of {@link #getSecurityIdentity(Mutiny.Session)}. */
+	/** Stateless variant of {@link #getSecurityIdentity(Mutiny.StatelessSession)}. */
 	Uni<UUID> getSecurityIdentity(Mutiny.StatelessSession session);
 }

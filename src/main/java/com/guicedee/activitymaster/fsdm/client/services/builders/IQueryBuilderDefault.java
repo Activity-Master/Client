@@ -24,7 +24,7 @@ public interface IQueryBuilderDefault<J extends IQueryBuilderDefault<J, E, I>,
 	/**
 	 * Synchronous query-level <strong>read</strong> trim, available on every default entity query.
 	 * Restricts the result set to the supplied pre-resolved readable entity ids — the ids returned by
-	 * {@link com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable#readableIds(org.hibernate.reactive.mutiny.Mutiny.Session, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems, UUID...)},
+	 * {@link com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable#readableIds(org.hibernate.reactive.mutiny.Mutiny.StatelessSession, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems, UUID...)},
 	 * which already encodes the {@code securityTokenID IN (applicable)} &and; {@code ReadAllowed = true}
 	 * (and in-date-range) rule against this entity's security table.
 	 * <p>

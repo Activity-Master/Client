@@ -36,7 +36,7 @@ public interface IWarehouseBaseTable<
     /**
      * Expires the current record with immediate effect, opening a dedicated session.
      * <p>
-     * Prefer {@link #expire(Mutiny.Session)} when an active session is already available
+     * Prefer {@link #expire(Mutiny.StatelessSession)} when an active session is already available
      * to avoid opening a second connection and to keep the work inside the caller's transaction.
      *
      * @return the expired entity
@@ -47,23 +47,9 @@ public interface IWarehouseBaseTable<
     }
 
     /**
-     * Expires the current record with immediate effect using the provided session.
-     * <p>
-     * This is the preferred overload when called from within an existing
-     * {@code withSessionTx} block because it reuses the caller's session and transaction.
-     *
-     * @param session the active Mutiny session to use
-     * @return the expired entity
-     */
-    default Uni<J> expire(Mutiny.Session session)
-    {
-        return expire(session, Duration.ZERO);
-    }
-
-    /**
      * Expires the current record after the given duration, opening a dedicated session and transaction.
      * <p>
-     * Prefer {@link #expire(Mutiny.Session, Duration)} when an active session is already available.
+     * Prefer {@link #expire(Mutiny.StatelessSession, Duration)} when an active session is already available.
      *
      * @param duration The duration to add to the current time for expiry
      * @return The expired entity
@@ -78,7 +64,7 @@ public interface IWarehouseBaseTable<
 
         Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
 
-        return sessionFactory.openSession()
+        return sessionFactory.openStatelessSession()
                 .chain(session ->
                         session.withTransaction(tx -> expireInternal(session, duration))
                         .eventually(session::close)
@@ -91,26 +77,6 @@ public interface IWarehouseBaseTable<
     }
 
     /**
-     * Expires the current record after the given duration using the provided session.
-     * <p>
-     * The caller is responsible for transaction and session lifecycle management.
-     *
-     * @param session  the active Mutiny session to use
-     * @param duration how far in the future to set the expiry (Duration.ZERO = immediate)
-     * @return the expired entity
-     */
-    default Uni<J> expire(Mutiny.Session session, Duration duration)
-    {
-        return expireInternal(session, duration)
-                .onFailure()
-                .invoke(err -> {
-                    var log = LogManager.getLogger(getClass().getSimpleName());
-                    log.warn("❌ Failed to expire entity: {} (ID: {}) - {}",
-                            getClass().getSimpleName(), getId(), err.getMessage(), err);
-                });
-    }
-
-    /**
      * Internal implementation shared by all expire overloads.
      *
      * @param session  The session
@@ -118,7 +84,7 @@ public interface IWarehouseBaseTable<
      * @return The updated entity
      */
     @SuppressWarnings("unchecked")
-    private Uni<J> expireInternal(Mutiny.Session session, Duration duration)
+    private Uni<J> expireInternal(Mutiny.StatelessSession session, Duration duration)
     {
         J me = (J) this;
         var log = LogManager.getLogger(getClass().getSimpleName());
@@ -134,7 +100,7 @@ public interface IWarehouseBaseTable<
     }
 
     /**
-     * Stateless variant of {@link #expire(Mutiny.Session)} — immediate expiry on a
+     * Stateless variant of {@link #expire(Mutiny.StatelessSession)} — immediate expiry on a
      * {@link Mutiny.StatelessSession} via a full-row {@code session.update} (no merge; the row is already loaded).
      *
      * @param session the active stateless session to use
@@ -146,7 +112,7 @@ public interface IWarehouseBaseTable<
     }
 
     /**
-     * Stateless variant of {@link #expire(Mutiny.Session, Duration)} — sets the effective-to date and writes the
+     * Stateless variant of {@link #expire(Mutiny.StatelessSession, Duration)} — sets the effective-to date and writes the
      * row with a full-row {@code session.update} (no bulk HQL, which is blocked on a stateless session).
      *
      * @param session  the active stateless session to use

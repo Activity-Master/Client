@@ -59,7 +59,7 @@ public interface IQueryBuilderSecurity<J extends IQueryBuilderSecurity<J, E, I>,
      * two-step flow:
      * <ol>
      *     <li>resolve the readable ids reactively via
-     *         {@link com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable#readableIds(org.hibernate.reactive.mutiny.Mutiny.Session, ISystems, UUID...)}, then</li>
+     *         {@link com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable#readableIds(org.hibernate.reactive.mutiny.Mutiny.StatelessSession, ISystems, UUID...)}, then</li>
      *     <li>apply them synchronously with {@link IQueryBuilderDefault#canRead(java.util.Collection)} before {@code getAll()}.</li>
      * </ol>
      * This overload remains a pass-through (no async expansion is possible here); callers that need a

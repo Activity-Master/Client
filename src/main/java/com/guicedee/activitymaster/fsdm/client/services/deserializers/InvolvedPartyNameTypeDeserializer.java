@@ -37,7 +37,7 @@ public class InvolvedPartyNameTypeDeserializer extends ValueDeserializer<IInvolv
 
             try
             {
-                return factory.openSession()
+                return factory.openStatelessSession()
                         .chain(session -> session.withTransaction(tx -> {
                             log.debug("InvolvedPartyNameTypeDeserializer: Opened transaction for UUID {}", uuid);
                             IInvolvedPartyService<?> service = IGuiceContext.get(IInvolvedPartyService.class);

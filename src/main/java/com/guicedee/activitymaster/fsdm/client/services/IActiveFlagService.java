@@ -24,44 +24,10 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     String ActivateFlagSystemName = "Active Flag System";
 
-    /**
-     * Finds an active flag by its name within a specific enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param flag            The name of the flag to find
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting the found active flag
-     */
-    Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.Session session, String flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
-
-    /** Stateless variant of {@link #findFlagByName(Mutiny.Session, String, IEnterprise, UUID...)}. */
+    /** Stateless variant of {@link #findFlagByName(Mutiny.StatelessSession, String, IEnterprise, UUID...)}. */
     Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.StatelessSession session, String flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
-    /**
-     * Opt-in <strong>scope-restricted</strong> ActiveFlag create. Unlike the standard reference-data create (which
-     * stamps <em>no</em> per-record security), this variant secures the new flag with the restricted matrix: only
-     * Administrators / Systems / Applications / Plugins retain access, plus a <em>read</em> grant for
-     * {@code scopeToken}. Only identity tokens at the {@code scopeToken} node or below it may read the flag.
-     *
-     * <p><strong>Caveat:</strong> ActiveFlags gate visibility for every record referencing them and are normally
-     * enterprise-global. Restricting one is unusual — use only for tenant/branch-private flags.</p>
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise the flag belongs to
-     * @param name            The flag name
-     * @param description     The flag description
-     * @param system          The system used for the security fan-out
-     * @param scopeToken      The scope token granted read on the new flag
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting the created (scope-restricted) active flag
-     */
-    Uni<IActiveFlag<?,?>> createScopeRestricted(Mutiny.Session session, IEnterprise<?,?> enterprise, String name, String description,
-                                                com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems<?, ?> system,
-                                                com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
-                                                UUID... identifyingToken);
-
-    /** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.Session, IEnterprise, String, String, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+    /** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.StatelessSession, IEnterprise, String, String, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
     Uni<IActiveFlag<?,?>> createScopeRestricted(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, String name, String description,
                                                 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.systems.ISystems<?, ?> system,
                                                 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
@@ -74,97 +40,26 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
      */
     IActiveFlag<?,?> get();
 
-    /**
-     * Finds an active flag by its enumeration value within a specific enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param flag            The ActiveFlag enum value
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting the found active flag
-     */
-    Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.Session session, ActiveFlag flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
-
-    /** Stateless variant of {@link #findFlagByName(Mutiny.Session, ActiveFlag, IEnterprise, UUID...)}. */
+    /** Stateless variant of {@link #findFlagByName(Mutiny.StatelessSession, ActiveFlag, IEnterprise, UUID...)}. */
     Uni<IActiveFlag<?,?>> findFlagByName(Mutiny.StatelessSession session, ActiveFlag flag, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
-    /**
-     * Finds the range of active flags for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting a list of active flags in the active range
-     */
-    Uni<List<IActiveFlag<?,?>>> findActiveRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ... identifyingToken);
-
-    /** Stateless variant of {@link #findActiveRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    /** Stateless variant of {@link #findActiveRange(Mutiny.StatelessSession, IEnterprise, UUID...)}. */
     Uni<List<IActiveFlag<?,?>>> findActiveRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID ... identifyingToken);
 
-    /**
-     * Gets the range of visible active flags for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting a list of active flags in the visible range
-     */
-    Uni<List<IActiveFlag<?,?>>> getVisibleRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
-
-    /** Stateless variant of {@link #getVisibleRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    /** Stateless variant of {@link #getVisibleRange(Mutiny.StatelessSession, IEnterprise, UUID...)}. */
     Uni<List<IActiveFlag<?,?>>> getVisibleRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
-    /**
-     * Gets the range of removed active flags for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting a list of active flags in the removed range
-     */
-    Uni<List<IActiveFlag<?,?>>> getRemovedRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
-
-    /** Stateless variant of {@link #getRemovedRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    /** Stateless variant of {@link #getRemovedRange(Mutiny.StatelessSession, IEnterprise, UUID...)}. */
     Uni<List<IActiveFlag<?,?>>> getRemovedRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
-    /**
-     * Gets the range of archived active flags for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting a list of active flags in the archive range
-     */
-    Uni<List<IActiveFlag<?,?>>> getArchiveRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
-
-    /** Stateless variant of {@link #getArchiveRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    /** Stateless variant of {@link #getArchiveRange(Mutiny.StatelessSession, IEnterprise, UUID...)}. */
     Uni<List<IActiveFlag<?,?>>> getArchiveRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
 
-    /**
-     * Gets the range of highlighted active flags for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting a list of active flags in the highlighted range
-     */
-    Uni<List<IActiveFlag<?,?>>> getHighlightedRange(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
-
-    /** Stateless variant of {@link #getHighlightedRange(Mutiny.Session, IEnterprise, UUID...)}. */
+    /** Stateless variant of {@link #getHighlightedRange(Mutiny.StatelessSession, IEnterprise, UUID...)}. */
     Uni<List<IActiveFlag<?,?>>> getHighlightedRange(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
     /**
-     * Gets the default 'Active' flag for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting the 'Active' flag
-     */
-    Uni<IActiveFlag<?,?>> getActiveFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
-
-    /**
-     * Stateless "fetch ids/scalars + prep" variant of {@link #getActiveFlag(Mutiny.Session, IEnterprise, UUID...)}.
+     * Stateless "fetch ids/scalars + prep" variant of {@link #getActiveFlag(Mutiny.StatelessSession, IEnterprise, UUID...)}.
      * <p>
      * {@code ActiveFlag} is {@code @Cacheable} but its {@code @ManyToOne enterpriseID} is {@code LAZY}, so the
      * only eager members are scalar columns. This projects the flag's own scalars
@@ -180,75 +75,17 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
     Uni<IActiveFlag<?,?>> getActiveFlag(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID ...identifyingToken);
 
 
-    /**
-     * Gets the 'Archived' flag for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting the 'Archived' flag
-     */
-    Uni<IActiveFlag<?,?>> getArchivedFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
-
-    /** Stateless "fetch ids/scalars + prep" variant of {@link #getArchivedFlag(Mutiny.Session, IEnterprise, UUID...)}. */
+    /** Stateless "fetch ids/scalars + prep" variant of {@link #getArchivedFlag(Mutiny.StatelessSession, IEnterprise, UUID...)}. */
     Uni<IActiveFlag<?,?>> getArchivedFlag(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
-    /**
-     * Gets the 'Deleted' flag for the given enterprise.
-     *
-     * @param session         The Mutiny session to use
-     * @param enterprise      The enterprise to search within
-     * @param identifyingToken Optional security identity tokens
-     * @return A Uni emitting the 'Deleted' flag
-     */
-    Uni<IActiveFlag<?,?>> getDeletedFlag(Mutiny.Session session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
-
-    /** Stateless "fetch ids/scalars + prep" variant of {@link #getDeletedFlag(Mutiny.Session, IEnterprise, UUID...)}. */
+    /** Stateless "fetch ids/scalars + prep" variant of {@link #getDeletedFlag(Mutiny.StatelessSession, IEnterprise, UUID...)}. */
     Uni<IActiveFlag<?,?>> getDeletedFlag(Mutiny.StatelessSession session, IEnterprise<?,?> enterprise, UUID... identifyingToken);
 
-    /**
-     * Resolves an ActiveFlag ID (UUID) by its name within a specific enterprise using a lightweight
-     * native SQL lookup with a small in-memory cache to reduce database load.
-     */
-    Uni<UUID> resolveActiveFlagIdByName(Mutiny.Session session, IEnterprise<?, ?> enterpriseId, String flagName);
-
-    /** Stateless variant of {@link #resolveActiveFlagIdByName(Mutiny.Session, IEnterprise, String)}. */
+    /** Stateless variant of {@link #resolveActiveFlagIdByName(Mutiny.StatelessSession, IEnterprise, String)}. */
     Uni<UUID> resolveActiveFlagIdByName(Mutiny.StatelessSession session, IEnterprise<?, ?> enterpriseId, String flagName);
 
 
-    /**
-     * Returns the set of ActiveFlag UUIDs for the VisibleRangeAndUp for the given enterprise.
-     * Contract: never returns null. If a required flag is missing, lets NoResultException propagate.
-     */
-    default Uni<List<UUID>> getVisibleRangeAndUpIds(Mutiny.Session session, IEnterprise<?, ?> enterprise) {
-        return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Archived.name())
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.LongTermStorage.name())
-                .map(id -> { List<UUID> l = new ArrayList<>(); l.add(list); l.add(id); return l; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.MidTermStorage.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.ShortTermStorage.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Resolved.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Completed.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Active.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Current.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Important.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Highlighted.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Pending.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Always.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Permanent.name())
-                .map(id -> { list.add(id); return list; }));
-    }
-
-    /** Stateless variant of {@link #getVisibleRangeAndUpIds(Mutiny.Session, IEnterprise)}. */
+    /** Stateless variant of {@link #getVisibleRangeAndUpIds(Mutiny.StatelessSession, IEnterprise)}. */
     default Uni<List<UUID>> getVisibleRangeAndUpIds(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise) {
         return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Archived.name())
             .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.LongTermStorage.name())
@@ -277,21 +114,7 @@ public interface IActiveFlagService<J extends IActiveFlagService<J>>
                 .map(id -> { list.add(id); return list; }));
     }
 
-    /**
-     * Returns the set of ActiveFlag UUIDs for the RemovedRange for the given enterprise.
-     * Contract: never returns null. If a required flag is missing, lets NoResultException propagate.
-     */
-    default Uni<List<UUID>> getRemovedRangeIds(Mutiny.Session session, IEnterprise<?, ?> enterprise) {
-        return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Deleted.name())
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Hidden.name())
-                .map(id -> { List<UUID> l = new ArrayList<>(); l.add(list); l.add(id); return l; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Invisible.name())
-                .map(id -> { list.add(id); return list; }))
-            .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Errored.name())
-                .map(id -> { list.add(id); return list; }));
-    }
-
-    /** Stateless variant of {@link #getRemovedRangeIds(Mutiny.Session, IEnterprise)}. */
+    /** Stateless variant of {@link #getRemovedRangeIds(Mutiny.StatelessSession, IEnterprise)}. */
     default Uni<List<UUID>> getRemovedRangeIds(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise) {
         return resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Deleted.name())
             .flatMap(list -> resolveActiveFlagIdByName(session, enterprise, ActiveFlag.Hidden.name())

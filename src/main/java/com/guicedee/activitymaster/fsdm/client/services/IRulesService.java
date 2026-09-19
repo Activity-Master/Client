@@ -28,105 +28,16 @@ public interface IRulesService<J extends IRulesService<J>>
 	 */
 	String RulesSystemName = "Rules System";
 
-	/**
-	 * Creates a new rules instance.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param name          The name of the rules instance
-	 * @param description   The description
-	 * @param system        The system creating the rules
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the created rules
-	 */
-	Uni<IRules<?, ?>> createRules(Mutiny.Session session, String rulesType, String name, String description, ISystems<?,?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new rules instance with a specific key.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param key           The UUID key for the rules
-	 * @param name          The name of the rules instance
-	 * @param description   The description
-	 * @param system        The system creating the rules
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the created rules
-	 */
-	Uni<IRules<?, ?>> createRules(Mutiny.Session session, String rulesType, UUID key, String name, String description, ISystems<?, ?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new rules instance that is <strong>scope-restricted</strong> rather than world-readable. Identical
-	 * to {@link #createRules(Mutiny.Session, String, UUID, String, String, ISystems, UUID...)} except the rules are
-	 * secured with the restricted matrix: only Administrators / Systems / Applications / Plugins retain access, plus
-	 * a <em>read</em> grant for {@code scopeToken}. Because the applicable-token climb is child&rarr;parent, only
-	 * identity tokens located at the {@code scopeToken} node <em>or below it</em> may read the rules.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param key           The UUID key for the rules, or {@code null} to generate one
-	 * @param name          The name of the rules instance
-	 * @param description   The description
-	 * @param system        The system creating the rules
-	 * @param scopeToken    The scope token granted read on the new rules
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the created (scope-restricted) rules
-	 */
-	Uni<IRules<?, ?>> createRulesScopeRestricted(Mutiny.Session session, String rulesType, UUID key, String name, String description, ISystems<?, ?> system,
-												 com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
-												 UUID... identityToken);
-
-	/**
-	 * Finds a rules instance by its unique ID.
-	 *
-	 * @param session  The Mutiny session to use
-	 * @param identity The UUID of the rules instance
-	 * @return A Uni emitting the found rules instance
-	 */
-	Uni<IRules<?,?>> find(Mutiny.Session session, UUID identity);
-
-	/** Stateless variant of {@link #find(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #find(Mutiny.StatelessSession, UUID)}. */
 	Uni<IRules<?,?>> find(Mutiny.StatelessSession session, UUID identity);
 
-	/**
-	 * Finds a rules type by its unique ID.
-	 *
-	 * @param session  The Mutiny session to use
-	 * @param identity The UUID of the rules type
-	 * @return A Uni emitting the found rules type
-	 */
-	Uni<IRulesType<?,?>> findType(Mutiny.Session session, UUID identity);
-
-	/** Stateless variant of {@link #findType(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #findType(Mutiny.StatelessSession, UUID)}. */
 	Uni<IRulesType<?,?>> findType(Mutiny.StatelessSession session, UUID identity);
 
-	/**
-	 * Finds rules by name within an enterprise.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param name          The name of the rules
-	 * @param enterprise    The enterprise to search within
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the found rules
-	 */
-	Uni<IRules<?,?>> findRules(Mutiny.Session session, String name, IEnterprise<?,?> enterprise, UUID... identityToken);
-
-	/** Stateless variant of {@link #findRules(Mutiny.Session, String, IEnterprise, UUID...)}. */
+	/** Stateless variant of {@link #findRules(Mutiny.StatelessSession, String, IEnterprise, UUID...)}. */
 	Uni<IRules<?,?>> findRules(Mutiny.StatelessSession session, String name, IEnterprise<?,?> enterprise, UUID... identityToken);
 
-	/**
-	 * Finds rules by product name, classification, and enterprise.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param productName   The name of the product
-	 * @param classification The classification constraint
-	 * @param enterprise     The enterprise to search within
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found rules
-	 */
-	Uni<IRules<?,?>> findRules(Mutiny.Session session, String productName, IClassification<?,?> classification, IEnterprise<?,?> enterprise, UUID... identityToken);
-
-	/** Stateless variant of {@link #findRules(Mutiny.Session, String, IClassification, IEnterprise, UUID...)}. */
+	/** Stateless variant of {@link #findRules(Mutiny.StatelessSession, String, IClassification, IEnterprise, UUID...)}. */
 	Uni<IRules<?,?>> findRules(Mutiny.StatelessSession session, String productName, IClassification<?,?> classification, IEnterprise<?,?> enterprise, UUID... identityToken);
 
 	/**
@@ -138,77 +49,12 @@ public interface IRulesService<J extends IRulesService<J>>
 	 * @param identityToken Optional security identity tokens
 	 * @return A Uni emitting the created rules type
 	 */
-	default Uni<IRulesType<?,?>> createRulesType(Mutiny.Session session, Enum<?> rulesType, ISystems<?,?> system, UUID... identityToken)
+	default Uni<IRulesType<?,?>> createRulesType(Mutiny.StatelessSession session, Enum<?> rulesType, ISystems<?,?> system, UUID... identityToken)
 	{
 		return createRulesType(session, rulesType.toString(), system, identityToken);
 	}
 
-	/**
-	 * Creates a new rules type by name.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param system        The system creating the type
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the created rules type
-	 */
-	Uni<IRulesType<?,?>> createRulesType(Mutiny.Session session, String rulesType, ISystems<?,?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new rules type by name and description.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param description   The description
-	 * @param system        The system creating the type
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the created rules type
-	 */
-	Uni<IRulesType<?,?>> createRulesType(Mutiny.Session session, String rulesType, String description, ISystems<?,?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new rules type with a specific key.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param key           The UUID key for the type
-	 * @param description   The description
-	 * @param system        The system creating the type
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the created rules type
-	 */
-	Uni<IRulesType<?,?>> createRulesType(Mutiny.Session session, String rulesType, UUID key, String description, ISystems<?, ?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new rules type that is <strong>scope-restricted</strong>. Same as
-	 * {@link #createRulesType(Mutiny.Session, String, UUID, String, ISystems, UUID...)} but secured with the
-	 * restricted matrix plus a <em>read</em> grant for {@code scopeToken}.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param key           The UUID key for the type, or {@code null} to generate one
-	 * @param description   The description
-	 * @param system        The system creating the type
-	 * @param scopeToken    The scope token granted read on the new rules type
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the created (scope-restricted) rules type
-	 */
-	Uni<IRulesType<?,?>> createRulesTypeScopeRestricted(Mutiny.Session session, String rulesType, UUID key, String description, ISystems<?, ?> system,
-														com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
-														UUID... identityToken);
-
-	/**
-	 * Finds rules types by name.
-	 *
-	 * @param session       The Mutiny session to use
-	 * @param rulesType     The name of the rules type
-	 * @param system        The system searching for the type
-	 * @param identityToken Optional security identity tokens
-	 * @return A Uni emitting the found rules type
-	 */
-	Uni<IRulesType<?,?>> findRulesTypes(Mutiny.Session session, String rulesType, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless "fetch ids/scalars + prep" variant of {@link #findRulesTypes(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless "fetch ids/scalars + prep" variant of {@link #findRulesTypes(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<IRulesType<?,?>> findRulesTypes(Mutiny.StatelessSession session, String rulesType, ISystems<?,?> system, UUID... identityToken);
 
 	/**
@@ -221,86 +67,21 @@ public interface IRulesService<J extends IRulesService<J>>
 	 * @param identityToken   Optional security identity tokens
 	 * @return A Uni emitting a list of found rules types
 	 */
-	Uni<List<IRulesType<?,?>>> findRulesTypes(Mutiny.Session session, String classifications, String value, ISystems<?,?> system, UUID... identityToken);
+	Uni<List<IRulesType<?,?>>> findRulesTypes(Mutiny.StatelessSession session, String classifications, String value, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds rules instances by rules type and classification.
-	 *
-	 * @param session             The Mutiny session to use
-	 * @param rulesType           The rules type
-	 * @param classificationName  The classification name
-	 * @param value               The classification value
-	 * @param system              The system searching for rules
-	 * @param identityToken       Optional security identity tokens
-	 * @return A Uni emitting a list of found rules instances
-	 */
-	Uni<List<IRules<?,?>>> findByRulesTypes(Mutiny.Session session, IRulesType<?,?> rulesType, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByRulesTypes(Mutiny.Session, IRulesType, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findByRulesTypes(Mutiny.StatelessSession, IRulesType, String, String, ISystems, UUID...)}. */
 	Uni<List<IRules<?,?>>> findByRulesTypes(Mutiny.StatelessSession session, IRulesType<?,?> rulesType, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds rules types associated with specific rules and classification.
-	 *
-	 * @param session             The Mutiny session to use
-	 * @param rules               The rules instance
-	 * @param classificationName  The classification name
-	 * @param value               The classification value
-	 * @param system              The system searching for types
-	 * @param identityToken       Optional security identity tokens
-	 * @return A Uni emitting a list of found rules types
-	 */
-	Uni<List<IRulesType<?,?>>> findRuleTypesByRules(Mutiny.Session session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findRuleTypesByRules(Mutiny.Session, IRules, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findRuleTypesByRules(Mutiny.StatelessSession, IRules, String, String, ISystems, UUID...)}. */
 	Uni<List<IRulesType<?,?>>> findRuleTypesByRules(Mutiny.StatelessSession session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds relationship values between rules and rules types.
-	 *
-	 * @param session             The Mutiny session to use
-	 * @param rules               The rules instance
-	 * @param classificationName  The classification name
-	 * @param value               The classification value
-	 * @param system              The system searching for values
-	 * @param identityToken       Optional security identity tokens
-	 * @return A Uni emitting a list of relationship values
-	 */
-	Uni<List<IRelationshipValue<IRules<?,?>,IRulesType<?,?>,?>>> findRuleTypeValuesByRules(Mutiny.Session session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findRuleTypeValuesByRules(Mutiny.Session, IRules, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findRuleTypeValuesByRules(Mutiny.StatelessSession, IRules, String, String, ISystems, UUID...)}. */
 	Uni<List<IRelationshipValue<IRules<?,?>,IRulesType<?,?>,?>>> findRuleTypeValuesByRules(Mutiny.StatelessSession session, IRules<?,?> rules, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds rules associated with a product and classification.
-	 *
-	 * @param session             The Mutiny session to use
-	 * @param product             The product
-	 * @param classificationName  The classification name
-	 * @param value               The classification value
-	 * @param system              The system searching for rules
-	 * @param identityToken       Optional security identity tokens
-	 * @return A Uni emitting a list of found rules instances
-	 */
-	Uni<List<IRules<?,?>>> findRulesByProduct(Mutiny.Session session, IProduct<?,?> product, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findRulesByProduct(Mutiny.Session, IProduct, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findRulesByProduct(Mutiny.StatelessSession, IProduct, String, String, ISystems, UUID...)}. */
 	Uni<List<IRules<?,?>>> findRulesByProduct(Mutiny.StatelessSession session, IProduct<?,?> product, String classificationName, String value, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds rules associated with a resource item and classification.
-	 *
-	 * @param session             The Mutiny session to use
-	 * @param resourceItem        The resource item
-	 * @param classificationName  The classification name
-	 * @param value               The classification value
-	 * @param system              The system searching for rules
-	 * @param identityToken       Optional security identity tokens
-	 * @return A Uni emitting a list of relationship values containing rules
-	 */
-	Uni<List<IRelationshipValue<IRules<?,?>, IResourceItem<?,?>,?>>> findRulesByResourceItem(Mutiny.Session session, IResourceItem<?, ?> resourceItem, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findRulesByResourceItem(Mutiny.Session, IResourceItem, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findRulesByResourceItem(Mutiny.StatelessSession, IResourceItem, String, String, ISystems, UUID...)}. */
 	Uni<List<IRelationshipValue<IRules<?,?>, IResourceItem<?,?>,?>>> findRulesByResourceItem(Mutiny.StatelessSession session, IResourceItem<?, ?> resourceItem, String classificationName, String value, ISystems<?, ?> system, UUID... identityToken);
 
 	// ============================================================================================
@@ -308,27 +89,27 @@ public interface IRulesService<J extends IRulesService<J>>
 	// supplied Mutiny.StatelessSession, so independent stateless sessions can provision rules in parallel.
 	// ============================================================================================
 
-	/** Stateless variant of {@link #createRules(Mutiny.Session, String, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createRules(Mutiny.StatelessSession, String, String, String, ISystems, UUID...)}. */
 	Uni<IRules<?,?>> createRules(Mutiny.StatelessSession session, String rulesType, String name, String description, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless variant of {@link #createRules(Mutiny.Session, String, UUID, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createRules(Mutiny.StatelessSession, String, UUID, String, String, ISystems, UUID...)}. */
 	Uni<IRules<?,?>> createRules(Mutiny.StatelessSession session, String rulesType, UUID key, String name, String description, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless scope-restricted variant of {@link #createRulesScopeRestricted(Mutiny.Session, String, UUID, String, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+	/** Stateless scope-restricted variant of {@link #createRulesScopeRestricted(Mutiny.StatelessSession, String, UUID, String, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
 	Uni<IRules<?,?>> createRulesScopeRestricted(Mutiny.StatelessSession session, String rulesType, UUID key, String name, String description, ISystems<?,?> system,
 												com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?,?> scopeToken,
 												UUID... identityToken);
 
-	/** Stateless variant of {@link #createRulesType(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createRulesType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<IRulesType<?,?>> createRulesType(Mutiny.StatelessSession session, String rulesType, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless variant of {@link #createRulesType(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createRulesType(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
 	Uni<IRulesType<?,?>> createRulesType(Mutiny.StatelessSession session, String rulesType, String description, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless variant of {@link #createRulesType(Mutiny.Session, String, UUID, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createRulesType(Mutiny.StatelessSession, String, UUID, String, ISystems, UUID...)}. */
 	Uni<IRulesType<?,?>> createRulesType(Mutiny.StatelessSession session, String rulesType, UUID key, String description, ISystems<?,?> system, UUID... identityToken);
 
-	/** Stateless scope-restricted variant of {@link #createRulesTypeScopeRestricted(Mutiny.Session, String, UUID, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
+	/** Stateless scope-restricted variant of {@link #createRulesTypeScopeRestricted(Mutiny.StatelessSession, String, UUID, String, ISystems, com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken, UUID...)}. */
 	Uni<IRulesType<?,?>> createRulesTypeScopeRestricted(Mutiny.StatelessSession session, String rulesType, UUID key, String description, ISystems<?,?> system,
 													   com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?,?> scopeToken,
 													   UUID... identityToken);

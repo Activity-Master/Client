@@ -51,7 +51,7 @@ public class EnterpriseDeserializer extends ValueDeserializer<IEnterprise<?, ?>>
             {
                 log.debug("💾 Starting database session for Enterprise UUID lookup: {}", uuid);
                 
-                return factory.openSession()
+                return factory.openStatelessSession()
                         .chain(session -> session.withTransaction(tx -> {
                             log.debug("🏛️ Opened transactional session for Enterprise UUID: {} (Session: {})", uuid, session.hashCode());
                             

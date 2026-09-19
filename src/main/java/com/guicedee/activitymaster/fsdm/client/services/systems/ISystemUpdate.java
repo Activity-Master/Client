@@ -3,11 +3,11 @@ package com.guicedee.activitymaster.fsdm.client.services.systems;
 /**
  * Reactivity Migration Checklist:
  * 
- * [✓] One action per Mutiny.Session at a time
+ * [✓] One action per Mutiny.StatelessSession at a time
  *     - All operations on a session are sequential
  *     - No parallel operations on the same session
  * 
- * [✓] Pass Mutiny.Session through the chain
+ * [✓] Pass Mutiny.StatelessSession through the chain
  *     - All methods accept session as parameter
  *     - Session is passed to all dependent operations
  * 
@@ -38,19 +38,7 @@ import org.hibernate.reactive.mutiny.Mutiny;
 public interface ISystemUpdate extends IProgressable
 {
 	/**
-	 * Perform an update
-	 *
-	 * @param session
-	 * @param enterprise
-	 */
-	default Uni<Boolean> update(Mutiny.Session session, IEnterprise<?,?> enterprise)
-    {
-        return Uni.createFrom().failure(new UnsupportedOperationException(
-                getClass().getSimpleName() + " has no session update overload"));
-    }
-
-	/**
-	 * Stateless variant of {@link #update(Mutiny.Session, IEnterprise)}. Default throws to act as the
+	 * Stateless variant of {@link #update(Mutiny.StatelessSession, IEnterprise)}. Default throws to act as the
 	 * incremental-migration seam: the install loop prefers this overload and falls back to the managed
 	 * one when an updater has not been converted to run on a {@link Mutiny.StatelessSession}.
 	 */

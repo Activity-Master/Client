@@ -32,102 +32,13 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 */
 	IInvolvedParty<?,?> get();
 
-	/**
-	 * Finds an involved party by its unique ID.
-	 *
-	 * @param session The Mutiny session to use
-	 * @param id      The UUID of the involved party
-	 * @return A Uni emitting the found involved party
-	 */
-	Uni<IInvolvedParty<?,?>> findByID(Mutiny.Session session, UUID id);
-
-	/** Stateless variant of {@link #findByID(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #findByID(Mutiny.StatelessSession, UUID)}. */
 	Uni<IInvolvedParty<?,?>> findByID(Mutiny.StatelessSession session, UUID id);
 
 
-	/**
-	 * Creates a new name type for involved parties.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param name           The name type enum
-	 * @param description    The description
-	 * @param system         The system creating the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created name type
-	 */
-	default Uni<IInvolvedPartyNameType<?,?>> createNameType(Mutiny.Session session, Enum<?> name, String description, ISystems<?,?> system, UUID... identityToken){
-		return createNameType(session, name.toString(), description, system, identityToken);
-	}
-
-	/**
-	 * Creates a new name type by name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param name           The name type string
-	 * @param description    The description
-	 * @param system         The system creating the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created name type
-	 */
-	Uni<IInvolvedPartyNameType<?,?>> createNameType(Mutiny.Session session, String name, String description, ISystems<?,?> system, UUID... identityToken);
-
-	/**
-	 * Creates a new identification type.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system creating the type
-	 * @param name           The identification type enum
-	 * @param description    The description
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created identification type
-	 */
-	default Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationType(Mutiny.Session session, ISystems<?,?> system, Enum<?> name, String description, UUID... identityToken)
-	{
-		return createIdentificationType(session, system, name.toString(), description, identityToken);
-	}
-
-	/**
-	 * Creates a new identification type by name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system creating the type
-	 * @param name           The identification type string
-	 * @param description    The description
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created identification type
-	 */
-	Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationType(Mutiny.Session session, ISystems<?,?> system, String name, String description, UUID... identityToken);
-
-	/**
-	 * Creates a new involved party type.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system creating the type
-	 * @param name           The type enum
-	 * @param description    The description
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created involved party type
-	 */
-	default Uni<IInvolvedPartyType<?,?>> createType(Mutiny.Session session, ISystems<?,?> system, Enum<?> name, String description, UUID... identityToken)
-	{
-		return createType(session, system, name.toString(), description, identityToken);
-	}
-
-	/**
-	 * Creates a new involved party type by name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system creating the type
-	 * @param name           The type string
-	 * @param description    The description
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created involved party type
-	 */
-	Uni<IInvolvedPartyType<?,?>> createType(Mutiny.Session session, ISystems<?,?> system, String name, String description, UUID... identityToken);
-
 	// ---- Stateless "fetch ids/scalars + prep" creates (find-or-create + stateless default security) ----
 
-	/** Stateless variant of {@link #createNameType(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #createNameType(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
 	Uni<IInvolvedPartyNameType<?,?>> createNameType(Mutiny.StatelessSession session, String name, String description, ISystems<?,?> system, UUID... identityToken);
 
 	/** Enum-name stateless variant of {@link #createNameType(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
@@ -135,7 +46,7 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 		return createNameType(session, name.toString(), description, system, identityToken);
 	}
 
-	/** Stateless variant of {@link #createIdentificationType(Mutiny.Session, ISystems, String, String, UUID...)}. */
+	/** Stateless variant of {@link #createIdentificationType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
 	Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationType(Mutiny.StatelessSession session, ISystems<?,?> system, String name, String description, UUID... identityToken);
 
 	/** Enum-name stateless variant of {@link #createIdentificationType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
@@ -143,7 +54,7 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 		return createIdentificationType(session, system, name.toString(), description, identityToken);
 	}
 
-	/** Stateless variant of {@link #createType(Mutiny.Session, ISystems, String, String, UUID...)}. */
+	/** Stateless variant of {@link #createType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
 	Uni<IInvolvedPartyType<?,?>> createType(Mutiny.StatelessSession session, ISystems<?,?> system, String name, String description, UUID... identityToken);
 
 	/** Enum-name stateless variant of {@link #createType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
@@ -153,32 +64,7 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 
 
 
-	/**
-	 * Finds an identification type by enum.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param idType         The identification type enum
-	 * @param system         The system searching for the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found identification type
-	 */
-	default Uni<IInvolvedPartyIdentificationType<?,?>> findInvolvedPartyIdentificationType(Mutiny.Session session, Enum<?> idType, ISystems<?,?> system, UUID... identityToken)
-	{
-		return findInvolvedPartyIdentificationType(session, idType.toString(), system, identityToken);
-	}
-
-	/**
-	 * Finds an identification type by name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param idType         The identification type string
-	 * @param system         The system searching for the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found identification type
-	 */
-	Uni<IInvolvedPartyIdentificationType<?,?>> findInvolvedPartyIdentificationType(Mutiny.Session session, String idType, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless prepped variant of {@link #findInvolvedPartyIdentificationType(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless prepped variant of {@link #findInvolvedPartyIdentificationType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<IInvolvedPartyIdentificationType<?,?>> findInvolvedPartyIdentificationType(Mutiny.StatelessSession session, String idType, ISystems<?,?> system, UUID... identityToken);
 
 	/** Enum-name stateless variant of {@link #findInvolvedPartyIdentificationType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
@@ -187,50 +73,11 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 		return findInvolvedPartyIdentificationType(session, idType.toString(), system, identityToken);
 	}
 
-	/**
-	 * Finds an involved party by resource item and value.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param idType         The resource item (e.g., an identification document)
-	 * @param value          The value associated with the resource item
-	 * @param system         The system searching for the party
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found involved party
-	 */
-	Uni<IInvolvedParty<?,?>> findByResourceItem(Mutiny.Session session, IResourceItem<?,?> idType, String value, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByResourceItem(Mutiny.Session, IResourceItem, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findByResourceItem(Mutiny.StatelessSession, IResourceItem, String, ISystems, UUID...)}. */
 	Uni<IInvolvedParty<?,?>> findByResourceItem(Mutiny.StatelessSession session, IResourceItem<?,?> idType, String value, ISystems<?,?> system, UUID... identityToken);
 
 	/**
-	 * Creates a new involved party.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system creating the party
-	 * @param idTypes        Pairs of identification type names and values
-	 * @param isOrganic      Whether the party is an individual (true) or organization (false)
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created involved party
-	 */
-	Uni<IInvolvedParty<?,?>> create(Mutiny.Session session, ISystems<?,?> system, Pair<String, String> idTypes,
-									boolean isOrganic, UUID... identityToken);
-
-	/**
-	 * Creates a new involved party with a specific key.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system creating the party
-	 * @param key            The UUID key for the party
-	 * @param idTypes        Pairs of identification type names and values
-	 * @param isOrganic      Whether the party is an individual (true) or organization (false)
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created involved party
-	 */
-	Uni<IInvolvedParty<?, ?>> create(Mutiny.Session session, ISystems<?, ?> system, UUID key, Pair<String, String> idTypes,
-									 boolean isOrganic, UUID... identityToken);
-
-	/**
-	 * Stateless variant of {@link #create(Mutiny.Session, ISystems, Pair, boolean, UUID...)} — provisions the
+	 * Stateless variant of {@link #create(Mutiny.StatelessSession, ISystems, Pair, boolean, UUID...)} — provisions the
 	 * involved party (and its organic/non-organic record + the supplied identification-type link) entirely on a
 	 * {@link Mutiny.StatelessSession} via {@code session.insert} + the stateless default-security path.
 	 */
@@ -238,88 +85,26 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 									 boolean isOrganic, UUID... identityToken);
 
 	/**
-	 * Stateless variant of {@link #create(Mutiny.Session, ISystems, UUID, Pair, boolean, UUID...)} (explicit key).
+	 * Stateless variant of {@link #create(Mutiny.StatelessSession, ISystems, UUID, Pair, boolean, UUID...)} (explicit key).
 	 */
 	Uni<IInvolvedParty<?, ?>> create(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID key, Pair<String, String> idTypes,
 									 boolean isOrganic, UUID... identityToken);
 
-	/**
-	 * Creates a new involved party that is <strong>scope-restricted</strong> rather than world-readable.
-	 * Identical to {@link #create(Mutiny.Session, ISystems, UUID, Pair, boolean, UUID...)} except the party
-	 * (and its organic/non-organic record) are secured with the restricted matrix: only Administrators /
-	 * Systems / Applications / Plugins retain access, plus a <em>read</em> grant for {@code scopeToken}.
-	 * Because the applicable-token climb is child&rarr;parent, only identity tokens located at the
-	 * {@code scopeToken} node <em>or below it</em> may read the party.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param system         The system creating the party
-	 * @param key            The UUID key for the party, or {@code null} to generate one
-	 * @param idTypes        Pairs of identification type names and values
-	 * @param isOrganic      Whether the party is an individual (true) or organization (false)
-	 * @param scopeToken     The scope token granted read on the new party
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the created (scope-restricted) involved party
-	 */
-	Uni<IInvolvedParty<?, ?>> createScopeRestricted(Mutiny.Session session, ISystems<?, ?> system, UUID key,
-													Pair<String, String> idTypes, boolean isOrganic,
-													ISecurityToken<?, ?> scopeToken, UUID... identityToken);
-
-	/** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.Session, ISystems, UUID, Pair, boolean, ISecurityToken, UUID...)}. */
+	/** Stateless scope-restricted variant of {@link #createScopeRestricted(Mutiny.StatelessSession, ISystems, UUID, Pair, boolean, ISecurityToken, UUID...)}. */
 	Uni<IInvolvedParty<?, ?>> createScopeRestricted(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID key,
 													Pair<String, String> idTypes, boolean isOrganic,
 													ISecurityToken<?, ?> scopeToken, UUID... identityToken);
 
-	/**
-	 * Finds an involved party type by name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param type           The name of the type
-	 * @param system         The system searching for the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found involved party type
-	 */
-	Uni<IInvolvedPartyType<?,?>> findType(Mutiny.Session session, String type, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless prepped variant of {@link #findType(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless prepped variant of {@link #findType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<IInvolvedPartyType<?,?>> findType(Mutiny.StatelessSession session, String type, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds a name type by name string.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param nameType       The name of the name type
-	 * @param system         The system searching for the type
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found name type
-	 */
-	Uni<IInvolvedPartyNameType<?,?>> findInvolvedPartyNameType(Mutiny.Session session, String nameType, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless prepped variant of {@link #findInvolvedPartyNameType(Mutiny.Session, String, ISystems, UUID...)}. */
+	/** Stateless prepped variant of {@link #findInvolvedPartyNameType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
 	Uni<IInvolvedPartyNameType<?,?>> findInvolvedPartyNameType(Mutiny.StatelessSession session, String nameType, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds an involved party by security token.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param token          The security token
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found involved party
-	 */
-	Uni<IInvolvedParty<?,?>> findByToken(Mutiny.Session session, ISecurityToken<?,?> token, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByToken(Mutiny.Session, ISecurityToken, UUID...)}. */
+	/** Stateless variant of {@link #findByToken(Mutiny.StatelessSession, ISecurityToken, UUID...)}. */
 	Uni<IInvolvedParty<?,?>> findByToken(Mutiny.StatelessSession session, ISecurityToken<?,?> token, UUID... identityToken);
 
-	/**
-	 * Finds an involved party by its unique ID.
-	 *
-	 * @param session The Mutiny session to use
-	 * @param uuid    The UUID of the party
-	 * @return A Uni emitting the found involved party
-	 */
-	Uni<IInvolvedParty<?,?>> find(Mutiny.Session session, UUID uuid);
-
-	/** Stateless variant of {@link #find(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #find(Mutiny.StatelessSession, UUID)}. */
 	Uni<IInvolvedParty<?,?>> find(Mutiny.StatelessSession session, UUID uuid);
 
 	/**
@@ -329,86 +114,23 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	 * @param uuid    The UUID of the type
 	 * @return A Uni emitting the found type
 	 */
-	Uni<IInvolvedPartyType<?,?>> findType(Mutiny.Session session, UUID uuid);
+	Uni<IInvolvedPartyType<?,?>> findType(Mutiny.StatelessSession session, UUID uuid);
 
-	/**
-	 * Finds a name type by its unique ID.
-	 *
-	 * @param session The Mutiny session to use
-	 * @param uuid    The UUID of the name type
-	 * @return A Uni emitting the found name type
-	 */
-	Uni<IInvolvedPartyNameType<?,?>> findNameType(Mutiny.Session session, UUID uuid);
-
-	/** Stateless variant of {@link #findNameType(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #findNameType(Mutiny.StatelessSession, UUID)}. */
 	Uni<IInvolvedPartyNameType<?,?>> findNameType(Mutiny.StatelessSession session, UUID uuid);
 
-	/**
-	 * Finds an identification type by its unique ID.
-	 *
-	 * @param session The Mutiny session to use
-	 * @param uuid    The UUID of the identification type
-	 * @return A Uni emitting the found identification type
-	 */
-	Uni<IInvolvedPartyIdentificationType<?,?>> findIdentificationType(Mutiny.Session session, UUID uuid);
-
-	/** Stateless variant of {@link #findIdentificationType(Mutiny.Session, UUID)}. */
+	/** Stateless variant of {@link #findIdentificationType(Mutiny.StatelessSession, UUID)}. */
 	Uni<IInvolvedPartyIdentificationType<?,?>> findIdentificationType(Mutiny.StatelessSession session, UUID uuid);
 
-	/**
-	 * Finds an involved party by UUID token.
-	 *
-	 * @param session        The Mutiny session to use
-	 * @param token          The UUID token
-	 * @param system         The system searching for the party
-	 * @param identityToken  Optional security identity tokens
-	 * @return A Uni emitting the found involved party
-	 */
-	Uni<IInvolvedParty<?,?>> findByUUID(Mutiny.Session session, UUID token, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByUUID(Mutiny.Session, UUID, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findByUUID(Mutiny.StatelessSession, UUID, ISystems, UUID...)}. */
 	Uni<IInvolvedParty<?,?>> findByUUID(Mutiny.StatelessSession session, UUID token, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds all relationships by identification type and value.
-	 *
-	 * @param session             The Mutiny session to use
-	 * @param identificationType  The identification type string
-	 * @param value               The value to search for
-	 * @return A Uni emitting a list of matching relationship values
-	 */
-	Uni<List<IRelationshipValue<IInvolvedParty<?,?>, IInvolvedPartyIdentificationType<?,?>, ?>>> findAllByIdentificationType(Mutiny.Session session, String identificationType, String value);
-
-	/** Stateless variant of {@link #findAllByIdentificationType(Mutiny.Session, String, String)}. */
+	/** Stateless variant of {@link #findAllByIdentificationType(Mutiny.StatelessSession, String, String)}. */
 	Uni<List<IRelationshipValue<IInvolvedParty<?,?>, IInvolvedPartyIdentificationType<?,?>, ?>>> findAllByIdentificationType(Mutiny.StatelessSession session, String identificationType, String value);
 
-	/**
-	 * Finds involved parties by rules classification.
-	 *
-	 * @param session         The Mutiny session to use
-	 * @param classification  The classification name
-	 * @param value           The classification value
-	 * @param system          The system searching for parties
-	 * @param identityToken   Optional security identity tokens
-	 * @return A Uni emitting a list of found involved parties
-	 */
-	Uni<List<IInvolvedParty<?,?>>> findByRulesClassification(Mutiny.Session session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByRulesClassification(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findByRulesClassification(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
 	Uni<List<IInvolvedParty<?,?>>> findByRulesClassification(Mutiny.StatelessSession session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
 
-	/**
-	 * Finds an involved party by classification.
-	 *
-	 * @param session         The Mutiny session to use
-	 * @param classification  The classification name
-	 * @param value           The classification value
-	 * @param system          The system searching for the party
-	 * @param identityToken   Optional security identity tokens
-	 * @return A Uni emitting the found involved party
-	 */
-	Uni<IInvolvedParty<?,?>> findByClassification(Mutiny.Session session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
-
-	/** Stateless variant of {@link #findByClassification(Mutiny.Session, String, String, ISystems, UUID...)}. */
+	/** Stateless variant of {@link #findByClassification(Mutiny.StatelessSession, String, String, ISystems, UUID...)}. */
 	Uni<IInvolvedParty<?,?>> findByClassification(Mutiny.StatelessSession session, String classification, String value, ISystems<?,?> system, UUID... identityToken);
 }
