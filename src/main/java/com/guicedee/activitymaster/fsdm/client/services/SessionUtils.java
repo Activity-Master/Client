@@ -71,47 +71,6 @@ public final class SessionUtils {
     }
 
     /**
-     * Runs work as a <em>named system using that system's own identity token</em>.
-     * <p>
-     * This is the canonical, blast-radius-minimising entry point: instead of every caller borrowing
-     * the broadly-privileged ActivityMaster system token, each system resolves and runs under
-     * <strong>its own</strong> security identity token (via
-     * {@link IActivityMasterService#getISystemToken}). The supplied token therefore only grants the
-     * access that <em>that</em> system has been scoped for in the security graph, so a compromised or
-     * misbehaving caller can only reach what its own system is permitted to reach.
-     *
-     * @param enterpriseName The AM Enterprise Name (security scope)
-     * @param systemName     The AM System Name that is performing the task — its own identity token is supplied to the work
-     * @param consumer       The consumer to execute, receiving a tuple of (session, enterprise, system, tokens)
-     * @return A reactive chain that can be executed with this session closed after completion.
-     */
-    public static Uni<Void> withSystemAndToken(String enterpriseName, String systemName, Consumer<Tuple4<Mutiny.StatelessSession, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>> consumer) {
-        return withSystemAndToken(enterpriseName, systemName, tuple -> {
-                                      consumer.accept(tuple);
-                                      return Uni.createFrom().voidItem();
-                                  }
-        );
-    }
-
-    /**
-     * Executes a consumer with the enterprise system and identity tokens.
-     * <p>
-     * <strong>Naming note:</strong> this is a backward-compatible alias for
-     * {@link #withSystemAndToken(String, String, Consumer)} — it does <em>not</em> force the
-     * ActivityMaster system token. The {@code systemName} you pass determines which system's own
-     * identity token is supplied. Prefer {@link #withSystemAndToken} in new code to make the
-     * per-system token intent explicit.
-     *
-     * @param enterpriseName The AM Enterprise Name
-     * @param systemName     The AM System Name that is performing the task
-     * @param consumer       The consumer to execute
-     * @return A reactive chain that can be executed with this session closed after completion. The consumer receives a tuple of (session, enterprise, system, tokens).
-     */
-    public static Uni<Void> withActivityMaster(String enterpriseName, String systemName, Consumer<Tuple4<Mutiny.StatelessSession, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>> consumer) {
-        return withSystemAndToken(enterpriseName, systemName, consumer);
-    }
-
-    /**
      * Executes a reactive function as a <em>named system using that system's own identity token</em>.
      * Designed for use directly inside reactive chains.
      * <p>
