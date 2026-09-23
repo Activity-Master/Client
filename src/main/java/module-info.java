@@ -13,9 +13,7 @@ module com.guicedee.activitymaster.fsdm.client {
     exports com.guicedee.activitymaster.fsdm.client.services.systems;
     exports com.guicedee.activitymaster.fsdm.client.services.deserializers;
 
-    requires transitive com.guicedee.guicedinjection;
 
-    requires transitive io.vertx.core;
 
     exports com.guicedee.activitymaster.fsdm.client.services.classifications;
     exports com.guicedee.activitymaster.fsdm.client.services.classifications.address;
@@ -49,13 +47,10 @@ module com.guicedee.activitymaster.fsdm.client {
     opens com.guicedee.activitymaster.fsdm.client.services.builders.warehouse to com.guicedee.activitymaster.fsdm;
 
     requires transitive com.entityassist;
-    requires transitive jakarta.persistence;
 
     requires static lombok;
     requires transitive jakarta.validation;
-    requires transitive org.hibernate.reactive;
     requires transitive org.hibernate.validator;
-    requires transitive org.apache.logging.log4j;
     requires com.guicedee.rest.client;
     requires org.apache.logging.log4j.core;
 

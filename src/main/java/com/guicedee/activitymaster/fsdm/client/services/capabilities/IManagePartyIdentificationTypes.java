@@ -84,6 +84,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
         return classificationService.find(session, classificationName, system, identityToken)
                        .chain(classification -> activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
                                .chain(activeFlag -> {
+                                   tableForClassification.setEnterpriseID(enterprise);
                                    tableForClassification.setValue(Strings.nullToEmpty(value));
                                    tableForClassification.setSystemID(system);
                                    tableForClassification.setOriginalSourceSystemID(system.getId());
@@ -126,6 +127,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
         IClassificationService<?> classificationService = get(IClassificationService.class);
         final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
         return tableForClassification.builder(session)
+                       .withEnterprise(enterprise)
                        .findLink((J) this, secondary, null)
                        .withValue(searchValue)
                        .inActiveRange()
@@ -142,6 +144,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                               IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);
                                               return activeFlagSvc.getActiveFlag(session, enterprise, identityToken)
                                                              .chain(activeFlag -> {
+                                                                 tableForClassification.setEnterpriseID(enterprise);
                                                                  tableForClassification.setValue(Strings.nullToEmpty(searchValue));
                                                                  tableForClassification.setSystemID(system);
                                                                  tableForClassification.setOriginalSourceSystemID(system.getId());
@@ -204,6 +207,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
 
         return classificationService.find(session, classificationValue, system, identityToken)
                        .chain(classification -> tableForClassification.builder(session)
+                                      .withEnterprise(enterprise)
                                       .findLink((J) this, secondary, null)
                                       .withValue(searchValue)
                                       .inActiveRange()
@@ -233,6 +237,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                                              });
                                           return retire.chain(() -> flagService.getActiveFlag(session, enterprise, identityToken)
                                                          .chain(activeFlag -> {
+                                                               tableForClassification.setEnterpriseID(enterprise);
                                                               tableForClassification.setId(java.util.UUID.randomUUID());
                                                               tableForClassification.setValue(storeValue == null ? "" : storeValue);
                                                              tableForClassification.setSystemID(system);
@@ -270,6 +275,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                        .chain(involvedPartyIdentificationType -> {
                            IQueryBuilderRelationships<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID> q
                                    = relationshipTable.builder(session)
+                                             .withEnterprise(system.getEnterprise())
                                              .findLink((J) this, involvedPartyIdentificationType, null)
                                              .inActiveRange()
                                              .withClassification(classification, system)
@@ -292,6 +298,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                        .chain(involvedPartyIdentificationType -> {
                            IQueryBuilderRelationships<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID> q
                                    = relationshipTable.builder(session)
+                                             .withEnterprise(system.getEnterprise())
                                              .findLink((J) this, involvedPartyIdentificationType, null)
                                              .inActiveRange()
                                              .withClassification(classification, system)
@@ -312,6 +319,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
         final String finalClassificationValue = classificationValue == null ? DefaultClassifications.NoClassification.classificationValue() : classificationValue;
         return partyService.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
                        .chain(involvedPartyIdentificationType -> relationshipTable.builder(session)
+                                                                         .withEnterprise(system.getEnterprise())
                                                                          .findLink((J) this, involvedPartyIdentificationType, null)
                                                                          .withValue(value)
                                                                          .withClassification(finalClassificationValue, system)

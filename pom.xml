@@ -23,25 +23,13 @@
         </dependency>
 
 
-        <dependency>
-            <groupId>com.guicedee</groupId>
-            <artifactId>inject</artifactId>
-        </dependency>
 
         <dependency>
             <groupId>com.entityassist</groupId>
             <artifactId>entity-assist-reactive</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-core</artifactId>
-        </dependency>
 
-        <dependency>
-            <groupId>io.smallrye.reactive</groupId>
-            <artifactId>mutiny</artifactId>
-        </dependency>
 
 
         <dependency>

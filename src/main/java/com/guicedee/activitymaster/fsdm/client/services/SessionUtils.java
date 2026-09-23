@@ -305,23 +305,6 @@ public final class SessionUtils {
     }
 
     /**
-     * Context-aware variant that runs as the named system using <em>that system's own identity
-     * token</em>, resolving the enterprise (and any caller identity token) from the
-     * {@link ActivityMasterConfiguration call context}. Backward-compatible alias for
-     * {@link #withActivityMasterFromContext(String, Function)} with a name that makes the
-     * per-system-token intent explicit.
-     *
-     * @param systemName the AM system performing the work — its own identity token is supplied as element {@code [0]}
-     * @param fn         reactive function receiving (session, enterprise, system, tokens)
-     * @return a Uni of the function's result type
-     */
-    public static <T> Uni<T> withSystemAndTokenFromContext(String systemName,
-                                                           Function<Tuple4<Mutiny.StatelessSession, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn
-    ) {
-        return withActivityMasterFromContext(systemName, fn);
-    }
-
-    /**
      * Resolves a single named system's own security identity token within an enterprise, opening and
      * closing a dedicated read-only session internally.
      * <p>
