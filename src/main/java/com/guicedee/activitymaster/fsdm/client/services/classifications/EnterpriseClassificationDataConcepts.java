@@ -46,6 +46,7 @@ public enum EnterpriseClassificationDataConcepts
 	EventXAddress,
 	EventXArrangement,
 	EventXClassification,
+	EventXEvent,
 	EventXEventType,
 	EventXGeography,
 	EventXInvolvedParty,
@@ -85,6 +86,21 @@ public enum EnterpriseClassificationDataConcepts
 	ProductXProduct,
 	ProductXProductType,
 	ProductXResourceItem,
+
+	Transaction,
+	TransactionType,
+	TransactionXTransactionType,
+	TransactionXInvolvedParty,
+	TransactionXResourceItem,
+	TransactionXArrangement,
+	TransactionXEvent,
+	TransactionXProduct,
+	TransactionXAddress,
+	TransactionXGeography,
+	TransactionXRules,
+	TransactionXTransaction,
+	TransactionXClassification,
+
 	
 	
 	ResourceItem,
