@@ -170,7 +170,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 					if (existingTable == null) {
 						return addGeography(session, geographyType, classificationValue, storeValue, system, identityToken);
 					}
-					if (Strings.nullToEmpty(storeValue).equals(existingTable.getValue())) {
+					if (SCDLinkMaintenance.unchangedBySameSystem(existingTable.getValue(), storeValue, existingTable.getOriginalSourceSystemID(), system.getId())) {
 						return Uni.createFrom().item(existingTable);
 					}
 					IActiveFlagService<?> flagService = get(IActiveFlagService.class);
@@ -182,7 +182,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 							newTableForClassification.setId(null);
 							newTableForClassification.setClassificationID(existingTable.getClassificationID());
 							newTableForClassification.setSystemID(system);
-							newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+							newTableForClassification.setOriginalSourceSystemID(system.getId());
 							newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
 							newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 							newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
@@ -196,7 +196,7 @@ public interface IManageGeographies <J extends IWarehouseBaseTable<J, ?,? extend
 									configureGeographyAddable(newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
 									com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 											(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-									return session.insert(newTableForClassification)
+									return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
 										.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
 											.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
 											.onFailure().recoverWithItem(0L))

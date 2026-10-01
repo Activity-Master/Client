@@ -185,7 +185,7 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                         .chain(result -> {
                             IWarehouseRelationshipTable<?, ?, J, IResourceItem<?, ?>, java.util.UUID, ?> existingTable =
                                     (IWarehouseRelationshipTable<?, ?, J, IResourceItem<?, ?>, java.util.UUID, ?>) result;
-                            if (Strings.nullToEmpty(storeValue).equals(existingTable.getValue())) {
+                            if (SCDLinkMaintenance.unchangedBySameSystem(existingTable.getValue(), storeValue, existingTable.getOriginalSourceSystemID(), system.getId())) {
                                 return Uni.createFrom().item((IRelationshipValue<J, IResourceItem<?, ?>, ?>) existingTable);
                             }
                             IActiveFlagService<?> flagService = get(IActiveFlagService.class);
@@ -211,7 +211,7 @@ public interface IManageResourceItems<J extends IWarehouseBaseTable<J, ?, ? exte
                                                     configureResourceItemAddable(newTableForClassification, (J) existingTable.getPrimary(), resourceItem, classification, storeValue, enterprise);
                                                     com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
                                                             (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-                                                    return session.insert(newTableForClassification)
+                                                    return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
                                                             .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
                                                                     .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
                                                                     .onFailure().recoverWithItem(0L))

@@ -154,6 +154,13 @@ public interface ISystemsService<J extends ISystemsService<J>> {
      */
     Uni<String> registerNewSystem(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise, ISystems<?, ?> newSystem);
 
+    /** Registers an extension under the Plugin security hierarchy, never the System hierarchy.
+     * Installation and user consent are separate and are not granted by registration. */
+    default Uni<String> registerNewPlugin(Mutiny.StatelessSession session, IEnterprise<?, ?> enterprise,
+                                          ISystems<?, ?> plugin) {
+        return Uni.createFrom().failure(new UnsupportedOperationException("Plugin registration unavailable"));
+    }
+
     /**
      * Stateless find-or-create of a {@code Systems} row (no security writes — the system row is created
      * lean; classifications/security are provisioned by the later install phases). Returns a prepped

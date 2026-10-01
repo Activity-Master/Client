@@ -184,7 +184,7 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                         .recoverWithUni(() -> (Uni) addArrangementType(session, arrangementTypeType, classificationValue, storeValue, system, identityToken))
                         .chain(result -> {
                             IRelationshipValue<J, IArrangementType<?, ?>, ?> existingRelation = (IRelationshipValue<J, IArrangementType<?, ?>, ?>) result;
-                            if (Strings.nullToEmpty(storeValue).equals(existingRelation.getValue())) {
+                            if (SCDLinkMaintenance.unchangedBySameSystem(existingRelation.getValue(), storeValue, ((com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IContainsRowRecordInformation<?>) existingRelation).getOriginalSourceSystemID(), system.getId())) {
                                 return Uni.createFrom().item(existingRelation);
                             }
                             final IWarehouseRelationshipTable<?, ?, J, IArrangementType<?, ?>, java.util.UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IArrangementType<?, ?>, java.util.UUID, ?>) result;
@@ -197,7 +197,7 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                                         newTableForClassification.setId(null);
                                         newTableForClassification.setClassificationID(existingTable.getClassificationID());
                                         newTableForClassification.setSystemID(system);
-                                        newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+                                        newTableForClassification.setOriginalSourceSystemID(system.getId());
                                         newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
                                         newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
                                         newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
@@ -211,7 +211,7 @@ public interface IManageArrangementTypes<J extends IWarehouseBaseTable<J, ?, ? e
                                                     configureArrangementTypeAddable(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
                                                     com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
                                                             (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-                                                    return session.insert(newTableForClassification)
+                                                    return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
                                                             .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
                                                                     .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
                                                                     .onFailure().recoverWithItem(0L))

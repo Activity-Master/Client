@@ -113,7 +113,11 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
                 return current.postStartup(session, enterprise);
             });
         }
-        return chain.invoke(() -> logProgress("System Loading", "Completed Startup of Systems... ", 1));
+        var plugins = new java.util.ArrayList<>(com.guicedee.activitymaster.fsdm.client.services.systems.IMasterPlugin.allPlugins());
+        plugins.sort(java.util.Comparator.comparing((com.guicedee.activitymaster.fsdm.client.services.systems.IMasterPlugin<?> p) -> p.sortOrder())
+                .thenComparing(p -> p.getSystemName()));
+        for (var plugin : plugins) chain = chain.chain(() -> plugin.postStartup(session, enterprise));
+        return chain.invoke(() -> logProgress("System Loading", "Completed Startup of Systems and Plugins", 1));
     }
 
     /**

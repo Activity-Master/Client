@@ -124,6 +124,9 @@ public interface IMasterSystem<J extends IMasterSystem<J>>
     static @NotNull Set<IMasterSystem<?>> allSystems()
     {
         Set iActivityMasterSystems = IGuiceContext.loaderToSet(ServiceLoader.load(IMasterSystem.class));
+        for (Object registration : iActivityMasterSystems)
+            if (registration instanceof IMasterPlugin<?>)
+                throw new IllegalStateException("A plugin cannot be an ActivityMaster System: " + registration.getClass().getName());
         return iActivityMasterSystems;
     }
 

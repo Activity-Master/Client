@@ -15,16 +15,9 @@ import java.util.UUID;
  * (set its closing {@link IActiveFlag} and {@code effectiveToDate}) and then insert a brand new
  * version in the same transaction.</p>
  *
- * <p>Mutating the still-managed row and calling {@code session.merge(...)} is a no-op under
- * Hibernate Reactive with bytecode enhancement (self-dirty-tracking is not flushed), so the close
- * silently does not persist. Detaching the row before merging would fix the flush, but it corrupts
- * the subsequent {@code session.insert(newRow)} in the same flush cycle and throws
- * {@code AssertionFailure: possible non-threadsafe access to session}.</p>
- *
- * <p>The reliable approach for these combined flows is a bulk HQL {@code UPDATE} that closes the old
- * row by id. It executes as a standalone statement, bypasses the persistence context entirely, and
- * therefore never interferes with the following insert. Pure close operations (archive / remove /
- * expire — update only, no insert) keep using detach + merge.</p>
+ * <p>These stateless flows close the predecessor with a native update and initialize
+ * the replacement explicitly before insertion. This avoids enhanced lazy-field update
+ * omissions and the current Reactive/ORM module restriction on bulk HQL.</p>
  */
 public final class SCDLinkMaintenance
 {
@@ -32,16 +25,30 @@ public final class SCDLinkMaintenance
     {
     }
 
-    /**
-     * Stateless variant of {@link #retireActiveRow(Mutiny.StatelessSession, Object, UUID, IActiveFlag, OffsetDateTime)}.
-     * <p>
-     * On a {@link Mutiny.StatelessSession} a bulk HQL {@code createMutationQuery(...)} is <strong>not</strong>
-     * usable: it makes {@code org.hibernate.reactive} access {@code org.hibernate.query.hql.spi} in
-     * {@code org.hibernate.orm.core}, which the ORM module does not export to the reactive module, throwing
-     * {@code IllegalAccessError}. Since the caller already holds the loaded link row, close it with a full-row
-     * {@code session.update}: it writes every column by id (no dirty tracking is required, so the lazy
-     * {@code effectiveToDate} is persisted reliably). Returns {@code 1} to preserve the bulk-update contract.
-     */
+    /** A different writer must create a new version even when the stored value is unchanged. */
+    public static boolean unchangedBySameSystem(String storedValue, String newValue,
+                                                UUID lastWriter, UUID writingSystem) {
+        return java.util.Objects.equals(storedValue, newValue == null ? "" : newValue)
+                && java.util.Objects.equals(lastWriter, writingSystem);
+    }
+
+    /** Initialize a new version before direct stateless insertion, which bypasses builder defaults. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static Uni<Void> insertReplacement(Mutiny.StatelessSession session,
+                                               IWarehouseRelationshipTable row) {
+        row.setId(UUID.randomUUID());
+        OffsetDateTime now = OffsetDateTime.now(java.time.ZoneOffset.UTC);
+        if (row.getWarehouseCreatedTimestamp() == null) row.setWarehouseCreatedTimestamp(now);
+        if (row.getWarehouseLastUpdatedTimestamp() == null) row.setWarehouseLastUpdatedTimestamp(now);
+        if (row.getEffectiveFromDate() == null) row.setEffectiveFromDate(now);
+        if (row.getEffectiveToDate() == null)
+            row.setEffectiveToDate(com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderSCD.EndOfTime.atOffset(java.time.ZoneOffset.UTC));
+        return session.insert(row);
+    }
+
+    /** Close the predecessor directly: stateless updates of enhanced lazy fields can omit
+     * effectiveToDate, and bulk HQL is unavailable across the current Reactive/ORM JPMS boundary.
+     * SQL identifiers come exclusively from the entity's JPA mapping, never caller input. */
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static Uni<Integer> retireActiveRow(Mutiny.StatelessSession session,
                                                Object managedRow,
@@ -50,9 +57,38 @@ public final class SCDLinkMaintenance
                                                OffsetDateTime effectiveTo)
     {
         IWarehouseRelationshipTable row = (IWarehouseRelationshipTable) managedRow;
-        row.setActiveFlagID(closingFlag);
-        row.setEffectiveToDate(effectiveTo);
-        return session.update(managedRow).replaceWith(1);
+        Class<?> entity = managedRow.getClass();
+        while (entity != null && !entity.isAnnotationPresent(jakarta.persistence.Table.class))
+            entity = entity.getSuperclass();
+        if (entity == null) throw new IllegalArgumentException("Relationship has no table mapping");
+        jakarta.persistence.Table table = entity.getAnnotation(jakarta.persistence.Table.class);
+        String idColumn = null;
+        for (Class<?> type = entity; type != null && idColumn == null; type = type.getSuperclass()) {
+            for (java.lang.reflect.Field field : type.getDeclaredFields()) {
+                if (field.isAnnotationPresent(jakarta.persistence.Id.class)) {
+                    jakarta.persistence.Column column = field.getAnnotation(jakarta.persistence.Column.class);
+                    idColumn = column == null || column.name().isEmpty() ? field.getName() : column.name();
+                    break;
+                }
+            }
+        }
+        String qualified = identifier(table.schema()) + "." + identifier(table.name());
+        return session.createNativeQuery("update " + qualified + " set ActiveFlagID=:flag,"
+                        + "EffectiveToDate=:closed,WarehouseLastUpdatedTimestamp=:closed where "
+                        + identifier(idColumn) + "=:id and EnterpriseID=:enterprise")
+                .setParameter("flag", closingFlag.getId()).setParameter("closed", effectiveTo)
+                .setParameter("id", rowId).setParameter("enterprise", row.getEnterpriseID().getId())
+                .executeUpdate().invoke(count -> {
+                    if (count != 1) throw new IllegalStateException("Relationship predecessor unavailable");
+                    row.setActiveFlagID(closingFlag);
+                    row.setEffectiveToDate(effectiveTo);
+                    row.setWarehouseLastUpdatedTimestamp(effectiveTo);
+                });
+    }
+
+    private static String identifier(String name) {
+        if (name == null || !name.matches("[A-Za-z_][A-Za-z0-9_]*"))
+            throw new IllegalArgumentException("Unsupported relationship mapping");
+        return name;
     }
 }
-

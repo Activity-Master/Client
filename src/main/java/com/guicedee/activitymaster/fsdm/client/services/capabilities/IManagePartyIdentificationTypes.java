@@ -240,7 +240,7 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                       .chain(existingObj -> {
                                           IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> existing =
                                                   (IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?>) existingObj;
-                                          if (existing != null && Strings.nullToEmpty(storeValue).equals(existing.getValue()))
+                                          if (existing != null && SCDLinkMaintenance.unchangedBySameSystem(existing.getValue(), storeValue, existing.getOriginalSourceSystemID(), system.getId()))
                                           {
                                               return Uni.createFrom().voidItem();
                                           }

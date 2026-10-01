@@ -178,7 +178,7 @@ public interface IManageResourceItemTypes<J extends IWarehouseBaseTable<J, ?, ? 
 					.chain(result -> {
 						IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> existingTable =
 								(IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?>) result;
-						if (Strings.nullToEmpty(value).equals(existingTable.getValue())) {
+						if (SCDLinkMaintenance.unchangedBySameSystem(existingTable.getValue(), value, existingTable.getOriginalSourceSystemID(), system.getId())) {
 							return Uni.createFrom().item((IRelationshipValue<J, IResourceItemType<?, ?>, ?>) existingTable);
 						}
 						IActiveFlagService<?> flagService = get(IActiveFlagService.class);
@@ -204,7 +204,7 @@ public interface IManageResourceItemTypes<J extends IWarehouseBaseTable<J, ?, ? 
 										configureResourceItemTypeLinkValue(newTableForClassification, (J) this, resourceItemType, classification, value, enterprise);
 										com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 												(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-										return session.insert(newTableForClassification)
+										return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
 											.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
 												.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
 												.onFailure().recoverWithItem(0L))
@@ -297,7 +297,7 @@ public interface IManageResourceItemTypes<J extends IWarehouseBaseTable<J, ?, ? 
 								.chain(resultObj -> {
 									IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?> existing =
 											(IWarehouseRelationshipTable<?, ?, J, IResourceItemType<?, ?>, java.util.UUID, ?>) resultObj;
-									if (existing == null || Strings.nullToEmpty(value).equals(existing.getValue())) {
+									if (existing == null || SCDLinkMaintenance.unchangedBySameSystem(existing.getValue(), value, existing.getOriginalSourceSystemID(), system.getId())) {
 										return Uni.createFrom().voidItem();
 									}
 									return flagService.getArchivedFlag(session, enterprise, identityToken)
@@ -319,7 +319,7 @@ public interface IManageResourceItemTypes<J extends IWarehouseBaseTable<J, ?, ? 
 													configureResourceItemTypeLinkValue(newRow, (J) this, resourceItemType, classification, value, enterprise);
 													com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 															(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newRow;
-													return session.insert(newRow)
+													return SCDLinkMaintenance.insertReplacement(session, newRow)
 															.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
 																	.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
 																	.onFailure().recoverWithItem(0L))

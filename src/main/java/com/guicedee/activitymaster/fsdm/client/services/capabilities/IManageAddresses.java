@@ -158,7 +158,7 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                        .recoverWithUni(() -> (Uni) addAddress(session, secondary, classificationValue, storeValue, system, identityToken))
                                        .chain(result -> {
                                            IRelationshipValue<J, IAddress<?, ?>, ?> existingRelation = (IRelationshipValue<J, IAddress<?, ?>, ?>) result;
-                                           if (Strings.nullToEmpty(storeValue).equals(existingRelation.getValue())) {
+                                           if (SCDLinkMaintenance.unchangedBySameSystem(existingRelation.getValue(), storeValue, ((com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IContainsRowRecordInformation<?>) existingRelation).getOriginalSourceSystemID(), system.getId())) {
                                                return Uni.createFrom().item(existingRelation);
                                            }
                                            final IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IAddress<?, ?>, UUID, ?>) result;
@@ -171,7 +171,7 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                                        newTableForClassification.setId(null);
                                                        newTableForClassification.setClassificationID(existingTable.getClassificationID());
                                                        newTableForClassification.setSystemID(system);
-                                                       newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+                                                       newTableForClassification.setOriginalSourceSystemID(system.getId());
                                                        newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
                                                        newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
                                                        newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
@@ -185,7 +185,7 @@ public interface IManageAddresses<J extends IWarehouseBaseTable<J, ?, ? extends 
                                                                    configureAddressLinkValue(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
                                                                    com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
                                                                            (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-                                                                   return session.insert(newTableForClassification)
+                                                                   return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
                                                                            .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
                                                                                    .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
                                                                                    .onFailure().recoverWithItem(0L))

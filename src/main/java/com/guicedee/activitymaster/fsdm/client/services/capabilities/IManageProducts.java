@@ -240,7 +240,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 				.chain(result -> {
 					IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?> existingTable =
 						(IWarehouseRelationshipTable<?, ?, J, IProduct<?, ?>, java.util.UUID, ?>) result;
-					if (Strings.nullToEmpty(storeValue).equals(existingTable.getValue())) {
+					if (SCDLinkMaintenance.unchangedBySameSystem(existingTable.getValue(), storeValue, existingTable.getOriginalSourceSystemID(), system.getId())) {
 						return Uni.createFrom().item((IRelationshipValue<J, IProduct<?, ?>, ?>) existingTable);
 					}
 					IActiveFlagService<?> flagService = get(IActiveFlagService.class);
@@ -252,7 +252,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 							newTableForClassification.setId(null);
 							newTableForClassification.setClassificationID(existingTable.getClassificationID());
 							newTableForClassification.setSystemID(system);
-							newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+							newTableForClassification.setOriginalSourceSystemID(system.getId());
 							newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
 							newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
 							newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(com.entityassist.RootEntity.getNow()));
@@ -266,7 +266,7 @@ public interface IManageProducts<J extends IWarehouseBaseTable<J, ?,? extends Se
 									configureProductAddable((Mutiny.StatelessSession) null, newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
 									com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 											(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-									return session.insert(newTableForClassification)
+									return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
 										.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
 											.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
 											.onFailure().recoverWithItem(0L))

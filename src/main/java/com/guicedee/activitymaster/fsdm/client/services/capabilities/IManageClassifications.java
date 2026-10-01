@@ -549,7 +549,7 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                         .chain(resultObj -> {
                             IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?> existing =
                                     (IWarehouseRelationshipClassificationTable<?, ?, J, IClassification<?, ?>, UUID, ?>) resultObj;
-                            if (existing == null || Strings.nullToEmpty(value).equals(existing.getValue())) {
+                            if (existing == null || SCDLinkMaintenance.unchangedBySameSystem(existing.getValue(), value, existing.getOriginalSourceSystemID(), system.getId())) {
                                 return Uni.createFrom().voidItem();
                             }
                             return flagService.getArchivedFlag(session, enterprise, identityToken)
@@ -569,7 +569,7 @@ public interface IManageClassifications<J extends IWarehouseBaseTable<J, ?, ? ex
                                         com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
                                                 (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newRow;
                                         return configureForClassification(session, newRow, classification, system)
-                                                .chain(() -> session.insert(newRow))
+                                                .chain(() -> SCDLinkMaintenance.insertReplacement(session, newRow))
                                                 .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
                                                         .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
                                                         .onFailure().recoverWithItem(0L))

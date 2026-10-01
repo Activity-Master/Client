@@ -187,7 +187,7 @@ public interface IManageInvolvedParties<J extends IWarehouseBaseTable<J, ?, ? ex
                                        .recoverWithUni(() -> (Uni) addInvolvedParty(session, involvedPartyType, classificationValue, storeValue, system, identityToken))
                                        .chain(result -> {
                                            IRelationshipValue<J, IInvolvedParty<?, ?>, ?> existingRelation = (IRelationshipValue<J, IInvolvedParty<?, ?>, ?>) result;
-                                           if (Strings.nullToEmpty(storeValue).equals(existingRelation.getValue())) {
+                                           if (SCDLinkMaintenance.unchangedBySameSystem(existingRelation.getValue(), storeValue, ((com.guicedee.activitymaster.fsdm.client.services.capabilities.contains.IContainsRowRecordInformation<?>) existingRelation).getOriginalSourceSystemID(), system.getId())) {
                                                return Uni.createFrom().item(existingRelation);
                                            }
                                            final IWarehouseRelationshipTable<?, ?, J, IInvolvedParty<?, ?>, UUID, ?> existingTable = (IWarehouseRelationshipTable<?, ?, J, IInvolvedParty<?, ?>, UUID, ?>) result;
@@ -200,7 +200,7 @@ public interface IManageInvolvedParties<J extends IWarehouseBaseTable<J, ?, ? ex
                                                        newTableForClassification.setId(null);
                                                        newTableForClassification.setClassificationID(existingTable.getClassificationID());
                                                        newTableForClassification.setSystemID(system);
-                                                       newTableForClassification.setOriginalSourceSystemID(existingTable.getId());
+                                                       newTableForClassification.setOriginalSourceSystemID(system.getId());
                                                        newTableForClassification.setOriginalSourceSystemUniqueID(existingTable.getId());
                                                        newTableForClassification.setWarehouseCreatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
                                                        newTableForClassification.setWarehouseLastUpdatedTimestamp(convertToUTCDateTime(RootEntity.getNow()));
@@ -214,7 +214,7 @@ public interface IManageInvolvedParties<J extends IWarehouseBaseTable<J, ?, ? ex
                                                                    configureInvolvedPartyAddable(newTableForClassification, (J) existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
                                                                    com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
                                                                            (com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-                                                                   return session.insert(newTableForClassification)
+                                                                   return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
                                                                            .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
                                                                                    .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
                                                                                    .onFailure().recoverWithItem(0L))

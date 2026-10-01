@@ -181,7 +181,7 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 				.chain(result -> {
 					IWarehouseRelationshipTable<?, ?, J, IRules<?, ?>, java.util.UUID, ?> existingTable =
 						(IWarehouseRelationshipTable<?, ?, J, IRules<?, ?>, java.util.UUID, ?>) result;
-					if (Strings.nullToEmpty(storeValue).equals(existingTable.getValue())) {
+					if (SCDLinkMaintenance.unchangedBySameSystem(existingTable.getValue(), storeValue, existingTable.getOriginalSourceSystemID(), system.getId())) {
 						return Uni.createFrom().item((IRelationshipValue<J, IRules<?, ?>, ?>) existingTable);
 					}
 					IActiveFlagService<?> flagService = get(IActiveFlagService.class);
@@ -207,7 +207,7 @@ public interface IManageRules<J extends IWarehouseBaseTable<J, ?, ? extends Seri
 									configureRulesAddable(newTableForClassification, existingTable.getPrimary(), existingTable.getSecondary(), classification, storeValue, system);
 									com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable core =
 											(com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.base.IWarehouseCoreTable) newTableForClassification;
-									return session.insert(newTableForClassification)
+									return SCDLinkMaintenance.insertReplacement(session, newTableForClassification)
 										.chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
 											.chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
 											.onFailure().recoverWithItem(0L))

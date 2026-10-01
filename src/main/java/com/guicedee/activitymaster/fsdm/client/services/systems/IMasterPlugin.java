@@ -32,6 +32,8 @@ public interface IMasterPlugin<J extends IMasterPlugin<J>> extends IDefaultServi
     }
     default String getPluginTitle() { return getSystemName(); }
     default String getPluginVersion() { return "3.0.0-SNAPSHOT"; }
+    /** Catalogue age rating code: All, FamilyFriendly, ParentalGuidance or a minimum age such as "18+". */
+    default String getPluginAgeRating() { return "All"; }
     /** Registered capabilities used by this extension; these declarations grant no access. */
     default Set<String> getPluginDependencies() {
         return Set.of(com.guicedee.activitymaster.fsdm.client.services.ISystemsService.ActivityMasterSystemName);

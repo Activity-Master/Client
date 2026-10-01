@@ -55,6 +55,7 @@ module com.guicedee.activitymaster.fsdm.client {
     requires org.apache.logging.log4j.core;
 
     uses IMasterSystem;
+    uses com.guicedee.activitymaster.fsdm.client.services.systems.IMasterPlugin;
 
     uses IOnCreateUser;
     uses IOnExpireUser;
