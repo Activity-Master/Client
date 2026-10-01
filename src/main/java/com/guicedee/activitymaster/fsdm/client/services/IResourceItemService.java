@@ -8,6 +8,7 @@ import io.smallrye.mutiny.Uni;
 import org.hibernate.reactive.mutiny.Mutiny;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -80,6 +81,23 @@ public interface IResourceItemService<J extends IResourceItemService<J>> {
 
     /** Stateless variant of {@link #updateResourceData(Mutiny.StatelessSession, byte[], UUID)} (relational only). */
     Uni<Void> updateResourceData(Mutiny.StatelessSession session, byte[] data, UUID resourceItemId);
+
+    /**
+     * Creates a private relational binary resource and its typed relationship without a legacy
+     * ResourceItemData row. The caller owns the transaction and domain authorization. Security
+     * is restricted to scopeToken; the supplied classification belongs to the type relationship.
+     */
+    Uni<IResourceItem<?, ?>> createBinaryScopeRestricted(Mutiny.StatelessSession session, String type,
+            UUID resourceId, String dataType, byte[] data, OffsetDateTime effectiveFrom,
+            String typeClassification, ISystems<?, ?> system,
+            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> scopeToken,
+            UUID... identityToken);
+
+    /** Insert an immutable binary value in the caller-owned transaction. Existing IDs are never overwritten. */
+    Uni<Void> storeResourceDataValue(Mutiny.StatelessSession session, UUID valueId, byte[] data);
+
+    /** Read a binary value after the caller has authorized its owning resource; null means absent. */
+    Uni<byte[]> getResourceDataValue(Mutiny.StatelessSession session, UUID valueId);
 
     /** Stateless find-or-insert variant of {@link #create(Mutiny.StatelessSession, String, String, byte[], ISystems, UUID...)}. */
     Uni<IResourceItem<?, ?>> create(Mutiny.StatelessSession session, String identityResourceType, String resourceItemDataValue, byte[] data,

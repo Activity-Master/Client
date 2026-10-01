@@ -254,7 +254,7 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 	}
 
 	@SuppressWarnings("unchecked")
-	default Uni<List<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>>> findInvolvedPartyTypesAll(Mutiny.StatelessSession session, String classification, String ipType, String searchValue, ISystems<?, ?> system, boolean latest, UUID... identityToken)
+    default Uni<List<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>>> findInvolvedPartyTypesAll(Mutiny.StatelessSession session, String classification, String ipType, String searchValue, ISystems<?, ?> system, boolean latest, UUID... identityToken)
 	{
 		IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> relationshipTable = get(getInvolvedPartyTypeRelationshipClass());
 		IInvolvedPartyService<?> partyService = get(IInvolvedPartyService.class);
@@ -272,7 +272,26 @@ public interface IManagePartyTypes<J extends IWarehouseBaseTable<J, ?, ? extends
 				if (latest) { q.orderBy(q.getAttribute("effectiveFromDate")); }
 				return q.getAll().map(list -> (List<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>>) list);
 			});
-	}
+    }
+
+    /** Active links for a type, regardless of their selected value. */
+    @SuppressWarnings("unchecked")
+    default Uni<List<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>>> findInvolvedPartyTypesByType(
+            Mutiny.StatelessSession session, String classification, String ipType,
+            ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyType<?, ?>, java.util.UUID, ?> table = get(getInvolvedPartyTypeRelationshipClass());
+        IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+        return service.findType(session, ipType, system, identityToken)
+                .chain(type -> table.builder(session)
+                        .findLink((J) this, type, null)
+                        .withClassification(classification, system)
+                        .inActiveRange().inDateRange()
+                        .withEnterprise(system.getEnterprise())
+                        .canRead(system, identityToken)
+                        .getAll()
+                        .map(rows -> (List<IRelationshipValue<J, IInvolvedPartyType<?, ?>, ?>>) rows));
+    }
 
 	@SuppressWarnings("unchecked")
 	default Uni<Long> numberOfInvolvedPartyTypes(Mutiny.StatelessSession session, String classificationValue, String ipType, String value, ISystems<?, ?> system, UUID... identityToken)

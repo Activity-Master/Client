@@ -19,6 +19,16 @@ import java.util.UUID;
  */
 public interface IAddressService<J extends IAddressService<?>>
 {
+    /** Save one owned structured address; null id creates, existing id replaces only that address. */
+    Uni<com.guicedee.activitymaster.fsdm.client.services.dto.PartyAddressDTO> savePartyAddress(
+            Mutiny.StatelessSession session, IInvolvedParty<?, ?> party,
+            com.guicedee.activitymaster.fsdm.client.services.dto.PartyAddressDTO address, ISystems<?, ?> system, UUID... identityToken);
+
+    Uni<java.util.List<com.guicedee.activitymaster.fsdm.client.services.dto.PartyAddressDTO>> findPartyAddresses(
+            Mutiny.StatelessSession session, IInvolvedParty<?, ?> party, ISystems<?, ?> system, UUID... identityToken);
+
+    Uni<Void> endPartyAddress(Mutiny.StatelessSession session, IInvolvedParty<?, ?> party, UUID addressId,
+                             ISystems<?, ?> system, UUID... identityToken);
 	/**
 	 * The name of the Address system.
 	 */

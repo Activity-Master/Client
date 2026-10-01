@@ -51,6 +51,10 @@ public interface IClassificationDataConceptService<J extends IClassificationData
     Uni<IClassificationDataConcept<?, ?>> createDataConcept(Mutiny.StatelessSession session, EnterpriseClassificationDataConcepts name,
                                                             String description, ISystems<?, ?> system, UUID... identityToken);
 
+    /** Find or create an application-owned concept without adding it to the internal FSDM enum. */
+    Uni<IClassificationDataConcept<?, ?>> createNamedDataConcept(Mutiny.StatelessSession session, String name,
+                                                                 String description, ISystems<?, ?> system, UUID... identityToken);
+
     /** Stateless variant of {@link #getGlobalConcept(Mutiny.StatelessSession, ISystems, UUID...)}. */
     default Uni<IClassificationDataConcept<?, ?>> getGlobalConcept(Mutiny.StatelessSession session, ISystems<?, ?> system, UUID... identityToken) {
         return find(session, EnterpriseClassificationDataConcepts.GlobalClassificationsDataConceptName, system, identityToken);

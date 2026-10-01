@@ -76,6 +76,24 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                                                                                                      ISystems<?, ?> system,
                                                                                                                      UUID... identityToken)
     {
+        return insertIdentificationType(session, classificationName, involvedPartyIdentificationType, value, system, false, identityToken);
+    }
+
+    /** Protected personal-value insert: restricted row permissions and no swallowed security failures. */
+    default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> addProtectedInvolvedPartyIdentificationType(
+            Mutiny.StatelessSession session, String classificationName, String identificationType,
+            String value, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+        return service.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
+                .chain(type -> insertIdentificationType(session, classificationName, type, value, system, true, identityToken));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> insertIdentificationType(
+            Mutiny.StatelessSession session, String classificationName, IInvolvedPartyIdentificationType<?, ?> involvedPartyIdentificationType,
+            String value, ISystems<?, ?> system, boolean restricted, UUID... identityToken)
+    {
         IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> tableForClassification = get(getInvolvedPartyIdentificationTypeRelationshipClass());
         IClassificationService<?> classificationService = get(IClassificationService.class);
         final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
@@ -99,8 +117,10 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                    if (tableForClassification.getId() == null) { tableForClassification.setId(java.util.UUID.randomUUID()); }
                                    return session.insert(tableForClassification)
                                                   .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
-                                                          .chain(tokens -> core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken))
-                                                          .onFailure().recoverWithItem(0L)
+                                                          .chain(tokens -> restricted
+                                                                  ? core.createScopeRestrictedSecurity(session, system, enterprise, activeFlag, tokens, null, identityToken)
+                                                                  : core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken)
+                                                                          .onFailure().recoverWithItem(0L))
                                                           .replaceWithVoid())
                                                   .replaceWith((IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>) tableForClassification);
                                }));
@@ -260,6 +280,37 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
     }
 
     // ---- Stateless relationship-read twins (verbatim; secondary resolved via the stateless party finder) ----
+
+    /** All active identification links on this party, subject to enterprise and row read permissions. */
+    @SuppressWarnings("unchecked")
+    default Uni<List<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>>> findInvolvedPartyIdentificationTypes(
+            Mutiny.StatelessSession session, String classification, ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, UUID, ?> table = get(getInvolvedPartyIdentificationTypeRelationshipClass());
+        return table.builder(session).withEnterprise(system.getEnterprise())
+                .findLink((J) this, null, null).withClassification(classification, system)
+                .inActiveRange().inDateRange().canRead(system, identityToken)
+                .getAll().map(rows -> (List<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>>) rows);
+    }
+
+    /** Active identification links for a type, without a value predicate. */
+    @SuppressWarnings("unchecked")
+    default Uni<List<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>>> findInvolvedPartyIdentificationTypesByType(
+            Mutiny.StatelessSession session, String classification, String identificationType,
+            ISystems<?, ?> system, UUID... identityToken)
+    {
+        IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, UUID, ?> table = get(getInvolvedPartyIdentificationTypeRelationshipClass());
+        IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+        return service.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
+                .chain(type -> table.builder(session)
+                        .withEnterprise(system.getEnterprise())
+                        .findLink((J) this, type, null)
+                        .withClassification(classification, system)
+                        .inActiveRange().inDateRange()
+                        .canRead(system, identityToken)
+                        .getAll()
+                        .map(rows -> (List<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>>) rows));
+    }
 
     default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> findInvolvedPartyIdentificationType(Mutiny.StatelessSession session, Enum<?> classification, Enum<?> identificationType, String searchValue, ISystems<?, ?> system, boolean first, boolean latest, UUID... identityToken)
     {

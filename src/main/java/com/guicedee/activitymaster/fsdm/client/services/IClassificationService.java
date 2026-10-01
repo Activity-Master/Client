@@ -208,6 +208,15 @@ public interface IClassificationService<J extends IClassificationService<J>> {
                                       IClassification<?, ?> parent,
                                       UUID... identityToken);
 
+    /** Create a classification in an application-owned named data concept. */
+    Uni<IClassification<?, ?>> createInConcept(Mutiny.StatelessSession session, String name, String description,
+                                               String conceptName, ISystems<?, ?> system, Integer sequenceNumber,
+                                               IClassification<?, ?> parent, UUID... identityToken);
+
+    /** Find a classification only within the named data concept. */
+    Uni<IClassification<?, ?>> findInConcept(Mutiny.StatelessSession session, String name, String conceptName,
+                                             ISystems<?, ?> system, UUID... identityToken);
+
 
 
     /**
