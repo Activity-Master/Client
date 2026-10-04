@@ -148,11 +148,22 @@ public interface IEnterpriseService<J extends IEnterpriseService<J>> extends IPr
     }
 
     /**
+     * Completes administrator creation and post-startup for an already installed
+     * enterprise. Trusted installation entry point only; owns its stateless
+     * transactions and scoped bootstrap privileges. Retains an existing creator
+     * without changing its credentials and does not replay system installation.
+     */
+    Uni<IEnterprise<?, ?>> completeAdministratorSetup(Mutiny.StatelessSession session,
+                                                     String enterpriseName,
+                                                     String adminUserName,
+                                                     String adminPassword);
+
+    /**
      * Starts a new enterprise driven from a stateless session.
      * <p>
      * The lean enterprise record is seeded through the supplied {@link Mutiny.StatelessSession}
-     * (no persistence context, JDBC-batchable insert); the deeper system install — which needs a
-     * managed persistence context — is orchestrated on internally-managed stateful sessions.
+     * (no persistence context); deeper installation phases run in separately owned
+     * stateless transactions.
      * <p>
      * <strong>Top-level entry point:</strong> this method opens and manages its own sessions, so do
      * <em>not</em> invoke it from within another already-open transaction.

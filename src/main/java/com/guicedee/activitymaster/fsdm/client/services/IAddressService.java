@@ -29,6 +29,14 @@ public interface IAddressService<J extends IAddressService<?>>
 
     Uni<Void> endPartyAddress(Mutiny.StatelessSession session, IInvolvedParty<?, ?> party, UUID addressId,
                              ISystems<?, ?> system, UUID... identityToken);
+    Uni<com.guicedee.activitymaster.fsdm.client.services.dto.PartyPhoneDTO> savePartyPhone(
+            Mutiny.StatelessSession session, IInvolvedParty<?, ?> party,
+            com.guicedee.activitymaster.fsdm.client.services.dto.PartyPhoneDTO phone, ISystems<?, ?> system, UUID... tokens);
+    Uni<java.util.List<com.guicedee.activitymaster.fsdm.client.services.dto.PartyPhoneDTO>> findPartyPhones(
+            Mutiny.StatelessSession session, IInvolvedParty<?, ?> party, ISystems<?, ?> system, UUID... tokens);
+    Uni<Void> endPartyPhone(Mutiny.StatelessSession session, IInvolvedParty<?, ?> party, UUID id,
+                           ISystems<?, ?> system, UUID... tokens);
+
 	/**
 	 * The name of the Address system.
 	 */
