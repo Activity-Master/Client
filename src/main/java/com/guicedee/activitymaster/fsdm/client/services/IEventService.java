@@ -35,6 +35,13 @@ public interface IEventService<J extends IEventService<J>> {
      */
     Uni<IEvent<?, ?>> get();
 
+    /** Appends a private event with private type and CreatedBy links. The authenticated host
+     * supplies the verified actor and read scope. Requires the caller's stateless transaction;
+     * security failures propagate and must abort the domain mutation. */
+    Uni<IEvent<?, ?>> createActorEvent(Mutiny.StatelessSession session, String title, IInvolvedParty<?, ?> actor,
+            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> actorScope,
+            ISystems<?, ?> system, UUID... identityToken);
+
     /**
      * Stateless variant of {@link #createEvent(Mutiny.StatelessSession, String, ISystems, UUID...)} — provisions the
      * event (and its event-type link) entirely on a {@link Mutiny.StatelessSession} via {@code session.insert}
