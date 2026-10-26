@@ -49,6 +49,11 @@ public interface IInvolvedPartyService<J extends IInvolvedPartyService<J>>
 	/** Stateless variant of {@link #createIdentificationType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
 	Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationType(Mutiny.StatelessSession session, ISystems<?,?> system, String name, String description, UUID... identityToken);
 
+    /** Find the live type or create it with the supplied conflict-detecting identity. */
+    Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationTypeWithId(Mutiny.StatelessSession session, ISystems<?,?> system,
+            String name, String description, UUID id, UUID... identityToken);
+
+
 	/** Enum-name stateless variant of {@link #createIdentificationType(Mutiny.StatelessSession, ISystems, String, String, UUID...)}. */
 	default Uni<IInvolvedPartyIdentificationType<?,?>> createIdentificationType(Mutiny.StatelessSession session, ISystems<?,?> system, Enum<?> name, String description, UUID... identityToken){
 		return createIdentificationType(session, system, name.toString(), description, identityToken);

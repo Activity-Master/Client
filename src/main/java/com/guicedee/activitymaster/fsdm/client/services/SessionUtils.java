@@ -217,6 +217,27 @@ public final class SessionUtils {
         );
     }
 
+    /** True only for PostgreSQL serialization failures, never for authorization failures. */
+    public static boolean isSerializationFailure(Throwable error) {
+        for(Throwable current=error;current!=null;current=current.getCause()) {
+            for(String method:java.util.List.of("getSQLState","getSqlState")) try {
+                if("40001".equals(current.getClass().getMethod(method).invoke(current)))return true;
+            } catch(ReflectiveOperationException | SecurityException ignored) { }
+        }
+        return false;
+    }
+
+    /** Runs one independently committed operation on a serializable stateless transaction.
+     * Isolation is set before resolving the context, which may itself query the database.
+     * Callers must surface or safely retry serialization failures only after rollback. */
+    public static <T> Uni<T> withSerializableSystemAndTokenStateless(String enterpriseName, String systemName,
+            java.util.function.Function<Tuple4<Mutiny.StatelessSession, IEnterprise<?, ?>, ISystems<?, ?>, UUID[]>, Uni<T>> fn) {
+        Mutiny.SessionFactory sessionFactory = IGuiceContext.get(Mutiny.SessionFactory.class);
+        return withStatelessSessionTx(sessionFactory, session -> session.createNativeQuery("set transaction isolation level serializable").executeUpdate()
+                .chain(() -> getStatelessActivityMasterContext(session, enterpriseName, systemName))
+                .chain(context -> fn.apply(Tuple4.of(session, context.enterprise(), context.system(), context.identityTokens()))));
+    }
+
     private static Uni<StatelessActivityMasterContext> getStatelessActivityMasterContext(Mutiny.StatelessSession session,
                                                                                          String enterpriseName,
                                                                                          String systemName) {

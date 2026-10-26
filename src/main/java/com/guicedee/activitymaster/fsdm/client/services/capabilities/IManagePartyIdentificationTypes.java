@@ -89,12 +89,29 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                 .chain(type -> insertIdentificationType(session, classificationName, type, value, system, true, identityToken));
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    /** Protected insertion with a caller-derived identity for conflict detection. */
+    default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> addProtectedInvolvedPartyIdentificationTypeWithId(
+            Mutiny.StatelessSession session, String classificationName, String identificationType, String value,
+            UUID linkId, ISystems<?, ?> system, UUID... identityToken) {
+        java.util.Objects.requireNonNull(linkId);
+        IInvolvedPartyService<?> service=get(IInvolvedPartyService.class);
+        return service.findInvolvedPartyIdentificationType(session,identificationType,system,identityToken)
+                .chain(type -> insertIdentificationTypeWithId(session,classificationName,type,value,system,true,linkId,identityToken));
+    }
+
     private Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> insertIdentificationType(
             Mutiny.StatelessSession session, String classificationName, IInvolvedPartyIdentificationType<?, ?> involvedPartyIdentificationType,
-            String value, ISystems<?, ?> system, boolean restricted, UUID... identityToken)
+            String value, ISystems<?, ?> system, boolean restricted, UUID... identityToken) {
+        return insertIdentificationTypeWithId(session,classificationName,involvedPartyIdentificationType,value,system,restricted,null,identityToken);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> insertIdentificationTypeWithId(
+            Mutiny.StatelessSession session, String classificationName, IInvolvedPartyIdentificationType<?, ?> involvedPartyIdentificationType,
+            String value, ISystems<?, ?> system, boolean restricted, UUID explicitId, UUID... identityToken)
     {
         IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> tableForClassification = get(getInvolvedPartyIdentificationTypeRelationshipClass());
+        if(explicitId!=null)tableForClassification.setId(explicitId);
         IClassificationService<?> classificationService = get(IClassificationService.class);
         final com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.enterprise.IEnterprise<?, ?> enterprise = system.getEnterprise();
         IActiveFlagService<?> activeFlagSvc = get(IActiveFlagService.class);

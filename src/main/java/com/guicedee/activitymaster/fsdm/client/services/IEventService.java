@@ -42,6 +42,11 @@ public interface IEventService<J extends IEventService<J>> {
             com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> actorScope,
             ISystems<?, ?> system, UUID... identityToken);
 
+    /** Creates the same private actor event while using deterministic IDs for first-use taxonomy. */
+    Uni<IEvent<?, ?>> createActorEventWithIds(Mutiny.StatelessSession session, String title, IInvolvedParty<?, ?> actor,
+            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> actorScope,
+            ISystems<?, ?> system, UUID typeId, UUID eventRoleId, UUID actorRoleId, UUID... identityToken);
+
     /**
      * Stateless variant of {@link #createEvent(Mutiny.StatelessSession, String, ISystems, UUID...)} — provisions the
      * event (and its event-type link) entirely on a {@link Mutiny.StatelessSession} via {@code session.insert}
@@ -74,6 +79,10 @@ public interface IEventService<J extends IEventService<J>> {
 
     /** Stateless variant of {@link #createEventType(Mutiny.StatelessSession, String, ISystems, UUID...)} — find-or-insert. */
     Uni<IEventType<?, ?>> createEventType(Mutiny.StatelessSession session, String eventType, ISystems<?, ?> system, UUID... identityToken);
+
+    /** Find the live type or create it with the supplied conflict-detecting identity. */
+    Uni<IEventType<?, ?>> createEventTypeWithId(Mutiny.StatelessSession session, String eventType, UUID id, ISystems<?, ?> system, UUID... identityToken);
+
 
     /** Stateless Enum convenience over {@link #createEventType(Mutiny.StatelessSession, String, ISystems, UUID...)}. */
     default Uni<IEventType<?, ?>> createEventType(Mutiny.StatelessSession session, Enum<?> eventType, ISystems<?, ?> system, UUID... identityToken) {

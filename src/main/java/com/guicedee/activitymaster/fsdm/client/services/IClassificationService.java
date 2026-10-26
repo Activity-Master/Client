@@ -383,6 +383,11 @@ public interface IClassificationService<J extends IClassificationService<J>> {
                                     ISystems<?, ?> system,
                                     UUID... identityToken);
 
+    /** Find a concept-scoped classification or create it with the supplied identity. */
+    Uni<IClassification<?, ?>> createWithId(Mutiny.StatelessSession session, String name, String description,
+            EnterpriseClassificationDataConcepts concept, ISystems<?, ?> system, UUID id, UUID... identityToken);
+
+
     /**
      * Stateless ID lookup for prepped, detached classifications.
      * <p>
