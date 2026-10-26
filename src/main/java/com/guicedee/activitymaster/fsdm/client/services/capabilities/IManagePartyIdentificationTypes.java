@@ -89,6 +89,15 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                 .chain(type -> insertIdentificationType(session, classificationName, type, value, system, true, identityToken));
     }
 
+    /** Explicit grouped-grant variant; authorization and required grants are unchanged. */
+    default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> addProtectedInvolvedPartyIdentificationTypeGrouped(
+            Mutiny.StatelessSession session, String classificationName, String identificationType,
+            String value, ISystems<?, ?> system, UUID... identityToken) {
+        IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+        return service.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
+                .chain(type -> insertIdentificationTypeWithId(session, classificationName, type, value, system, true, true, null, identityToken));
+    }
+
     /** Protected insertion with a caller-derived identity for conflict detection. */
     default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> addProtectedInvolvedPartyIdentificationTypeWithId(
             Mutiny.StatelessSession session, String classificationName, String identificationType, String value,
@@ -96,19 +105,29 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
         java.util.Objects.requireNonNull(linkId);
         IInvolvedPartyService<?> service=get(IInvolvedPartyService.class);
         return service.findInvolvedPartyIdentificationType(session,identificationType,system,identityToken)
-                .chain(type -> insertIdentificationTypeWithId(session,classificationName,type,value,system,true,linkId,identityToken));
+                .chain(type -> insertIdentificationTypeWithId(session,classificationName,type,value,system,true,false,linkId,identityToken));
+    }
+
+    /** Explicit grouped-grant variant with a caller-derived link identity. */
+    default Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> addProtectedInvolvedPartyIdentificationTypeGroupedWithId(
+            Mutiny.StatelessSession session, String classificationName, String identificationType, String value,
+            UUID linkId, ISystems<?, ?> system, UUID... identityToken) {
+        java.util.Objects.requireNonNull(linkId);
+        IInvolvedPartyService<?> service = get(IInvolvedPartyService.class);
+        return service.findInvolvedPartyIdentificationType(session, identificationType, system, identityToken)
+                .chain(type -> insertIdentificationTypeWithId(session, classificationName, type, value, system, true, true, linkId, identityToken));
     }
 
     private Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> insertIdentificationType(
             Mutiny.StatelessSession session, String classificationName, IInvolvedPartyIdentificationType<?, ?> involvedPartyIdentificationType,
             String value, ISystems<?, ?> system, boolean restricted, UUID... identityToken) {
-        return insertIdentificationTypeWithId(session,classificationName,involvedPartyIdentificationType,value,system,restricted,null,identityToken);
+        return insertIdentificationTypeWithId(session,classificationName,involvedPartyIdentificationType,value,system,restricted,false,null,identityToken);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private Uni<IRelationshipValue<J, IInvolvedPartyIdentificationType<?, ?>, ?>> insertIdentificationTypeWithId(
             Mutiny.StatelessSession session, String classificationName, IInvolvedPartyIdentificationType<?, ?> involvedPartyIdentificationType,
-            String value, ISystems<?, ?> system, boolean restricted, UUID explicitId, UUID... identityToken)
+            String value, ISystems<?, ?> system, boolean restricted, boolean grouped, UUID explicitId, UUID... identityToken)
     {
         IWarehouseRelationshipTable<?, ?, J, IInvolvedPartyIdentificationType<?, ?>, java.util.UUID, ?> tableForClassification = get(getInvolvedPartyIdentificationTypeRelationshipClass());
         if(explicitId!=null)tableForClassification.setId(explicitId);
@@ -135,7 +154,8 @@ public interface IManagePartyIdentificationTypes<J extends IWarehouseBaseTable<J
                                    return session.insert(tableForClassification)
                                                   .chain(() -> sts.resolveDefaultGroupFolderTokens(session, system, identityToken)
                                                           .chain(tokens -> restricted
-                                                                  ? core.createScopeRestrictedSecurity(session, system, enterprise, activeFlag, tokens, null, identityToken)
+                                                                  ? (grouped ? core.createScopeRestrictedSecurityGrouped(session, system, enterprise, activeFlag, tokens, null, identityToken)
+                                                                             : core.createScopeRestrictedSecurity(session, system, enterprise, activeFlag, tokens, null, identityToken))
                                                                   : core.createDefaultSecurity(session, system, enterprise, activeFlag, tokens, identityToken)
                                                                           .onFailure().recoverWithItem(0L))
                                                           .replaceWithVoid())

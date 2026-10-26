@@ -146,6 +146,12 @@ public interface IWarehouseCoreTable<
 	                                        IActiveFlag<?,?> activeFlag, Map<String, ISecurityToken<?,?>> groupFolderTokens,
 	                                        ISecurityToken<?,?> scopeToken, UUID... identityToken);
 
+    /** Request grouped restricted grants when the implementation supports this row and scope.
+     * Unsupported cases use the canonical path, with the same required grants and transaction. */
+    Uni<Long> createScopeRestrictedSecurityGrouped(Mutiny.StatelessSession session, ISystems<?,?> system,
+            IEnterprise<?,?> enterprise, IActiveFlag<?,?> activeFlag,
+            Map<String, ISecurityToken<?,?>> groupFolderTokens, ISecurityToken<?,?> scopeToken, UUID... identityToken);
+
 	/**
 	 * <strong>Live-session</strong> overload of the scope-restricted matrix, for a single just-created
 	 * record on the caller's session (the stateless batch variant cannot see an uncommitted row). Writes

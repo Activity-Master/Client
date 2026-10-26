@@ -47,6 +47,16 @@ public interface IEventService<J extends IEventService<J>> {
             com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> actorScope,
             ISystems<?, ?> system, UUID typeId, UUID eventRoleId, UUID actorRoleId, UUID... identityToken);
 
+    /** Explicit grouped-grant form of the private actor event; required grants are unchanged. */
+    Uni<IEvent<?, ?>> createActorEventGrouped(Mutiny.StatelessSession session, String title, IInvolvedParty<?, ?> actor,
+            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> actorScope,
+            ISystems<?, ?> system, UUID... identityToken);
+
+    /** Grouped-grant form with deterministic first-use taxonomy identities. */
+    Uni<IEvent<?, ?>> createActorEventWithIdsGrouped(Mutiny.StatelessSession session, String title, IInvolvedParty<?, ?> actor,
+            com.guicedee.activitymaster.fsdm.client.services.builders.warehouse.security.ISecurityToken<?, ?> actorScope,
+            ISystems<?, ?> system, UUID typeId, UUID eventRoleId, UUID actorRoleId, UUID... identityToken);
+
     /**
      * Stateless variant of {@link #createEvent(Mutiny.StatelessSession, String, ISystems, UUID...)} — provisions the
      * event (and its event-type link) entirely on a {@link Mutiny.StatelessSession} via {@code session.insert}
