@@ -207,43 +207,8 @@ public interface ISecurityTokenService<J extends ISecurityTokenService<J>>
 			return Uni.createFrom().item(java.util.Collections.emptySet());
 		}
 
-		java.time.OffsetDateTime now = com.guicedee.activitymaster.fsdm.client.services.builders.IQueryBuilderSCD
-				.convertToUTCDateTime(com.entityassist.RootEntity.getNow());
-
-		IActiveFlagService<?> afService = com.guicedee.client.IGuiceContext.get(IActiveFlagService.class);
-		return afService.getVisibleRangeAndUpIds(session, enterprise)
-		                .flatMap(visibleIds -> {
-			                String sql = "with recursive applicable(securitytokenid) as ( " +
-			                             "    select st.securitytokenid " +
-			                             "    from security.securitytoken st " +
-			                             "    join classification.classification identitytype on identitytype.classificationid=st.securitytokenclassificationid " +
-			                             "    where st.securitytoken in (:tokens) " +
-			                             "      and st.enterpriseid = :ent " +
-			                             "      and identitytype.enterpriseid = :ent and identitytype.classificationname <> 'Plugin' " +
-			                             "      and st.effectivefromdate <= :now and st.effectivetodate > :now " +
-			                             "      and exists(select 1 from dbo.activeflag f where f.activeflagid=st.activeflagid and f.allowaccess=1) " +
-			                             "  union " +
-			                             "    select x.parentsecuritytokenid " +
-			                             "    from security.securitytokenxsecuritytoken x " +
-			                             "    join applicable a on x.childsecuritytokenid = a.securitytokenid " +
-			                             "    join security.securitytoken parent on parent.securitytokenid=x.parentsecuritytokenid " +
-			                             "    join classification.classification parenttype on parenttype.classificationid=parent.securitytokenclassificationid " +
-			                             "    where x.enterpriseid = :ent " +
-			                             "      and parent.enterpriseid=:ent and parenttype.enterpriseid=:ent and parenttype.classificationname<>'Plugin' " +
-			                             "      and parent.effectivefromdate<=:now and parent.effectivetodate>:now " +
-			                             "      and exists(select 1 from dbo.activeflag f where f.activeflagid=parent.activeflagid and f.allowaccess=1) " +
-			                             "      and (x.effectivefromdate <= :now) " +
-			                             "      and (x.effectivetodate > :now) " +
-			                             "      and x.activeflagid in (:visibleIds) " +
-			                             ") " +
-			                             "select securitytokenid from applicable";
-			                return session.createNativeQuery(sql, UUID.class)
-			                              .setParameter("tokens", tokens)
-			                              .setParameter("ent", enterprise.getId())
-			                              .setParameter("now", now)
-			                              .setParameter("visibleIds", visibleIds)
-			                              .getResultList()
-			                              .map(ids -> (java.util.Set<UUID>) new java.util.LinkedHashSet<>(ids));
-		                });
+        return ApplicableTokenQuery.prepare(session, system, identityToken)
+                .chain(query -> query.bind(session.createNativeQuery(query.cte() + "select securitytokenid from applicable", UUID.class))
+                        .getResultList().map(ids -> (java.util.Set<UUID>) new java.util.LinkedHashSet<>(ids)));
 	}
 }
